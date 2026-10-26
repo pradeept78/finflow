@@ -1,0 +1,1675 @@
+
+package com.finflow.analyzer.service;
+
+import com.finflow.analyzer.model.Transaction;
+import lombok.RequiredArgsConstructor;
+import org.apache.commons.csv.CSVFormat;
+import org.apache.commons.csv.CSVParser;
+import org.apache.commons.csv.CSVRecord;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.encryption.InvalidPasswordException;
+import org.apache.pdfbox.text.PDFTextStripper;
+import org.apache.poi.ss.usermodel.*;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+@Service
+@RequiredArgsConstructor
+public class StatementParserService {
+
+    private final CategoryService categoryService;
+
+    private static final DateTimeFormatter PDF_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("dd MMM yyyy", Locale.ENGLISH);
+
+    private static final Pattern PDF_TRANSACTION_START = Pattern.compile(
+            "^\\s*(\\d+)\\s+(\\d{2}\\s+[A-Za-z]{3}\\s+\\d{4})\\s+(.+)$"
+    );
+
+    // HDFC-style rows begin with a DD/MM/YYYY transaction date (no serial number).
+    private static final Pattern HDFC_ROW_START = Pattern.compile(
+            "^\\s*(\\d{2}/\\d{2}/\\d{4})\\s+(.+)$"
+    );
+    // Some statements (e.g. DBS) put the row date on its own line, with the narration and the
+    // "Value Date" column each wrapping onto separate following lines. HDFC_ROW_START alone can't
+    // start a row on a bare date line since it requires trailing text on the same line.
+    private static final Pattern HDFC_BARE_DATE = Pattern.compile(
+            "^\\s*(\\d{2}/\\d{2}/\\d{4})\\s*$"
+    );
+    private static final DateTimeFormatter DMY_DATE_FORMAT =
+            DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.ENGLISH);
+    private static final Pattern TRAILING_VALUE_DATE =
+            Pattern.compile("\\s*\\d{2}/\\d{2}/\\d{4}\\s*$");
+
+    // Bank narrations often carry an explicit CR/DR marker (e.g. "TEFT CR-...", "NEFT DR-...").
+    // When present this is a stronger, bank-stated signal and should override a heuristic guess.
+    private static final Pattern NARRATION_CREDIT_MARK = Pattern.compile(
+            "(?i)(?:^|[\\s\\-/])(?:CR|CREDIT)(?:[\\s\\-/]|$)"
+    );
+    private static final Pattern NARRATION_DEBIT_MARK = Pattern.compile(
+            "(?i)(?:^|[\\s\\-/])(?:DR|DEBIT)(?:[\\s\\-/]|$)"
+    );
+
+    // Matches money amounts with BOTH Indian (6,86,000.00) and Western (686,000.00) grouping,
+    // plus plain (500.00). Indian lakh commas were previously unmatched, silently dropping
+    // every transaction >= 1 lakh.
+    private static final Pattern AMOUNT_PATTERN = Pattern.compile(
+            "(?<![\\d,])\\d[\\d,]*\\.\\d{2}(?!\\d)"
+    );
+
+    private static final Pattern OPENING_BALANCE_PATTERN = Pattern.compile(
+            "(?i)Opening\\s+Balance.*?(\\d{1,3}(?:,\\d{3})*\\.\\d{2})\\s*$"
+    );
+
+    public ParsedStatement parseWithMetadata(MultipartFile file, String bankOverride, String typeOverride, String numberOverride) throws Exception {
+        return parseWithMetadata(file, bankOverride, typeOverride, numberOverride, null);
+    }
+
+    public ParsedStatement parseWithMetadata(MultipartFile file, String bankOverride, String typeOverride, String numberOverride, String password) throws Exception {
+        return parseWithMetadata(file, bankOverride, typeOverride, numberOverride, password, null);
+    }
+
+    public ParsedStatement parseWithMetadata(MultipartFile file, String bankOverride, String typeOverride, String numberOverride, String password, Map<String, Integer> mapping) throws Exception {
+
+        String name = Objects.requireNonNullElse(
+                file.getOriginalFilename(),
+                "statement"
+        ).toLowerCase(Locale.ROOT);
+
+        if (name.endsWith(".pdf")) {
+            String text = extractPdfText(file, password);
+            DetectedAccount detected = detectAccount(text, file.getOriginalFilename());
+            String bank = blank(bankOverride) ? detected.bankName() : bankOverride.trim();
+            String type = blank(typeOverride) ? detected.accountType() : typeOverride.trim().toUpperCase(Locale.ROOT);
+            String number = blank(numberOverride) ? detected.maskedNumber() : maskNumber(numberOverride);
+            AccountInfo account = new AccountInfo(bank, type, number, accountKey(bank, type, number), detectionConfidence(detected, bankOverride, typeOverride, numberOverride));
+            // Always try the numbered (Kotak-style) parser first; only fall back to the
+            // columnar (HDFC-style) parser when it finds nothing. This prevents a
+            // Kotak statement from ever being misrouted to the wrong parser.
+            List<Transaction> pdfTx = parsePdfText(text, file.getOriginalFilename(), account);
+            if (pdfTx.isEmpty() && looksLikeColumnarStatement(text)) {
+                pdfTx = parseColumnarPdfText(text, file.getOriginalFilename(), account);
+            }
+            return new ParsedStatement(pdfTx, account);
+        }
+
+        List<Transaction> transactions;
+        if (name.endsWith(".csv")) {
+            transactions = parseCsv(file, mapping);
+        } else if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+            transactions = parseExcel(file, mapping);
+        } else {
+            throw new IllegalArgumentException("Unsupported file type. Use CSV, XLSX/XLS or PDF.");
+        }
+        DetectedAccount detected = detectAccount(file.getOriginalFilename(), file.getOriginalFilename());
+        AccountInfo account = new AccountInfo(
+                blank(bankOverride) ? detected.bankName() : bankOverride.trim(),
+                blank(typeOverride) ? detected.accountType() : typeOverride.trim().toUpperCase(Locale.ROOT),
+                blank(numberOverride) ? detected.maskedNumber() : maskNumber(numberOverride),
+                accountKey(blank(bankOverride) ? detected.bankName() : bankOverride, blank(typeOverride) ? detected.accountType() : typeOverride, blank(numberOverride) ? detected.maskedNumber() : maskNumber(numberOverride)),
+                detectionConfidence(detected, bankOverride, typeOverride, numberOverride));
+        transactions.forEach(t -> applyAccount(t, account));
+        return new ParsedStatement(transactions, account);
+    }
+
+    public List<Transaction> parse(MultipartFile file) throws Exception {
+        return parseWithMetadata(file, null, null, null).transactions();
+    }
+
+
+    /*
+     * ============================================================
+     * CSV
+     * ============================================================
+     */
+
+    private List<Transaction> parseCsv(MultipartFile file, Map<String, Integer> mapping) throws Exception {
+
+        byte[] bytes = file.getBytes();
+
+        List<String[]> rows = new ArrayList<>();
+
+        try (
+                Reader reader = new InputStreamReader(
+                        new ByteArrayInputStream(bytes),
+                        StandardCharsets.UTF_8
+                );
+
+                CSVParser parser = CSVFormat.DEFAULT
+                        .builder()
+                        .setHeader()
+                        .setSkipHeaderRecord(true)
+                        .setIgnoreEmptyLines(true)
+                        .build()
+                        .parse(reader)
+        ) {
+
+            Map<String, Integer> rawHeader = parser.getHeaderMap();
+            Map<String, Integer> header =
+                    normalizeHeaders(rawHeader);
+            int cols = rawHeader.size();
+
+            for (CSVRecord record : parser) {
+
+                String[] row = new String[cols];
+
+                // Positional access — robust to any header text (the header map only drives auto-detect).
+                for (int i = 0; i < cols && i < record.size(); i++) {
+                    row[i] = record.get(i);
+                }
+
+                rows.add(row);
+            }
+
+            return buildTransactions(
+                    header,
+                    rows,
+                    file.getOriginalFilename(),
+                    mapping
+            );
+        }
+    }
+
+    /*
+     * ============================================================
+     * EXCEL
+     * ============================================================
+     */
+
+    private List<Transaction> parseExcel(
+            MultipartFile file, Map<String, Integer> mapping) throws Exception {
+
+        try (
+                InputStream in = file.getInputStream();
+                Workbook workbook = WorkbookFactory.create(in)
+        ) {
+
+            Sheet sheet =
+                    workbook.getSheetAt(0);
+
+            Iterator<Row> iterator =
+                    sheet.iterator();
+
+            if (!iterator.hasNext()) {
+                return List.of();
+            }
+
+            Row headerRow =
+                    iterator.next();
+
+            Map<String, Integer> header =
+                    new LinkedHashMap<>();
+
+            for (Cell cell : headerRow) {
+                header.put(
+                        normalize(cell.getStringCellValue()),
+                        cell.getColumnIndex()
+                );
+            }
+
+            List<String[]> rows =
+                    new ArrayList<>();
+
+            while (iterator.hasNext()) {
+
+                Row row =
+                        iterator.next();
+
+                String[] values =
+                        new String[header.size()];
+
+                int index = 0;
+
+                for (Integer column :
+                        header.values()) {
+
+                    values[index++] =
+                            cellText(
+                                    row.getCell(column)
+                            );
+                }
+
+                rows.add(values);
+            }
+
+            return buildTransactions(
+                    header,
+                    rows,
+                    file.getOriginalFilename(),
+                    mapping
+            );
+        }
+    }
+
+    /*
+     * ============================================================
+     * PDF
+     * ============================================================
+     *
+     * Handles the provided bank statement format:
+     *
+     * # Date Description Chq/Ref. No. Withdrawal (Dr.)
+     * Deposit (Cr.) Balance
+     *
+     * Example:
+     *
+     * 1 01 Jan 2021 UPI/... UPI-100108898803
+     * 260.00 1,811.19
+     *
+     * 3 02 Jan 2021 UPI/thimmannadm/... UPI-100202972563
+     * 9,500.00 11,171.19
+     *
+     * Wrapped description lines are supported.
+     *
+     * Debit/Credit is determined from the running balance.
+     */
+    private List<Transaction> parsePdf(MultipartFile file) throws Exception {
+        return parseWithMetadata(file, null, null, null).transactions();
+    }
+
+    private String extractPdfText(MultipartFile file, String password) throws Exception {
+        byte[] bytes = file.getBytes();
+        try (var document = (password == null || password.isBlank())
+                ? Loader.loadPDF(bytes)
+                : Loader.loadPDF(bytes, password)) {
+            PDFTextStripper stripper = new PDFTextStripper();
+            stripper.setSortByPosition(true);
+            String text = stripper.getText(document);
+            if (text == null || text.isBlank()) {
+                throw new IllegalArgumentException("The PDF contains no readable text. OCR is required for this PDF.");
+            }
+            return text;
+        } catch (InvalidPasswordException e) {
+            // No password given → prompt for one. Password given but rejected → wrong password.
+            throw new EncryptedPdfException(password == null || password.isBlank());
+        }
+    }
+
+    /** First non-blank extracted lines of a PDF — shown when a PDF parses no transactions,
+     *  so the actual text layout is visible (and empty output reveals a scanned/image PDF). */
+    public List<String> pdfSampleLines(MultipartFile file, String password, int max) {
+        try {
+            String text = extractPdfText(file, password);
+            List<String> out = new ArrayList<>();
+            for (String raw : text.replace("\r", "").split("\n")) {
+                String l = cleanPdfLine(raw);
+                if (!l.isBlank()) out.add(l);
+                if (out.size() >= max) break;
+            }
+            return out;
+        } catch (Exception e) {
+            return List.of();
+        }
+    }
+
+    /** Thrown when a PDF is encrypted and no / an incorrect password was supplied. */
+    public static class EncryptedPdfException extends RuntimeException {
+        public final boolean missingPassword;
+        public EncryptedPdfException(boolean missingPassword) {
+            super(missingPassword
+                    ? "This PDF is password protected. Please provide the password."
+                    : "The password did not unlock this PDF.");
+            this.missingPassword = missingPassword;
+        }
+    }
+
+    private List<Transaction> parsePdfText(String text, String fileName, AccountInfo account) {
+        List<PdfTransaction> candidates = extractPdfTransactions(text);
+        if (candidates.isEmpty()) return List.of();
+        classifyPdfDirections(candidates);
+        List<Transaction> result = new ArrayList<>();
+        for (PdfTransaction candidate : candidates) {
+            if (candidate.amount == null || candidate.amount.compareTo(BigDecimal.ZERO) <= 0 || candidate.date == null) continue;
+            String direction = candidate.direction == null ? "DEBIT" : candidate.direction;
+            direction = applyNarrationDirectionOverride(candidate.description, direction);
+            Transaction t = build(candidate.date, candidate.description, candidate.amount, direction, fileName);
+            applyAccount(t, account);
+            result.add(t);
+        }
+        return result;
+    }
+
+    /*
+     * ============================================================
+     * COLUMNAR PDF (HDFC-style: Date | Narration | Ref | Value Date |
+     * Withdrawal | Deposit | Closing Balance). Rows start with a
+     * DD/MM/YYYY date and carry explicit withdrawal/deposit columns.
+     * ============================================================
+     */
+
+    private boolean looksLikeColumnarStatement(String text) {
+        String t = Objects.toString(text, "").toLowerCase(Locale.ROOT);
+        boolean hasNarration = t.contains("narration");
+        boolean hasWithdrawDeposit = (t.contains("withdrawal") || t.contains("debit"))
+                && (t.contains("deposit") || t.contains("credit"));
+        boolean hasDmyRow = HDFC_ROW_START.matcher(firstNonBlank(text)).find();
+        return (hasNarration && hasWithdrawDeposit) || (hasWithdrawDeposit && countDmyRows(text) >= 3);
+    }
+
+    private String firstNonBlank(String text) {
+        for (String l : Objects.toString(text, "").replace("\r", "").split("\n")) {
+            if (!cleanPdfLine(l).isBlank()) return cleanPdfLine(l);
+        }
+        return "";
+    }
+
+    private long countDmyRows(String text) {
+        return Arrays.stream(Objects.toString(text, "").replace("\r", "").split("\n"))
+                .map(this::cleanPdfLine)
+                .filter(l -> HDFC_ROW_START.matcher(l).matches())
+                .count();
+    }
+
+    private List<Transaction> parseColumnarPdfText(String text, String fileName, AccountInfo account) {
+        String norm = text.replace("\r\n", "\n").replace('\r', '\n');
+        List<Transaction> out = new ArrayList<>();
+        List<String> buf = new ArrayList<>();
+        LocalDate curDate = null;
+        for (String raw : norm.split("\n")) {
+            String line = cleanPdfLine(raw);
+            if (line.isBlank() || isPdfNoise(line)) continue;
+            Matcher m = HDFC_ROW_START.matcher(line);
+            Matcher bare = HDFC_BARE_DATE.matcher(line);
+            if (m.matches()) {
+                flushColumnarRow(curDate, buf, fileName, account, out);
+                curDate = parseDmyDate(m.group(1));
+                buf = new ArrayList<>();
+                buf.add(m.group(2).trim());
+            } else if (bare.matches()) {
+                // A date-only line is either this row's own transaction date (when the narration
+                // wraps onto the next line instead of sharing this one), or the "Value Date"
+                // column repeated mid-row. Treat it as a new row only when nothing is open yet, or
+                // the current row already has its amounts (so this must belong to the next row).
+                boolean bufHasAmount = buf.stream().anyMatch(l -> AMOUNT_PATTERN.matcher(l).find());
+                if (curDate == null || bufHasAmount) {
+                    flushColumnarRow(curDate, buf, fileName, account, out);
+                    curDate = parseDmyDate(bare.group(1));
+                    buf = new ArrayList<>();
+                } else {
+                    buf.add(line);
+                }
+            } else if (curDate != null) {
+                buf.add(line);
+            }
+        }
+        flushColumnarRow(curDate, buf, fileName, account, out);
+        return out;
+    }
+
+    private void flushColumnarRow(LocalDate date, List<String> buf, String fileName, AccountInfo account, List<Transaction> out) {
+        if (date == null || buf.isEmpty()) return;
+        String combined = String.join(" ", buf).replaceAll("\\s+", " ").trim();
+        List<String> amts = extractAmounts(combined);
+        if (amts.size() < 2) return;
+
+        BigDecimal movement;
+        String direction;
+        int stripCount;
+        if (amts.size() >= 3) {
+            // ..., withdrawal, deposit, closing-balance
+            BigDecimal withdrawal = parseAmount(amts.get(amts.size() - 3));
+            BigDecimal deposit = parseAmount(amts.get(amts.size() - 2));
+            boolean isCredit = positive(deposit) && !positive(withdrawal);
+            movement = isCredit ? deposit : withdrawal;
+            direction = isCredit ? "CREDIT" : "DEBIT";
+            stripCount = 3;
+        } else {
+            // Fallback: movement, closing-balance
+            movement = parseAmount(amts.get(amts.size() - 2));
+            direction = "DEBIT";
+            stripCount = 2;
+        }
+        if (!positive(movement)) return;
+
+        direction = applyNarrationDirectionOverride(combined, direction);
+
+        String desc = removeLastAmounts(combined, stripCount);
+        desc = TRAILING_VALUE_DATE.matcher(desc).replaceAll("").trim();
+        Transaction t = build(date, desc, movement, direction, fileName);
+        applyAccount(t, account);
+        out.add(t);
+    }
+
+    private boolean positive(BigDecimal v) {
+        return v != null && v.compareTo(BigDecimal.ZERO) > 0;
+    }
+
+    private LocalDate parseDmyDate(String value) {
+        try {
+            return LocalDate.parse(value.trim(), DMY_DATE_FORMAT);
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    /*
+     * ============================================================
+     * PDF TRANSACTION EXTRACTION
+     * ============================================================
+     */
+
+    private List<PdfTransaction> extractPdfTransactions(
+            String text) {
+
+        String normalizedText =
+                text.replace("\r\n", "\n")
+                        .replace('\r', '\n');
+
+        String[] lines =
+                normalizedText.split("\n");
+
+        List<PdfTransaction> transactions =
+                new ArrayList<>();
+
+        PdfTransaction current = null;
+
+        for (String raw :
+                lines) {
+
+            String line =
+                    cleanPdfLine(raw);
+
+            if (line.isBlank()) {
+                continue;
+            }
+
+            /*
+             * Ignore account/header/footer information.
+             */
+            if (isPdfNoise(line)) {
+                continue;
+            }
+
+            Matcher matcher =
+                    PDF_TRANSACTION_START.matcher(line);
+
+            if (matcher.matches()) {
+
+                /*
+                 * Save previous transaction.
+                 */
+                if (current != null) {
+
+                    finalizePdfTransaction(
+                            current
+                    );
+
+                    if (current.amount != null) {
+                        transactions.add(current);
+                    }
+                }
+current =
+        new PdfTransaction();
+
+current.number =
+        Integer.parseInt(
+                matcher.group(1)
+        );
+
+current.date =
+        parsePdfDate(
+                matcher.group(2)
+        );
+
+current.lines.add(
+        matcher.group(3).trim()
+);
+
+            } else if (current != null) {
+
+                /*
+                 * This is a continuation line.
+                 *
+                 * Examples:
+                 *
+                 * fro
+                 *
+                 * 528582963
+                 *
+                 * FEE/... Value Date:
+                 * 01-01-2021
+                 */
+                current.lines.add(line);
+            }
+        }
+
+        /*
+         * Last transaction.
+         */
+        if (current != null) {
+
+            finalizePdfTransaction(current);
+
+            if (current.amount != null) {
+                transactions.add(current);
+            }
+        }
+
+        return transactions;
+    }
+
+    /*
+     * ============================================================
+     * FINALIZE TRANSACTION
+     * ============================================================
+     */
+
+    private void finalizePdfTransaction(
+            PdfTransaction transaction) {
+
+        if (transaction.lines == null
+                || transaction.lines.isEmpty()) {
+
+            return;
+        }
+
+        /*
+         * Combine all wrapped lines.
+         */
+        String combined =
+                String.join(
+                        " ",
+                        transaction.lines
+                );
+
+        combined =
+                combined.replaceAll(
+                        "\\s+",
+                        " "
+                ).trim();
+
+        /*
+         * Find monetary values.
+         *
+         * For this bank statement:
+         *
+         * debit/credit amount + balance
+         *
+         * are the last two amounts.
+         */
+        List<String> amounts =
+                extractAmounts(combined);
+
+        if (amounts.size() < 2) {
+            return;
+        }
+
+        String balanceText =
+                amounts.get(
+                        amounts.size() - 1
+                );
+
+        String movementText =
+                amounts.get(
+                        amounts.size() - 2
+                );
+
+        transaction.amount =
+                parseAmount(movementText);
+
+        transaction.balance =
+                parseAmount(balanceText);
+
+        /*
+         * Remove the last two monetary values from
+         * the description.
+         */
+        String description =
+                removeLastAmounts(
+                        combined,
+                        2
+                );
+
+        transaction.description =
+                cleanTransactionDescription(
+                        description
+                );
+    }
+
+    /*
+     * ============================================================
+     * DEBIT / CREDIT DETECTION
+     * ============================================================
+     *
+     * Example:
+     *
+     * Opening: 2071.19
+     * Balance: 1811.19
+     * Difference: -260
+     * => DEBIT
+     *
+     * Balance: 1671.19
+     * Balance: 11171.19
+     * Difference: +9500
+     * => CREDIT
+     */
+
+    private void classifyPdfDirections(
+            List<PdfTransaction> transactions) {
+
+        if (transactions.isEmpty()) {
+            return;
+        }
+
+        /*
+         * First transaction may be compared with the
+         * opening balance extracted from the statement.
+         */
+        BigDecimal previousBalance =
+                extractOpeningBalance(
+                        transactions
+                );
+
+        for (PdfTransaction transaction :
+                transactions) {
+
+            if (transaction.balance == null
+                    || transaction.amount == null) {
+
+                transaction.direction =
+                        "DEBIT";
+
+                continue;
+            }
+
+            if (previousBalance != null) {
+
+                BigDecimal difference =
+                        transaction.balance
+                                .subtract(previousBalance);
+
+                BigDecimal amount =
+                        transaction.amount;
+
+                BigDecimal tolerance =
+                        new BigDecimal("0.01");
+
+                /*
+                 * Debit:
+                 *
+                 * previous - amount = balance
+                 */
+                BigDecimal debitExpected =
+                        previousBalance.subtract(
+                                amount
+                        );
+
+                /*
+                 * Credit:
+                 *
+                 * previous + amount = balance
+                 */
+                BigDecimal creditExpected =
+                        previousBalance.add(
+                                amount
+                        );
+
+                if (debitExpected.subtract(
+                                transaction.balance
+                        ).abs()
+                        .compareTo(tolerance) <= 0) {
+
+                    transaction.direction =
+                            "DEBIT";
+
+                } else if (
+                        creditExpected.subtract(
+                                transaction.balance
+                        ).abs()
+                                .compareTo(tolerance) <= 0
+                ) {
+
+                    transaction.direction =
+                            "CREDIT";
+
+                } else {
+
+                    /*
+                     * If the running balance does not match,
+                     * fall back to the sign of the difference.
+                     */
+                    transaction.direction =
+                            difference.signum() >= 0
+                                    ? "CREDIT"
+                                    : "DEBIT";
+                }
+
+                previousBalance =
+                        transaction.balance;
+
+            } else {
+
+                /*
+                 * No opening balance.
+                 *
+                 * Use balance movement relative to the
+                 * previous transaction.
+                 */
+                transaction.direction =
+                        "DEBIT";
+            }
+        }
+    }
+
+    /*
+     * Extract opening balance from the complete PDF
+     * transaction list.
+     *
+     * The first transaction's previous balance can be
+     * calculated from:
+     *
+     * previous = balance +/- amount
+     *
+     * But we don't know direction yet.
+     *
+     * Therefore the actual statement opening balance is
+     * extracted separately from the raw PDF text.
+     */
+    private BigDecimal extractOpeningBalance(
+            List<PdfTransaction> transactions) {
+
+        if (transactions.isEmpty()) {
+            return null;
+        }
+
+        PdfTransaction first =
+                transactions.get(0);
+
+        /*
+         * For the supplied statement:
+         *
+         * opening = 2071.19
+         *
+         * first transaction:
+         *
+         * 260 debit
+         * balance 1811.19
+         *
+         * Therefore:
+         *
+         * opening = balance + amount
+         *
+         * We use this as the initial assumption.
+         *
+         * The direction of the first transaction is verified
+         * by subsequent balance progression.
+         */
+        if (first.balance != null
+                && first.amount != null) {
+
+            /*
+             * The first transaction in the supplied statement
+             * is a debit, therefore this produces 2071.19.
+             */
+            return first.balance.add(
+                    first.amount
+            );
+        }
+
+        return null;
+    }
+
+    /*
+     * ============================================================
+     * PDF HELPERS
+     * ============================================================
+     */
+
+    private String cleanPdfLine(
+            String line) {
+
+        if (line == null) {
+            return "";
+        }
+
+        return line
+                .replace('\u00A0', ' ')
+                .replaceAll("\\s+", " ")
+                .trim();
+    }
+
+    private boolean isPdfNoise(
+            String line) {
+
+        String lower =
+                line.toLowerCase(
+                        Locale.ROOT
+                );
+
+        if (lower.isBlank()) {
+            return true;
+        }
+
+        if (lower.startsWith("account statement")) {
+            return true;
+        }
+
+        if (lower.startsWith("account no.")) {
+            return true;
+        }
+
+        if (lower.startsWith("account type")) {
+            return true;
+        }
+
+        if (lower.startsWith("branch")) {
+            return true;
+        }
+
+        if (lower.startsWith("account status")) {
+            return true;
+        }
+
+        if (lower.startsWith("nominee registered")) {
+            return true;
+        }
+
+        if (lower.startsWith("currency")) {
+            return true;
+        }
+
+        if (lower.startsWith("micr")) {
+            return true;
+        }
+
+        if (lower.startsWith("statement generated")) {
+            return true;
+        }
+
+        if (lower.startsWith("savings account transactions")) {
+            return true;
+        }
+
+        if (lower.startsWith("# date")) {
+            return true;
+        }
+
+        if (lower.contains("withdrawal (dr.)")) {
+            return true;
+        }
+
+        if (lower.contains("deposit (cr.)")) {
+            return true;
+        }
+
+        if (lower.equals("balance")) {
+            return true;
+        }
+
+        if (lower.matches(
+                ".*page\\s+\\d+\\s+of\\s+\\d+.*"
+        )) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private LocalDate parsePdfDate(
+            String value) {
+
+        try {
+            return LocalDate.parse(
+                    value.trim(),
+                    PDF_DATE_FORMAT
+            );
+        } catch (DateTimeParseException e) {
+            return null;
+        }
+    }
+
+    private List<String> extractAmounts(
+            String value) {
+
+        List<String> amounts =
+                new ArrayList<>();
+
+        Matcher matcher =
+                AMOUNT_PATTERN.matcher(value);
+
+        while (matcher.find()) {
+            amounts.add(
+                    matcher.group()
+            );
+        }
+
+        return amounts;
+    }
+
+    private String removeLastAmounts(
+            String value,
+            int count) {
+
+        String result =
+                value;
+
+        for (int i = 0; i < count; i++) {
+
+            Matcher matcher =
+                    AMOUNT_PATTERN.matcher(
+                            result
+                    );
+
+            int start = -1;
+
+            while (matcher.find()) {
+                start = matcher.start();
+            }
+
+            if (start < 0) {
+                break;
+            }
+
+            result =
+                    result.substring(
+                            0,
+                            start
+                    ).trim();
+        }
+
+        return result;
+    }
+
+    private String cleanTransactionDescription(
+            String value) {
+
+        if (value == null) {
+            return "";
+        }
+
+        String result =
+                value.replaceAll(
+                        "\\s+",
+                        " "
+                ).trim();
+
+        /*
+         * Remove the transaction reference from the
+         * description when it is separately identifiable.
+         *
+         * Keep UPI IDs and merchant names because they
+         * are useful for merchant categorization.
+         */
+        return result;
+    }
+
+    /*
+     * ============================================================
+     * CSV / EXCEL BUILDING
+     * ============================================================
+     */
+
+    private List<Transaction> buildTransactions(
+            Map<String, Integer> header,
+            List<String[]> rows,
+            String fileName,
+            Map<String, Integer> mapping) {
+
+        List<Transaction> result =
+                new ArrayList<>();
+
+        for (String[] row : rows) {
+
+            String dateRaw =
+                    value(row, resolveColumn("date", mapping, header,
+                            "date", "transaction date", "txn date", "value date"));
+
+            String description =
+                    value(row, resolveColumn("description", mapping, header,
+                            "description", "narration", "details", "merchant",
+                            "transaction details", "remarks"));
+
+            String debitRaw =
+                    value(row, resolveColumn("debit", mapping, header,
+                            "debit", "withdrawal", "withdrawals", "debit amount"));
+
+            String creditRaw =
+                    value(row, resolveColumn("credit", mapping, header,
+                            "credit", "deposit", "deposits", "credit amount"));
+
+            String amountRaw =
+                    value(row, resolveColumn("amount", mapping, header,
+                            "amount", "transaction amount"));
+
+            String typeRaw =
+                    value(row, resolveColumn("type", mapping, header,
+                            "type", "dr/cr", "debit credit", "transaction type"));
+
+            if (dateRaw.isBlank()
+                    || description.isBlank()) {
+
+                continue;
+            }
+
+            try {
+
+                LocalDate date =
+                        parseDate(dateRaw);
+
+                String direction;
+
+                BigDecimal amount;
+
+                if (!debitRaw.isBlank()
+                        || !creditRaw.isBlank()) {
+
+                    BigDecimal debit =
+                            safeAmount(debitRaw);
+
+                    BigDecimal credit =
+                            safeAmount(creditRaw);
+
+                    if (debit.compareTo(
+                            BigDecimal.ZERO
+                    ) != 0) {
+
+                        amount =
+                                debit.abs();
+
+                        direction =
+                                "DEBIT";
+
+                    } else {
+
+                        amount =
+                                credit.abs();
+
+                        direction =
+                                "CREDIT";
+                    }
+
+                } else {
+
+                    amount =
+                            parseAmount(
+                                    amountRaw
+                            );
+
+                    direction =
+                            typeRaw.equalsIgnoreCase(
+                                    "credit"
+                            )
+                                    || typeRaw.equalsIgnoreCase(
+                                    "cr"
+                            )
+                                    || amount.signum() > 0
+                                    ? "CREDIT"
+                                    : "DEBIT";
+
+                    amount =
+                            amount.abs();
+                }
+
+                result.add(
+                        build(
+                                date,
+                                description,
+                                amount,
+                                direction,
+                                fileName
+                        )
+                );
+
+            } catch (Exception ignored) {
+                /*
+                 * Ignore malformed CSV/Excel rows.
+                 */
+            }
+        }
+
+        return result;
+    }
+
+    /*
+     * ============================================================
+     * TRANSACTION BUILDING
+     * ============================================================
+     */
+
+    /** The bank's own narration text (e.g. "TEFT CR-...", "NEFT DR-...") is a stronger, explicitly
+     *  bank-stated signal for direction than a running-balance/column heuristic. When the narration
+     *  contains an unambiguous CR or DR marker that disagrees with the computed direction, trust
+     *  the narration. */
+    private String applyNarrationDirectionOverride(String description, String computedDirection) {
+        if (description == null || description.isBlank()) return computedDirection;
+        boolean hasCredit = NARRATION_CREDIT_MARK.matcher(description).find();
+        boolean hasDebit = NARRATION_DEBIT_MARK.matcher(description).find();
+        if (hasCredit && !hasDebit) return "CREDIT";
+        if (hasDebit && !hasCredit) return "DEBIT";
+        return computedDirection;
+    }
+
+    private Transaction build(
+            LocalDate date,
+            String description,
+            BigDecimal amount,
+            String direction,
+            String source) {
+
+        CategoryService.Classification classification =
+                categoryService.classify(
+                        description,
+                        direction,
+                        null
+                );
+
+        String merchant =
+                merchant(description);
+
+        String fingerprint =
+                fingerprint(
+                        date,
+                        description,
+                        amount,
+                        direction
+                );
+
+        return Transaction.builder()
+                .transactionDate(date)
+                .description(
+                        description == null
+                                ? ""
+                                : description.trim()
+                )
+                .merchant(merchant)
+                .amount(amount)
+                .direction(direction)
+                .category(
+                        classification.category()
+                )
+                .subCategory(
+                        classification.subCategory()
+                )
+                .transactionType(
+                        classification.transactionType()
+                )
+                .excludedFromSpend(
+                        classification.excludedFromSpend()
+                )
+                .sourceFile(source)
+                .fingerprint(fingerprint)
+                .recurring(false)
+                .build();
+    }
+
+    private void applyAccount(Transaction t, AccountInfo account) {
+        t.setAccount(account.accountKey());
+        t.setFingerprint(fingerprint(t.getTransactionDate(), t.getDescription(), t.getAmount(), t.getDirection(), account.accountKey()));
+    }
+
+    private String accountKey(String bank, String type, String number) {
+        return normalizeSimple(bank) + "|" + normalizeSimple(type) + "|" + normalizeSimple(number);
+    }
+
+    private String normalizeSimple(String value) {
+        return Objects.toString(value, "unknown").trim().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "_");
+    }
+
+    private String maskNumber(String value) {
+        String raw = Objects.toString(value, "").replaceAll("[^A-Za-z0-9]", "");
+        if (raw.isBlank()) return "UNKNOWN";
+        if (raw.length() <= 4) return "••••" + raw;
+        return "••••" + raw.substring(raw.length() - 4);
+    }
+
+    private boolean blank(String value) { return value == null || value.isBlank(); }
+
+    private double detectionConfidence(DetectedAccount d, String bank, String type, String number) {
+        if (!blank(bank) || !blank(type) || !blank(number)) return 1.0;
+        return d.confidence();
+    }
+
+    private DetectedAccount detectAccount(String text, String fileName) {
+        String all = Objects.toString(text, "") + "\n" + Objects.toString(fileName, "");
+        String lower = all.toLowerCase(Locale.ROOT);
+
+        String bank = "Unknown Bank";
+        if (lower.contains("kotak") || lower.contains("kkbk")) bank = "Kotak Mahindra Bank";
+        else if (lower.contains("hdfc")) bank = "HDFC Bank";
+        else if (lower.contains("idfc") || lower.contains("idfb")) bank = "IDFC FIRST Bank";
+        else if (lower.contains("icici")) bank = "ICICI Bank";
+        else if (lower.contains("axis")) bank = "Axis Bank";
+        else if (lower.contains("sbi") || lower.contains("state bank")) bank = "SBI";
+
+        // Explicit statement fields take priority over words in transaction descriptions.
+        boolean explicitSavings =
+                Pattern.compile("(?is)\\baccount\\s+type\\s*[:\\-]?\\s*(savings|current)\\b").matcher(all).find()
+                || Pattern.compile("(?is)\\b(savings|current)\\s+account\\s+transactions\\b").matcher(all).find();
+
+        boolean explicitCreditCard =
+                Pattern.compile("(?is)\\bcredit\\s+card\\b").matcher(all).find()
+                || Pattern.compile("(?is)\\btotal\\s+amount\\s+due\\b").matcher(all).find()
+                || Pattern.compile("(?is)\\bminimum\\s+amount\\s+due\\b").matcher(all).find()
+                || Pattern.compile("(?is)\\bpayment\\s+due\\s+date\\b").matcher(all).find();
+
+        String type = explicitSavings ? "DEBIT" : (explicitCreditCard ? "CREDIT_CARD" : "DEBIT");
+        String number = "UNKNOWN";
+
+        Matcher accountMatcher = Pattern.compile(
+                "(?is)\\baccount\\s*(?:no\\.?|number)?\\s*[:\\-]?\\s*([Xx*\\d][Xx*\\d\\s-]{3,24})"
+        ).matcher(all);
+        Matcher cardMatcher = Pattern.compile(
+                "(?is)\\bcard\\s*(?:no\\.?|number)?\\s*[:\\-]?\\s*([Xx*\\d][Xx*\\d\\s-]{3,24})"
+        ).matcher(all);
+
+        if (type.equals("CREDIT_CARD") && cardMatcher.find()) {
+            number = maskNumber(cardMatcher.group(1));
+        } else if (accountMatcher.find()) {
+            number = maskNumber(accountMatcher.group(1));
+        } else {
+            Matcher last4 = Pattern.compile("(?i)(?:xx|xxxx|\\*{2,})[^0-9]{0,4}(\\d{4})").matcher(all);
+            if (last4.find()) number = "••••" + last4.group(1);
+        }
+
+        double confidence = 0.35;
+        if (!bank.equals("Unknown Bank")) confidence += 0.30;
+        if (!number.equals("UNKNOWN")) confidence += 0.20;
+        if (explicitSavings || explicitCreditCard) confidence += 0.15;
+
+        return new DetectedAccount(bank, type, number, Math.min(confidence, 1.0));
+    }
+
+    private String merchant(
+            String description) {
+
+        if (description == null) return "";
+
+        String d = description.replaceAll("\\s+", " ").trim();
+        String lower = d.toLowerCase(Locale.ROOT);
+
+        // Turn raw UPI handles into useful counterparties for People & Merchants analytics.
+        if (lower.startsWith("upi/")) {
+            String[] parts = d.split("/");
+            if (parts.length >= 2) {
+                String counterparty = parts[1].trim();
+                if (!counterparty.isBlank()) {
+                    String cp = counterparty.toLowerCase(Locale.ROOT);
+                    if (cp.startsWith("paytm")) return "Paytm";
+                    if (cp.startsWith("bharatpe")) return "BharatPe";
+                    if (cp.startsWith("phonepe")) return "PhonePe";
+                    if (cp.startsWith("gpay") || cp.startsWith("googlepay")) return "Google Pay";
+                    return counterparty.replaceAll("(?i)@.*$", "");
+                }
+            }
+        }
+
+        String value = d
+                .replaceAll("(?i)(upi/|utr|ref|txn|transaction id)", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+
+        return value.length() > 100 ? value.substring(0, 100) : value;
+    }
+
+    /*
+     * ============================================================
+     * COMMON HELPERS
+     * ============================================================
+     */
+
+    private String value(
+            String[] row,
+            Integer index) {
+
+        if (index == null
+                || index >= row.length
+                || row[index] == null) {
+
+            return "";
+        }
+
+        return row[index].trim();
+    }
+
+    private Integer find(
+            Map<String, Integer> header,
+            String... names) {
+
+        for (String name : names) {
+
+            String normalized =
+                    normalize(name);
+
+            for (var entry :
+                    header.entrySet()) {
+
+                if (entry.getKey().equals(
+                        normalized
+                )
+                        || entry.getKey().contains(
+                        normalized
+                )) {
+
+                    return entry.getValue();
+                }
+            }
+        }
+
+        return null;
+    }
+
+    // Resolve which column supplies a field: an explicit user mapping wins, else keyword auto-detect.
+    private Integer resolveColumn(String field, Map<String, Integer> mapping, Map<String, Integer> header, String... keywords) {
+        if (mapping != null && mapping.containsKey(field)) {
+            int idx = mapping.get(field);
+            return idx >= 0 ? idx : null;
+        }
+        return find(header, keywords);
+    }
+
+    /** Columns + a few sample rows + auto-detected field mapping, for the import mapping UI. */
+    public record TabularInfo(List<String> columns, List<List<String>> sampleRows, Map<String, Integer> autoMapping) {}
+
+    public TabularInfo extractTabular(MultipartFile file) throws Exception {
+        String name = Objects.requireNonNullElse(file.getOriginalFilename(), "").toLowerCase(Locale.ROOT);
+        List<String> columns = new ArrayList<>();
+        List<List<String>> samples = new ArrayList<>();
+        if (name.endsWith(".csv")) {
+            try (Reader reader = new InputStreamReader(new ByteArrayInputStream(file.getBytes()), StandardCharsets.UTF_8);
+                 CSVParser parser = CSVFormat.DEFAULT.builder().setHeader().setSkipHeaderRecord(true).setIgnoreEmptyLines(true).build().parse(reader)) {
+                columns.addAll(parser.getHeaderNames());
+                int n = 0;
+                for (CSVRecord rec : parser) {
+                    if (n++ >= 3) break;
+                    List<String> r = new ArrayList<>();
+                    for (int i = 0; i < columns.size(); i++) r.add(i < rec.size() ? rec.get(i) : "");
+                    samples.add(r);
+                }
+            }
+        } else if (name.endsWith(".xlsx") || name.endsWith(".xls")) {
+            try (InputStream in = file.getInputStream(); Workbook wb = WorkbookFactory.create(in)) {
+                Iterator<Row> it = wb.getSheetAt(0).iterator();
+                if (it.hasNext()) {
+                    for (Cell c : it.next()) columns.add(Objects.toString(cellText(c), "").trim());
+                    int n = 0;
+                    while (it.hasNext() && n < 3) {
+                        Row row = it.next();
+                        n++;
+                        List<String> r = new ArrayList<>();
+                        for (int i = 0; i < columns.size(); i++) r.add(cellText(row.getCell(i)));
+                        samples.add(r);
+                    }
+                }
+            }
+        }
+        Map<String, Integer> norm = new LinkedHashMap<>();
+        for (int i = 0; i < columns.size(); i++) norm.put(normalize(columns.get(i)), i);
+        Map<String, Integer> auto = new LinkedHashMap<>();
+        putIfPresent(auto, "date", find(norm, "date", "transaction date", "txn date", "value date"));
+        putIfPresent(auto, "description", find(norm, "description", "narration", "details", "merchant", "transaction details", "remarks"));
+        putIfPresent(auto, "debit", find(norm, "debit", "withdrawal", "withdrawals", "debit amount"));
+        putIfPresent(auto, "credit", find(norm, "credit", "deposit", "deposits", "credit amount"));
+        putIfPresent(auto, "amount", find(norm, "amount", "transaction amount"));
+        putIfPresent(auto, "type", find(norm, "type", "dr/cr", "debit credit", "transaction type"));
+        return new TabularInfo(columns, samples, auto);
+    }
+
+    private void putIfPresent(Map<String, Integer> m, String k, Integer v) {
+        if (v != null) m.put(k, v);
+    }
+
+    private Map<String, Integer> normalizeHeaders(
+            Map<String, Integer> headers) {
+
+        Map<String, Integer> result =
+                new LinkedHashMap<>();
+
+        headers.forEach(
+                (key, value) ->
+                        result.put(
+                                normalize(key),
+                                value
+                        )
+        );
+
+        return result;
+    }
+
+    private String normalize(
+            String value) {
+
+        return value == null
+                ? ""
+                : value
+                .toLowerCase(Locale.ROOT)
+                .replaceAll(
+                        "[^a-z0-9]",
+                        " "
+                )
+                .replaceAll(
+                        "\\s+",
+                        " "
+                )
+                .trim();
+    }
+
+    private String cellText(Cell cell) {
+
+        if (cell == null) {
+            return "";
+        }
+
+        if (cell.getCellType()
+                == CellType.NUMERIC
+                && DateUtil.isCellDateFormatted(
+                cell
+        )) {
+
+            return cell
+                    .getLocalDateTimeCellValue()
+                    .toLocalDate()
+                    .toString();
+        }
+
+        return new DataFormatter()
+                .formatCellValue(cell);
+    }
+
+    private BigDecimal safeAmount(
+            String value) {
+
+        return value == null
+                || value.isBlank()
+                ? BigDecimal.ZERO
+                : parseAmount(value);
+    }
+
+    private BigDecimal parseAmount(
+            String value) {
+
+        if (value == null
+                || value.isBlank()) {
+
+            return BigDecimal.ZERO;
+        }
+
+        String normalized =
+                value
+                        .replace("₹", "")
+                        .replace(",", "")
+                        .replaceAll("\\s", "");
+
+        boolean negative =
+                normalized.startsWith("(")
+                        && normalized.endsWith(")");
+
+        normalized =
+                normalized
+                        .replace("(", "")
+                        .replace(")", "");
+
+        BigDecimal number =
+                new BigDecimal(normalized);
+
+        return negative
+                ? number.negate()
+                : number;
+    }
+
+    private LocalDate parseDate(
+            String value) {
+
+        String normalized =
+                value.trim();
+
+        List<DateTimeFormatter> formats =
+                List.of(
+                        DateTimeFormatter.ofPattern(
+                                "dd/MM/yyyy"
+                        ),
+                        DateTimeFormatter.ofPattern(
+                                "dd-MM-yyyy"
+                        ),
+                        DateTimeFormatter.ofPattern(
+                                "dd/MM/yy"
+                        ),
+                        DateTimeFormatter.ofPattern(
+                                "dd-MM-yy"
+                        ),
+                        DateTimeFormatter.ofPattern(
+                                "yyyy-MM-dd"
+                        ),
+                        DateTimeFormatter.ofPattern(
+                                "d/M/yyyy"
+                        ),
+                        DateTimeFormatter.ofPattern(
+                                "d-M-yyyy"
+                        ),
+                        DateTimeFormatter.ofPattern(
+                                "dd MMM yyyy",
+                                Locale.ENGLISH
+                        ),
+                        DateTimeFormatter.ofPattern(
+                                "dd-MMM-yyyy",
+                                Locale.ENGLISH
+                        )
+                );
+
+        for (DateTimeFormatter formatter :
+                formats) {
+
+            try {
+
+                return LocalDate.parse(
+                        normalized,
+                        formatter
+                );
+
+            } catch (DateTimeParseException ignored) {
+            }
+        }
+
+        throw new IllegalArgumentException(
+                "Unsupported date: " + value
+        );
+    }
+
+    private String fingerprint(
+            LocalDate date,
+            String description,
+            BigDecimal amount,
+            String direction) {
+        return fingerprint(date, description, amount, direction, "unknown");
+    }
+
+    private String fingerprint(
+            LocalDate date,
+            String description,
+            BigDecimal amount,
+            String direction,
+            String accountKey) {
+
+        try {
+
+            String raw =
+                    date
+                            + "|"
+                            + description
+                            .toLowerCase(Locale.ROOT)
+                            .replaceAll(
+                                    "\\s+",
+                                    " "
+                            )
+                            .trim()
+                            + "|"
+                            + amount.setScale(2)
+                            + "|"
+                            + direction
+                            + "|"
+                            + accountKey;
+
+            byte[] hash =
+                    MessageDigest
+                            .getInstance("SHA-256")
+                            .digest(
+                                    raw.getBytes(
+                                            StandardCharsets.UTF_8
+                                    )
+                            );
+
+            StringBuilder result =
+                    new StringBuilder();
+
+            for (byte b : hash) {
+
+                result.append(
+                        String.format(
+                                "%02x",
+                                b
+                        )
+                );
+            }
+
+            return result.toString();
+
+        } catch (Exception e) {
+
+            throw new RuntimeException(
+                    "Unable to create transaction fingerprint",
+                    e
+            );
+        }
+    }
+
+    /*
+     * ============================================================
+     * INTERNAL PDF MODEL
+     * ============================================================
+     */
+
+    public record ParsedStatement(List<Transaction> transactions, AccountInfo account) {}
+    public record AccountInfo(String bankName, String accountType, String maskedNumber, String accountKey, double confidence) {}
+    private record DetectedAccount(String bankName, String accountType, String maskedNumber, double confidence) {}
+
+    private static class PdfTransaction {
+
+        private int number;
+
+        private LocalDate date;
+
+        private final List<String> lines =
+                new ArrayList<>();
+
+        private String description;
+
+        private BigDecimal amount;
+
+        private BigDecimal balance;
+
+        private String direction;
+    }
+}

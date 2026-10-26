@@ -1,0 +1,417 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* Dark theme (default) */
+  :root {
+    --bg-base:    #0f1117;
+    --bg-card:    #161922;
+    --bg-input:   #0f1117;
+    --bg-hover:   #1a1d27;
+    --bg-sidebar: #0c0e14;
+    --border:     #2c3144;
+    --hairline:   color-mix(in srgb, var(--text) 14%, transparent);
+    --border-2:   #2e3245;
+    --text:       #e8eaf0;
+    --text-muted: #aab2c2;   /* 8:1 on card — was #6b7280 (3.6:1) */
+    --text-faint: #8c96a9;   /* 5.9:1 on card, 4.9:1 on hover — was #4b5263 (2.2:1) */
+    --accent:     #f97316;
+
+    /* Semantic status colors. These were previously hardcoded hex literals scattered across every
+       page (700+ occurrences) — fine as TEXT against this dark background, but the same values
+       carried unchanged into light mode, where several of them fail WCAG AA text contrast against
+       a white card: #34d399 measures ~1.9:1 against #ffffff, #f87171 ~2.8:1, both well under the
+       4.5:1 minimum for normal text. The dark-mode values below are unchanged (they already work);
+       the .light block further down swaps in darker, same-hue shades that pass AA. */
+    --success:        #34d399;
+    --success-strong: #10b981;
+    --danger:         #f87171;
+    --danger-strong:  #ef4444;
+    --warning:        #fbbf24;
+    --info:           #60a5fa;
+    --purple:         #a78bfa;
+    --cyan:           #38bdf8;
+    --orange:         #fb923c;
+    --pink:           #f472b6;
+  }
+
+  /* Light theme */
+  .light {
+    --bg-base:    #f1f5f9;
+    --bg-card:    #ffffff;
+    --bg-input:   #f8fafc;
+    --bg-hover:   #e2e8f0;
+    --bg-sidebar: #1e293b;
+    --border:     #cbd5e1;
+    --text:       #0f172a;
+    --text-muted: #475569;
+    --text-faint: #5b6b82;
+    color-scheme: light;
+    --border:     #d5dce7;
+    --hairline:   color-mix(in srgb, var(--text) 14%, transparent);
+    --border-2:   #cbd5e1;
+    --text:       #0f172a;
+    --text-muted: #475569;
+    --text-faint: #526179;   /* ≥5.4:1 on white and on tinted chips — was #94a3b8 (2.6:1) */
+    --accent:     #f97316;
+
+    /* Same hue family, darkened enough to clear 4.5:1 against a white card. Verified by computing
+       WCAG relative luminance directly rather than eyeballing — amber is the hardest case (yellow
+       has to go unusually dark to pass at all), which is why it's a 700-weight shade while the rest
+       are 600: amber-600 (#d97706) still falls short, amber-700 (#b45309) clears ~5:1. */
+    --success:        #046c4e;  /* between emerald-700/800, AA on 15% tints */
+    --success-strong: #047857;  /* emerald-700 */
+    --danger:         #b91c1c;  /* red-700 */
+    --danger-strong:  #b91c1c;  /* red-700 */
+    --warning:        #92400e;  /* amber-800 */
+    --info:           #1d4ed8;  /* blue-700 */
+    --purple:         #6d28d9;  /* violet-700 */
+    --cyan:           #0369a1;  /* sky-700 */
+    --orange:         #b8390a;  /* deep orange, AA on tints */
+    --pink:           #be185d;  /* pink-700 */
+  }
+
+  /* Override hardcoded dark colors in light mode */
+  .light .bg-\[\#0f1117\], .light .bg-\[\#161922\], .light .bg-\[\#1a1d27\] {
+    background-color: var(--bg-card) !important;
+  }
+  .light .border-\[\#252836\] { border-color: var(--border) !important; }
+  .light .text-\[\#6b7280\] { color: var(--text-muted) !important; }
+  .light .text-\[\#4b5263\] { color: var(--text-faint) !important; }
+  .light .text-\[\#e8eaf0\] { color: var(--text) !important; }
+  /* Tailwind palette text used across pages — the -300/-400 shades are tuned for dark backgrounds
+     and fail contrast on white; map them to the AA-safe semantic tokens in light mode. */
+  .light .text-red-300, .light .text-red-400 { color: var(--danger) !important; }
+  .light .text-green-300, .light .text-green-400 { color: var(--success) !important; }
+  .light .text-yellow-400 { color: var(--warning) !important; }
+  .light .text-orange-400 { color: var(--orange) !important; }
+  .light .text-blue-400 { color: var(--info) !important; }
+  .light .text-purple-400 { color: var(--purple) !important; }
+  .light .text-pink-400 { color: var(--pink) !important; }
+  .light .text-gray-400 { color: var(--text-faint) !important; }
+  .light .text-teal-400 { color: var(--cyan) !important; }
+  .light .text-\[\#9ca3af\] { color: var(--text-muted) !important; }
+  .light button[title="Search (Cmd+K)"] { color: var(--text-muted) !important; }
+  .light .hover\:bg-\[\#252836\]:hover { background-color: var(--bg-hover) !important; }
+  .light .hover\:bg-\[\#161922\]:hover { background-color: var(--bg-hover) !important; }
+  .light .divide-\[\#252836\] > * + * { border-color: var(--border) !important; }
+
+  html {
+    background: var(--bg-base);
+    color: var(--text);
+    transition: background 0.2s, color 0.2s;
+  }
+  body { @apply font-sans antialiased; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg-base); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--border-2); }
+}
+
+@layer components {
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    @apply rounded-xl shadow-sm;
+  }
+  .btn {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary  { @apply btn bg-orange-500 hover:bg-orange-600 text-white; }
+  .btn-danger   { @apply btn bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20; }
+  .btn-sm  { @apply px-3 py-1.5 text-xs; }
+  .btn-xs  { @apply px-2 py-1 text-xs rounded-md; }
+
+  .btn-secondary {
+    background: var(--bg-hover);
+    color: var(--text);
+    border: 1px solid var(--border);
+    @apply btn hover:opacity-80;
+  }
+  .btn-ghost {
+    color: var(--text-muted);
+    @apply btn hover:opacity-80;
+  }
+  .btn-ghost:hover { background: var(--bg-hover); color: var(--text); }
+  /* Size modifiers must come AFTER the colour variants: each variant re-applies .btn (px-4 py-2), so
+     with the sizes declared earlier "btn-secondary btn-sm" silently rendered at full size. */
+  .btn-sm  { @apply px-3 py-1.5 text-xs; }
+  .btn-xs  { @apply px-2 py-1 text-xs rounded-md; }
+
+  .input {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text);
+    @apply w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500 transition-colors;
+  }
+  .input::placeholder { color: var(--text-faint); }
+
+  .select {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    color: var(--text);
+    @apply w-full rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-orange-500 transition-colors;
+    appearance: none; -webkit-appearance: none;
+    padding-right: 2rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238b92a5' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 0.7rem center;
+  }
+
+  .label { @apply block text-xs font-medium mb-1.5; color: var(--text-muted); }
+
+  .badge { @apply inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold; }
+  .badge-red    { @apply badge bg-red-500/15 text-red-400; }
+  .badge-green  { @apply badge bg-green-500/15 text-green-400; }
+  .badge-blue   { @apply badge bg-blue-500/15 text-blue-400; }
+  .badge-yellow { @apply badge bg-yellow-500/15 text-yellow-400; }
+  .badge-orange { @apply badge bg-orange-500/15 text-orange-400; }
+  .badge-muted  { background: var(--border); color: var(--text-muted); @apply badge; }
+
+  /* Figures: the app's own sans face with fixed-width digits — columns still line up, without the terminal look. */
+  .mono { font-family: inherit; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+  .stat-tile {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    @apply rounded-xl p-3 flex flex-col gap-1;
+  }
+  .stat-label { @apply text-[12px] font-medium; color: var(--text-muted); }
+  .stat-value { @apply text-xl font-semibold tabular-nums tracking-tight; }
+  .stat-sub   { @apply text-xs; color: var(--text-faint); }
+
+  .progress-bar  { background: var(--border); @apply w-full h-1.5 rounded-full overflow-hidden; }
+  .progress-fill { @apply h-full rounded-full transition-all duration-300; }
+
+  .table-wrap { @apply w-full overflow-x-auto; }
+  /* These global rules are why table cells stayed at 14px no matter what class was put on the
+     <table>: a direct rule on `td` beats an inherited utility class, so every per-page font fix
+     was silently overridden here. 13px is the agreed primary size. */
+  table th, table td { @apply py-2 px-3 text-[13px]; }
+
+  table { @apply w-full text-[13px]; border-collapse: collapse; }
+  table thead th {
+    background: var(--bg-base);
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    @apply px-4 py-2.5 text-left text-[12px] font-medium whitespace-nowrap;
+  }
+  table tbody tr { border-bottom: 1px solid var(--border); }
+  table tbody tr:hover { background: var(--bg-hover); }
+  table tbody td { @apply px-3 py-2.5 align-middle text-[13px]; }
+  table tfoot td {
+    background: var(--bg-base);
+    border-top: 2px solid var(--border-2);
+    @apply px-3 py-3 font-bold text-[13px];   /* footer totals are data — same scale as cells */
+  }
+
+  .page-title  { @apply text-xl font-bold tracking-tight; color: var(--text); }
+  .section-header { @apply flex items-center justify-between py-2 mb-1; border-bottom: 1px solid var(--border); }
+  .section-title  { @apply text-[13px] font-semibold; color: var(--text); }
+
+  .form-grid { @apply grid grid-cols-2 gap-x-4 gap-y-3; }
+  .form-full { @apply col-span-2; }
+
+  /* Modal */
+  .modal-overlay {
+    @apply fixed inset-0 z-[100] flex items-center justify-center p-4;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+  }
+  .modal-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    @apply rounded-2xl w-full max-w-lg shadow-2xl;
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .modal-header {
+    @apply flex items-center justify-between px-4 py-3;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-footer {
+    @apply flex items-center justify-end gap-3 px-4 py-3;
+    border-top: 1px solid var(--border);
+  }
+  .modal-body { @apply px-6 py-4; overflow-y: auto; flex: 1; }
+
+  /* Overdue row */
+  .overdue { background: rgba(239,68,68,0.05); }
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .page-title { @apply text-xl; }
+  .stat-value { @apply text-xl; }
+  .form-grid  { @apply grid-cols-1; }
+  .form-full  { @apply col-span-1; }
+
+  /* Tables scroll horizontally on mobile */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  table { min-width: 600px; }
+
+  /* Cards stack on mobile */
+  .grid.lg\:grid-cols-3 { grid-template-columns: 1fr !important; }
+  .grid.md\:grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
+  .grid.md\:grid-cols-5 { grid-template-columns: repeat(2, 1fr) !important; }
+  .grid.grid-cols-4 { grid-template-columns: repeat(2, 1fr) !important; }
+  .grid.grid-cols-3 { grid-template-columns: repeat(2, 1fr) !important; }
+
+  /* Net worth hero smaller on mobile */
+  .text-3xl.font-black { font-size: 1.5rem; }
+
+  /* Tabs wrap on mobile */
+  .flex.gap-1.p-1 button { font-size: 11px; padding: 6px 8px; }
+
+  /* Stat tiles smaller */
+  .stat-tile { padding: 10px 12px; }
+  .stat-value { font-size: 1.1rem; }
+
+  /* Modal full screen on mobile */
+  .modal-box { max-width: 100% !important; margin: 8px; max-height: 95vh; }
+
+  /* Hide less important columns on mobile */
+  .hide-mobile { display: none !important; }
+
+  /* Compact banner on mobile */
+  .flex.items-center.gap-6.flex-wrap { gap: 8px; }
+
+  /* Recharts dark tooltip */
+  .recharts-tooltip-wrapper .recharts-default-tooltip {
+    background: #1a1d27 !important;
+    border: 1px solid #2a2d3a !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4) !important;
+    padding: 8px 12px !important;
+  }
+  .recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-label {
+    color: #9ca3af !important;
+    font-size: 11px !important;
+    margin-bottom: 4px !important;
+  }
+  .recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-item {
+    color: #e8eaf0 !important;
+    font-size: 12px !important;
+    font-family: 'JetBrains Mono', monospace !important;
+  }
+  .recharts-tooltip-wrapper .recharts-default-tooltip .recharts-tooltip-item-name {
+    color: #9ca3af !important;
+  }
+  .recharts-tooltip-cursor { fill: rgba(255,255,255,0.04) !important; }
+}
+
+/* Print / "Save as PDF" support (see AllCommitmentsPage's Print button — browsers' native print
+   dialog offers "Save as PDF" as a destination, so one print stylesheet covers both use cases
+   without pulling in a PDF-generation library).
+
+   This block must stay LAST in the file: it re-declares the same CSS custom properties the dark
+   theme (:root, top of file) and light theme (.light) already define. Custom properties resolve
+   from whichever same-specificity rule is declared latest in source order, so appending here means
+   printing always uses these light, high-contrast values — regardless of whether the user was in
+   dark or light mode on screen — without touching every component that reads var(--bg-card) etc.
+   Nearly all of this app's colors (including ones set via inline `style`, which can't be overridden
+   by a CSS class) resolve through these variables, so this one block repaints the whole app for
+   print instead of requiring a per-component print style. */
+@media print {
+  :root {
+    --bg-base:    #ffffff;
+    --bg-card:    #ffffff;
+    --bg-input:   #ffffff;
+    --bg-hover:   #f1f5f9;
+    --bg-sidebar: #ffffff;
+    --border:     #d1d5db;
+    --border-2:   #cbd5e1;
+    --text:       #0f172a;
+    --text-muted: #475569;
+    --text-faint: #64748b;
+    --accent:     #ea580c;
+    --success:        #059669;
+    --success-strong: #047857;
+    --danger:         #dc2626;
+    --danger-strong:  #b91c1c;
+    --warning:        #b45309;
+    --info:           #2563eb;
+    --purple:         #7c3aed;
+    --cyan:           #0284c7;
+    --orange:         #ea580c;
+    --pink:           #db2777;
+    color-scheme: light;
+  }
+
+  /* The app shell fixes the viewport to one screen (h-screen + overflow hidden at three nested
+     levels) so it scrolls internally on screen. Printing needs the opposite — everything laid out
+     at its natural height so the browser can paginate it across as many physical pages as needed;
+     left as-is, printing would clip to a single page's worth of pixels and silently drop the rest. */
+  html, body, #root, #app-shell, #main-content {
+    height: auto !important;
+    overflow: visible !important;
+    max-height: none !important;
+  }
+  #app-shell { display: block !important; }
+
+  /* Anything screen-only (nav chrome, filters/search, buttons that don't mean anything on paper)
+     opts out per-element with Tailwind's print:hidden utility — see Layout.tsx and
+     AllCommitmentsPage.tsx. Hardcoded-hex dark-theme surfaces that don't route through the
+     variables above still need a direct override so they don't print as black boxes. */
+  .bg-\[\#0c0e14\], .bg-\[\#0f1117\], .bg-\[\#161922\], .bg-\[\#1a1d27\] {
+    background-color: #ffffff !important;
+  }
+
+  a[href]::after { content: none !important; }
+}
+/* ── Accessibility & polish ─────────────────────────────────────────────────── */
+@layer base {
+  /* Keyboard focus: a clear ring on every interactive element, only for keyboard users. */
+  :where(a, button, [role="button"], [role="tab"], input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--accent, #f97316);
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
+  :where(input, select, textarea):focus-visible { outline-offset: 0; }
+  ::selection { background: color-mix(in srgb, var(--accent, #f97316) 30%, transparent); }
+  button:not(:disabled), [role="button"], [role="tab"], summary { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  /* Numbers line up in every table cell and tile. */
+  table, .tabular-nums, .mono { font-variant-numeric: tabular-nums; }
+}
+
+/* Respect the OS "reduce motion" setting: no animated counters, fades or transitions. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Printing: drop the chrome, keep the data readable on white paper. */
+@media print {
+  body { background: #fff !important; color: #000 !important; }
+  aside, nav { display: none !important; }
+}
+
+/* Filled brand-orange controls carry white text. #f97316 only gives 2.8:1 there, so filled buttons
+   use the deeper orange-700 (5.2:1, WCAG AA). Orange used as an accent/outline is unchanged. */
+.btn-primary, .bg-orange-500.text-white, .bg-orange-600.text-white { background-color: #c2410c; color: #fff; }
+.btn-primary:hover, .bg-orange-500.text-white:hover, .bg-orange-600.text-white:hover { background-color: #9a3412; }
+
+/* Clickable cards (those that navigate somewhere): one shared hover — a slight lift and an accent ring —
+   so "this card is a link" reads the same on every page. Non-clickable cards deliberately have none. */
+.card-link { cursor: pointer; transition: transform .18s ease, box-shadow .18s ease; }
+.card-link:hover { transform: translateY(-1px); box-shadow: 0 0 0 1px color-mix(in srgb, var(--orange) 40%, transparent), 0 8px 20px -10px rgb(0 0 0 / .35); }
+.card-link:focus-visible { box-shadow: 0 0 0 2px var(--orange); }
+@media (prefers-reduced-motion: reduce) { .card-link:hover { transform: none; } }
+
+/* KPI tiles (the tinted-gradient stat tiles on every page) lift on hover too, so every page feels the same.
+   They are not links, so they get depth only — the orange ring stays reserved for clickable cards.
+   Matched by the shared tile gradient so tiles written inline on older pages are covered as well as <KpiTile>. */
+.kpi-tile, [style*="5%, var(--bg-card)"]:not(.card-link) { transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.kpi-tile:hover, [style*="5%, var(--bg-card)"]:not(.card-link):hover { transform: translateY(-2px); box-shadow: 0 10px 22px -12px rgb(0 0 0 / .45), 0 2px 6px -2px rgb(0 0 0 / .2); border-color: var(--border-2) !important; }
+.light .kpi-tile:hover, .light [style*="5%, var(--bg-card)"]:not(.card-link):hover { box-shadow: 0 10px 22px -12px rgb(30 41 59 / .28), 0 2px 6px -2px rgb(30 41 59 / .12); }
+@media (prefers-reduced-motion: reduce) { .kpi-tile:hover, [style*="5%, var(--bg-card)"]:not(.card-link):hover { transform: none; } }
+
+/* Native checkboxes/radios/sliders take the brand colour instead of the browser's default white/blue. */
+input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color: #ea580c; }

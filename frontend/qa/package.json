@@ -1,0 +1,13 @@
+{
+  "name": "finflow-qa",
+  "private": true,
+  "type": "module",
+  "description": "Visual / accessibility QA harness for the FinFlow frontend. Runs the app against mocked API data.",
+  "scripts": {
+    "sweep": "node sweep.mjs",
+    "overflow": "node final.mjs",
+    "axe:light": "node axe2.mjs",
+    "axe:dark": "node axe3.mjs"
+  },
+  "devDependencies": { "playwright": "^1.48.0", "axe-core": "^4.10.0" }
+}

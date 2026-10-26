@@ -1,0 +1,48 @@
+# Local-only overrides. Nothing here affects Docker or anyone else.
+#
+#   cd backend
+#   mvn spring-boot:run -Dspring-boot.run.profiles=local
+#
+# This file exists so you never have to edit application.yml again. Editing the shared file is what
+# broke the frontend: moving server.port to 9080 there left the Vite proxy still pointing at 8080,
+# where the old Docker backend was answering with the old CORS list — which is why "Invalid CORS
+# request" survived every restart of the backend you were actually fixing.
+
+spring:
+  datasource:
+    # Your NATIVE MySQL on 3306, not the Docker one. Docker's MySQL is published on 3307, and the
+    # two hold different data — check the loan count matches what you expect after switching.
+    #
+    # 127.0.0.1, not "localhost": on this Mac, "localhost" resolves to the IPv6 loopback (::1)
+    # before the IPv4 one, and MySQL isn't listening there — the JDBC driver burned through
+    # HikariCP's whole 60-second initialization-fail-timeout retrying it before finally reporting
+    # "Communications link failure... has not received any packets from the server". A plain
+    # `mysql -u root -p` with no -h uses a local Unix socket and never hits this at all, which is
+    # why that command worked while the backend didn't — `mysql -h 127.0.0.1 -P 3306 ...` is what
+    # actually proved TCP was reachable, and this URL now points at that exact address.
+    url: CHANGE_ME
+    username: root
+    password: CHANGE_ME
+  jpa:
+    show-sql: false
+
+# No `server.port` override, and none needed. The Docker stack is offset to host ports 3100/8180/3307,
+# so local keeps 8080 for the backend and 3000 for Vite and the two run side by side with no flags:
+#
+#   mvn spring-boot:run -Dspring-boot.run.profiles=local     ->  localhost:8080   (this database)
+#   docker compose up -d                                     ->  localhost:3100  (its own database)
+#
+# They are separate databases. A loan added on one will not appear on the other; the dev badge in
+# the bottom-left corner of the local app names which backend it is talking to, and the Docker build
+# has no badge at all.
+
+logging:
+  level:
+    # application.yml sets root: WARN everywhere, which is right for Docker/production — but it
+    # also silences Spring Boot's own "Started FinFlowApplication in X seconds" and Tomcat's
+    # "started on port(s): 8080", since those come from Spring's internal classes, not com.finflow.
+    # That's exactly what made a genuinely successful local startup look identical to a hang: the
+    # one line that would have said "it's actually fine" never printed. INFO here is local-only —
+    # Docker and any real deployment still run quiet at WARN.
+    root: INFO
+    com.finflow: DEBUG

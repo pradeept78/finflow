@@ -1,0 +1,78 @@
+# Host ports are deliberately offset so the Docker stack never competes with a local dev run.
+# Local keeps the ordinary ports and needs no flags; Docker is the one that moves:
+#
+#            local (mvn + npm run dev)        docker compose
+#   frontend   3000                             3100
+#   backend    8080                             8180
+#   mysql      3306  (your native install)      3307
+#
+# Only the HOST side moves. Inside the compose network the containers still talk on 8080 and 3306,
+# so nginx.conf and SPRING_DATASOURCE_URL are unchanged.
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: finflow-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env}"
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-finflow}
+      MYSQL_USER: ${MYSQL_USER:-finflow}
+      MYSQL_PASSWORD: "${MYSQL_PASSWORD:?set MYSQL_PASSWORD in .env}"
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$$MYSQL_ROOT_PASSWORD\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 40s
+    networks:
+      - finflow-net
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: finflow-backend
+    restart: on-failure
+    environment:
+      SPRING_DATASOURCE_URL: ${SPRING_DATASOURCE_URL:-jdbc:mysql://mysql:3306/finflow?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC&connectTimeout=60000&socketTimeout=60000}
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME:-finflow}
+      SPRING_DATASOURCE_PASSWORD: "${SPRING_DATASOURCE_PASSWORD:?set SPRING_DATASOURCE_PASSWORD in .env, same value as MYSQL_PASSWORD}"
+      JWT_SECRET: "${JWT_SECRET:?set JWT_SECRET in .env - generate one with openssl rand -base64 48}"
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-86400000}
+      JAVA_OPTS: "-Xms256m -Xmx512m"
+    ports:
+      # 8180 on the host so a local `mvn spring-boot:run` keeps 8080. Container side stays 8080,
+      # which is what nginx.conf proxies to.
+      - "8180:8080"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - finflow-net
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: finflow-frontend
+    restart: unless-stopped
+    ports:
+      # 3100 on the host so a local `npm run dev` keeps 3000.
+      - "3100:80"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - finflow-net
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  finflow-net:
+    driver: bridge

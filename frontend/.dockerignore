@@ -1,0 +1,14 @@
+# The Dockerfile does `COPY . .` after running its own npm install, so copying the host's
+# node_modules in achieves nothing except a much slower build and a fatter image layer — and it can
+# actively break things, since the host's binaries are darwin-arm64 and the image is linux.
+node_modules
+
+# Built by `npm run build` inside the container; a stale host copy would just be overwritten.
+dist
+
+# Never let local secrets into an image.
+.env
+.env.local
+
+.DS_Store
+*.log

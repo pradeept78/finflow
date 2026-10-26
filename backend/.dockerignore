@@ -1,0 +1,15 @@
+# Keeps the build context small and keeps local secrets out of the image.
+
+# application-local.yml holds a real database password. Dockerfile does `COPY src ./src`, so without
+# this line it gets baked into the published image where anyone who can pull the image can read it.
+# The profile is never activated in Docker (compose does not set SPRING_PROFILES_ACTIVE), so
+# excluding it changes nothing about how the container runs.
+src/main/resources/application-local.yml
+
+# The fat jar alone is ~59MB. It is rebuilt inside the container anyway, so shipping it to the
+# daemon just makes every build slower.
+target/
+
+# Local noise
+.DS_Store
+*.log

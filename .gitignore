@@ -1,0 +1,25 @@
+
+# Secrets — never commit
+.env
+.env.local
+
+# Dependencies and build output
+node_modules/
+frontend/dist/
+backend/target/
+*.tsbuildinfo
+
+# Local-only config (copy the *.example file and fill in)
+backend/src/main/resources/application-local.yml
+
+# Scratch / transfer files from the UI polish sessions
+_to_delete/
+frontend/_to_delete/
+Claude outputs/
+*.tgz
+*.tar.gz
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
