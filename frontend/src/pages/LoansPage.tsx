@@ -295,11 +295,7 @@ export default function LoansPage() {
             }
             const rate = l.amount > 0 && l.emi > 0 && t > 0 ? calcRate(Number(l.amount), Number(l.emi), t) : Number(l.interestRate ?? 0)
             const paidKey = `loan-${l.id}`
-            // Was checking raw `l.dueDay` only — a loan with no explicit due day but an inferable
-            // one via `startDate` (same fallback the due-badge display and CreditCardsPage/
-            // PersonalEmiPage already use through `resolveDueDay`) could never become "auto-paid"
-            // here, so its paid-state logic silently diverged from every other page's records.
-            // `isPaidThisMonth` is the same shared helper those pages use for this exact check.
+            // Same shared paid rule (ticked = paid) every other page uses.
             const isPaid = isPaidThisMonth(paidKey, resolveDueDay(l), markedKeys as string[])
             const done = eff.pending === 0
             const missed = l.missedMonths ?? 0

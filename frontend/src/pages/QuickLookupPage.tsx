@@ -46,14 +46,10 @@ export default function QuickLookupPage() {
   const [search, setSearch] = useState('')
   const today = new Date().getDate()
   const monthYear = new Date().toISOString().slice(0, 7)
-  // Paid = auto if dueDay passed, user can toggle (unmark or early-mark)
+  // Paid = ticked. Nothing is assumed paid just because its day has passed.
   const isMarked = (key: string, dueDay?: number) => isPaidThisMonth(key, dueDay, markedKeys as string[])
-  // Overdue = past dueDay AND explicitly unmarked (toggled off auto-paid)
-  const isOverdue = (key: string, dueDay?: number) => {
-    const toggled = markedKeys.includes(key)
-    const autoPaid = !!dueDay && dueDay > 0 && dueDay < today
-    return autoPaid && toggled  // was auto-paid but user unmarked it
-  }
+  // Overdue = day has passed and it isn't ticked
+  const isOverdue = (key: string, dueDay?: number) => !!dueDay && dueDay > 0 && dueDay < today && !isMarked(key, dueDay)
   // Upcoming = dueDay in future or today
   const isUpcoming = (key: string, dueDay?: number) => !!dueDay && dueDay > 0 && dueDay >= today && !markedKeys.includes(key)
   const toggle = (key: string) => toggleMut.mutate(key)

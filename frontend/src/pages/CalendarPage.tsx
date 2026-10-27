@@ -343,10 +343,7 @@ export default function CalendarPage() {
     // For current month: mark items as paid if in markedKeys
     if (i === 0) {
       dueItems.forEach(item => {
-        /* Was `markedKeys.includes(item.key)` — explicit ticks only. That meant a payment whose
-           day had already passed never showed as paid here even though Lookup showed it paid, and
-           a past-due item the user had deliberately un-marked showed as PAID, the inverse of what
-           they meant. The shared helper applies the same auto-paid XOR both pages now use. */
+        // Same shared rule as Lookup: paid only when ticked.
         if (item.key && isPaidThisMonth(item.key, (item as any).dueDay, markedKeys as string[])) (item as any).markedPaid = true
       })
     }

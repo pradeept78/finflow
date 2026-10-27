@@ -7,7 +7,8 @@ import { advanceAll } from '../utils/projection'
 import HorizonBar from '../components/common/HorizonBar'
 import IncomeSplitCard from '../components/common/IncomeSplitCard'
 import { useQuery } from '@tanstack/react-query'
-import { loansApi, cardsApi, personalEmiApi, savingsApi, insuranceApi, investmentsApi, expensesApi, incomeApi } from '../api'
+import { loansApi, cardsApi, personalEmiApi, savingsApi, insuranceApi, investmentsApi, expensesApi, incomeApi, paidMarksApi } from '../api'
+import { masterKeyOf } from '../utils/dueRows'
 import { fmtINR, monthlyIncomeTotal } from '../utils/format'
 import { calcOutflow, outflowTierLine } from '../utils/calcOutflow'
 import { PageHeader, LoadingSpinner, ErrorState, SortHeader } from '../components/common'
@@ -108,6 +109,10 @@ function GroupHead({ title, tag, count, open, onToggle, accent, right, share }: 
 export default function MasterTablePage() {
   const navigate = useNavigate()
   const { data: loansRaw = [], isLoading: l1, isError: e1, refetch: r1 } = useQuery({ queryKey: ['loans'], queryFn: loansApi.getAll })
+  // Ticks from Lookup / Calendar (due-list keys), mapped onto this page's row keys. A past day is only
+  // "overdue" while something on it is still unticked.
+  const { data: markedKeys = [] } = useQuery({ queryKey: ['paid-marks'], queryFn: paidMarksApi.getAll })
+  const paidRows = new Set((markedKeys as string[]).map(masterKeyOf))
   const { data: cardsRaw = [], isLoading: l2, isError: e2, refetch: r2 } = useQuery({ queryKey: ['cards'], queryFn: cardsApi.getAll })
   const { data: personalRaw = [], isLoading: l3, isError: e3, refetch: r3 } = useQuery({ queryKey: ['personal'], queryFn: personalEmiApi.getAll })
   const { data: savingsRaw = [], isLoading: l4, isError: e4, refetch: r4 } = useQuery({ queryKey: ['savings'], queryFn: savingsApi.getAll })
@@ -1308,16 +1313,19 @@ export default function MasterTablePage() {
             const ownGroupRows = groupRows.filter(r => !isFriendOwed(r))
             const groupDueAmount = ownGroupRows.reduce((s, r) => s + dueAmount(r), 0)
             const isTodayGroup = d === today
-            const isOverdueGroup = d > 0 && d < today
+            const groupPaid = ownGroupRows.some(r => dueAmount(r) > 0) && ownGroupRows.filter(r => dueAmount(r) > 0).every(r => paidRows.has(r.key))
+            const isOverdueGroup = d > 0 && d < today && !groupPaid
             const daysAway = d > 0 ? daysAwayFor(d) : null
             const running = d > 0 ? runningByDay.get(d) : null
             return (
               <div key={g}>
                 <GroupHead
                   title={g} count={groupRows.length} open={!isCollapsed} onToggle={() => toggleGroup(g)}
-                  accent={g === 'No fixed date' ? 'var(--text-faint)' : isTodayGroup ? 'var(--warning)' : isOverdueGroup ? 'var(--danger)' : 'var(--info)'}
+                  accent={g === 'No fixed date' ? 'var(--text-faint)' : isTodayGroup ? 'var(--warning)' : isOverdueGroup ? 'var(--danger)' : groupPaid && d < today ? 'var(--success)' : 'var(--info)'}
                   tag={isTodayGroup
                     ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--warning) 16%, transparent)', color: 'var(--warning)' }}>Today</span>
+                    : groupPaid && d > 0 && d < today
+                      ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--success) 14%, transparent)', color: 'var(--success)' }}>✓ Paid</span>
                     : isOverdueGroup
                       ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--danger) 14%, transparent)', color: 'var(--danger)' }}>{today - d}d overdue</span>
                       : daysAway !== null ? <span className="text-[11px]" style={{ color: 'var(--text-faint)' }}>in {daysAway}d</span> : null}
