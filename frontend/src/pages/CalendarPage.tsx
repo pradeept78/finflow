@@ -55,7 +55,10 @@ export default function CalendarPage() {
   // raw amount with no frequency conversion — a Yearly ₹1,20,000 fee counted as ₹1,20,000/mo in
   // every one of the 11 projected months instead of its true ~₹10,000/mo share, so only month 0
   // (which already went through the shared calculator) was ever correct.
-  const baseExpenses = (expenses as any[]).filter(v => v.active !== false && !isOneOff(v.frequency)).reduce((s, v) => s + toMonthly(v.amount, v.frequency), 0)
+  // Monthly bills only. A quarterly / yearly bill lands at its full amount in its renewal month (billsDue in the
+  // loop below), the same rule insurance follows and calcOutflow's dueNow uses for this month — spreading it as a
+  // monthly share here made future months disagree with month 0.
+  const baseExpenses = (expenses as any[]).filter(v => v.active !== false && !isOneOff(v.frequency) && freqMonths(v.frequency) <= 1).reduce((s, v) => s + Number(v.amount ?? 0), 0)
 
   interface DueItem { label: string; type: string; amount: number; dueDay?: number; color: string; isLast?: boolean; isOverdue?: boolean; key?: string }
 
@@ -77,7 +80,7 @@ export default function CalendarPage() {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
     const ym = d.getFullYear() * 12 + d.getMonth()
     const isCurrentMonth = i === 0
-    let loanEmi = 0, ccEmi = 0, ccSpends = 0, ccOutstanding = 0, savEmi = 0, repayEmi = 0, persEmi = 0, lumpSum = 0, oneTime = 0, insEmi = 0, sipEmi = 0
+    let loanEmi = 0, ccEmi = 0, ccSpends = 0, ccOutstanding = 0, savEmi = 0, repayEmi = 0, persEmi = 0, lumpSum = 0, oneTime = 0, insEmi = 0, sipEmi = 0, billsDue = 0
     const dueItems: DueItem[] = []
     const ending: Array<{ label: string; type: string; amount: number }> = []
     const warnings: string[] = []
@@ -223,7 +226,7 @@ export default function CalendarPage() {
       // the `ym <= eYM` test and insurance never appeared in the calendar or its totals.
       const NO_END = Number.MAX_SAFE_INTEGER
       // Monthly policies: always include regardless of start date
-      if (v.frequency === 'Monthly') {
+      if (freqMonths(v.frequency) <= 1) {
         const ped = v.paymentEndDate || v.endDate
         const eYM = ped ? new Date(ped).getFullYear() * 12 + new Date(ped).getMonth() : NO_END
         if (ym <= eYM) {
@@ -276,6 +279,7 @@ export default function CalendarPage() {
     // owed — the same class of bug insurance's due-month gating above already fixes. `isDueInMonth`
     // only lets a non-monthly bill land in its actual renewal month, at its real full amount.
     ;(expenses as any[]).filter(v => v.active !== false && !isOneOff(v.frequency) && isDueInMonth(v.startDate, v.frequency, d.getFullYear(), d.getMonth())).forEach((v: any) => {
+      if (freqMonths(v.frequency) > 1) billsDue += Number(v.amount ?? 0)
       dueItems.push({
         label: v.label, type: v.category ? `Bill · ${v.category}` : 'Bill',
         amount: Number(v.amount ?? 0), dueDay: resolveDueDay(v), color: 'bg-sky-500',
@@ -321,7 +325,7 @@ export default function CalendarPage() {
     /* Months 1..11 are projections and keep the per-month loop above. Month 0 is THIS month, and
        it must equal what Dashboard, Budget, Lookup and Hub report to the rupee — so it comes from
        the shared calculator rather than being recomputed here with slightly different rules. */
-    const regularOut = i === 0 ? shared.locked : (loanEmi + ccEmi + savEmi + repayEmi + persEmi + baseExpenses + insEmi + sipEmi)
+    const regularOut = i === 0 ? shared.locked : (loanEmi + ccEmi + savEmi + repayEmi + persEmi + baseExpenses + billsDue + insEmi + sipEmi)
     const totalOut = i === 0
       ? shared.total   // already includes this month's lump sums, one-offs and renewals (calcOutflow dueNow)
       : regularOut + lumpSum + oneTime + ccOutstanding

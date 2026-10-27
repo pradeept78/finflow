@@ -56,3 +56,21 @@ describe('calcOutflow: non-monthly bills due this month', () => {
     expect(quiet.total).toBe(quiet.locked + quiet.card)
   })
 })
+
+describe('frequency spelling', () => {
+  it('treats "Half-yearly", "half yearly" and "QUARTERLY" like the dropdown spellings', async () => {
+    const { freqMonths, isOneOff } = await import('../format')
+    expect(freqMonths('Half-yearly')).toBe(6)
+    expect(freqMonths('half yearly')).toBe(6)
+    expect(freqMonths('QUARTERLY')).toBe(3)
+    expect(freqMonths('annual')).toBe(12)
+    expect(freqMonths('Something odd')).toBe(1)
+    expect(isOneOff('one time')).toBe(true)
+    expect(isOneOff('Monthly')).toBe(false)
+  })
+  it('a lowercase half-yearly premium is a set-aside, not a monthly cost', () => {
+    const o = calcOutflow([], [], [], [], [], [], [{ id: 9, name: 'Term', premium: 9800, frequency: 'Half-yearly', startDate: '2022-08-01', active: true }], now)
+    expect(o.insuranceEmi).toBe(0)
+    expect(o.insuranceProvision).toBeCloseTo(9800 / 6)
+  })
+})

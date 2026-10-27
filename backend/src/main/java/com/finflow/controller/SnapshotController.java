@@ -38,11 +38,15 @@ public class SnapshotController {
     }
 
     // Manual generate = CURRENT month (overwrite if exists)
+    // Optional body {"netWorth": n}: the frontend's figure from its shared calculators. Net worth needs
+    // asset values the backend doesn't model, so it is recorded as sent rather than re-derived here.
     @PostMapping("/generate")
-    public ResponseEntity<ApiResponse<MonthlySnapshot>> generate() {
+    public ResponseEntity<ApiResponse<MonthlySnapshot>> generate(@RequestBody(required = false) java.util.Map<String, Object> body) {
         String thisMonth = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        java.math.BigDecimal netWorth = null;
+        if (body != null && body.get("netWorth") instanceof Number n) netWorth = new java.math.BigDecimal(n.toString());
         return ResponseEntity.ok(ApiResponse.ok("Snapshot generated",
-                snapshotService.generateOrUpdate(currentUser(), thisMonth)));
+                snapshotService.generateOrUpdate(currentUser(), thisMonth, netWorth)));
     }
 
     @PostMapping("/generate/{monthYear}")

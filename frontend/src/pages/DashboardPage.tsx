@@ -51,7 +51,7 @@ export default function DashboardPage() {
   const { data: expensesRaw = [],    isLoading: l7, isError: e7 } = useQuery({ queryKey: ['expenses'],    queryFn: expensesApi.getAll })
   const { data: insuranceRaw = [],   isLoading: l8, isError: e8 } = useQuery({ queryKey: ['insurance'],   queryFn: insuranceApi.getAll })
   const { data: peopleOweMe = [], isLoading: l10, isError: e10 } = useQuery({ queryKey: ['people-owes'], queryFn: peopleOweMeApi2.getAll })
-  const { data: snapshots = [] } = useQuery({ queryKey: ['snapshots'], queryFn: snapshotApi.getLast6 })
+  const { data: snapshots = [], isFetched: snapsFetched } = useQuery({ queryKey: ['snapshots'], queryFn: snapshotApi.getLast6 })
   // Look ahead (shared with the Hub): everything below is computed from the data as it will stand N months from now.
   const hz = useHorizonState()
   const proj = advanceAll({ loans: loansRaw as any[], cards: cardsRaw as any[], personal: personalRaw as any[], savings: savingsRaw as any[], investments: investmentsRaw as any[], expenses: expensesRaw as any[], insurance: insuranceRaw as any[] }, hz.horizon, hz)
@@ -68,7 +68,7 @@ export default function DashboardPage() {
   const isError = e1||e2||e3||e4||e5||e6||e7||e8||e10
 
   const [showInsights, setShowInsights] = useState(false)
-  const snapMut = useMutation({ mutationFn: snapshotApi.generate, onSuccess: ()=>{ qc.invalidateQueries({queryKey:['snapshots']}); qc.invalidateQueries({queryKey:['snapshots-all']}); toast.success('Snapshot saved') }, onError: ()=>toast.error('Could not save the snapshot') })
+  const snapMut = useMutation({ mutationFn: (v: { netWorth: number; silent?: boolean }) => snapshotApi.generate({ netWorth: v.netWorth }), onSuccess: (_d, v)=>{ qc.invalidateQueries({queryKey:['snapshots']}); qc.invalidateQueries({queryKey:['snapshots-all']}); if (!v.silent) toast.success('Snapshot saved') }, onError: ()=>toast.error('Could not save the snapshot') })
   const [showChart, setShowChart] = useState(false)
 
   // ── DEBT ──
@@ -117,6 +117,16 @@ export default function DashboardPage() {
      readings can never drift apart. */
   const netWorth = totalAssets - d.totalPrincipal
 
+  // Record this month's net worth once, so the trend line builds itself instead of waiting for a click.
+  // Only from real (not look-ahead) data, and only when this month has no recorded figure yet.
+  const recordedThisMonth = (snapshots as any[]).some(s => s.monthYear === new Date().toISOString().slice(0, 7) && Number(s.netWorth ?? 0) !== 0)
+  const autoSnapTried = useRef(false)
+  useEffect(() => {
+    if (autoSnapTried.current || isLoading || isError || !snapsFetched || hz.horizon || recordedThisMonth || netWorth === 0) return
+    autoSnapTried.current = true
+    snapMut.mutate({ netWorth: Math.round(netWorth), silent: true })
+  }, [isLoading, isError, snapsFetched, hz.horizon, recordedThisMonth, netWorth])
+
   // ── CASH FLOW ──
   const monthlyIncome = monthlyIncomeTotal(income)
   /* Every component now comes from utils/calcOutflow so this page cannot drift from Lookup,
@@ -147,10 +157,11 @@ export default function DashboardPage() {
 
   // ── SNAPSHOTS ──
   const trendData = [...snapshots].reverse()
-  const lastSnap = trendData.length >= 1 ? trendData[trendData.length-1] : null
-  // The backend snapshot never records net worth (it stays 0), so comparing against it reported the
-  // whole net worth as "change vs last snapshot". Only compare when a real value was saved.
-  const nwTrend = lastSnap && Number(lastSnap.netWorth ?? 0) !== 0 ? (() => {
+  const thisYM = new Date().toISOString().slice(0, 7)
+  // "vs last snapshot" means last MONTH's: this month's own snapshot is today's figure, so comparing
+  // against it always reads zero. Older snapshots (before net worth was recorded) carry 0 — skip those.
+  const lastSnap = [...trendData].reverse().find((s: any) => s.monthYear < thisYM && Number(s.netWorth ?? 0) !== 0) ?? null
+  const nwTrend = lastSnap ? (() => {
     const diff = netWorth - Number(lastSnap.netWorth ?? 0)
     return Math.abs(diff) > 1000 ? diff : undefined
   })() : undefined
@@ -297,7 +308,7 @@ export default function DashboardPage() {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <button className="btn-secondary btn-xs" title="Save today's net worth so the trend line can start" disabled={snapMut.isPending} onClick={()=>snapMut.mutate()}>{snapMut.isPending?'Saving…':'Save first snapshot'}</button>
+              <button className="btn-secondary btn-xs" title="Save today's net worth so the trend line can start" disabled={snapMut.isPending} onClick={()=>snapMut.mutate({ netWorth: Math.round(netWorth) })}>{snapMut.isPending?'Saving…':'Save first snapshot'}</button>
             )}
           </div>
         </div>

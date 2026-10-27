@@ -39,7 +39,7 @@ export default function HistoryPage() {
   const [view, setView] = useState<'months'|'table'>('months')
   const [expandedMonth, setExpandedMonth] = useState<string|null>(null)
 
-  const genMut = useMutation({ mutationFn: snapshotApi.generate, onSuccess: ()=>{ qc.invalidateQueries({queryKey:['snapshots-all']}); qc.invalidateQueries({queryKey:['snapshots']}); toast.success('Snapshot saved') } })
+  const genMut = useMutation({ mutationFn: () => snapshotApi.generate(), onSuccess: ()=>{ qc.invalidateQueries({queryKey:['snapshots-all']}); qc.invalidateQueries({queryKey:['snapshots']}); toast.success('Snapshot saved') } })
 
   useQuery({ queryKey: ['snapshot-auto'], queryFn: async ()=>{ await snapshotApi.generate(); return true }, enabled: !isLoading && snapshots.length===0, staleTime: Infinity, retry: false })
 

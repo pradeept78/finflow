@@ -116,7 +116,13 @@ export const FREQ_MONTHS: Record<string, number> = {
 /** Months covered by one payment. Unknown frequencies fall back to Monthly, never to Yearly —
  *  guessing "yearly" silently divides a real commitment by twelve. */
 export const freqMonths = (frequency?: string | null): number =>
-  FREQ_MONTHS[frequency ?? 'Monthly'] ?? 1
+  FREQ_MONTHS[frequency ?? 'Monthly'] ?? FREQ_BY_KEY[freqKey(frequency)] ?? 1
+
+/* Spelling-tolerant lookup. Rows that come from an import, the API or older forms carry "Half-yearly",
+   "half yearly", "QUARTERLY"…; an exact-match miss fell back to Monthly, so a ₹9,800 half-yearly premium
+   was counted as ₹9,800 every month. Case, spaces, hyphens and underscores are ignored. */
+const freqKey = (f?: string | null) => (f ?? '').toLowerCase().replace(/[\s_-]/g, '')
+const FREQ_BY_KEY: Record<string, number> = Object.fromEntries(Object.entries(FREQ_MONTHS).map(([k, v]) => [freqKey(k), v]))
 
 /** Normalise any amount at any frequency to a per-month figure. */
 export const toMonthly = (amount: number | undefined | null, frequency?: string | null): number => {
@@ -127,7 +133,7 @@ export const toMonthly = (amount: number | undefined | null, frequency?: string 
 
 /** True for frequencies that do not recur, so they can be excluded from recurring totals. */
 export const isOneOff = (frequency?: string | null): boolean =>
-  frequency === 'One-time' || frequency === 'Single'
+  ['onetime', 'single'].includes(freqKey(frequency))
 
 /**
  * Monthly-equivalent total for a list of IncomeEntry-shaped rows ({ amount, frequency, active }).

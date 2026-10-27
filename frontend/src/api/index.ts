@@ -47,7 +47,8 @@ export const adminApi = {
 export const snapshotApi = {
   getLast6: () => api.get<{ data: any[] }>('/snapshots/last6').then(r => r.data.data),
   getAll: () => api.get<{ data: any[] }>('/snapshots').then(r => r.data.data),
-  generate: () => api.post<{ data: any }>('/snapshots/generate').then(r => r.data.data),
+  // netWorth comes from the frontend's shared calculators; the backend records it as sent.
+  generate: (body?: { netWorth?: number }) => api.post<{ data: any }>('/snapshots/generate', body ?? {}).then(r => r.data.data),
   restore: (snapshots: any[]) => api.post<{ data: number }>('/snapshots/restore', snapshots).then(r => r.data.data),
 }
 
