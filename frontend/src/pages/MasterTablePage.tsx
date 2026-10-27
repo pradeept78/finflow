@@ -9,7 +9,7 @@ import IncomeSplitCard from '../components/common/IncomeSplitCard'
 import { useQuery } from '@tanstack/react-query'
 import { loansApi, cardsApi, personalEmiApi, savingsApi, insuranceApi, investmentsApi, expensesApi, incomeApi } from '../api'
 import { fmtINR, monthlyIncomeTotal } from '../utils/format'
-import { calcOutflow } from '../utils/calcOutflow'
+import { calcOutflow, outflowTierLine } from '../utils/calcOutflow'
 import { PageHeader, LoadingSpinner, ErrorState, SortHeader } from '../components/common'
 import { Download } from 'lucide-react'
 import { rateColor } from '../utils/emiFacts'
@@ -499,7 +499,6 @@ export default function MasterTablePage() {
   const shared = calcOutflow(loans as any[], cards as any[], personal as any[], savings as any[], investments as any[], expenses as any[], insurance as any[])
   const monthlyIncome = monthlyIncomeTotal(income as any[])
   const freeAfterCommitments = monthlyIncome - shared.locked
-  const provisionTotal = shared.expenseProvision + shared.insuranceProvision
   // Investments shown as a single summary tile (current worth), to match Total Debt's role on the
   // liability side — the table below still lists each investment as its own row.
   const totalCurrentValue = investTotals(investments as any[]).value
@@ -520,7 +519,6 @@ export default function MasterTablePage() {
   const dueGroupKey = (d: number) => d === 0 ? 'No fixed date' : `Day ${d}`
   const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()
   const daysAwayFor = (d: number) => d >= today ? d - today : (daysInMonth - today + d)
-  const totalFundsNeeded = dueDays.filter(d => d !== 0).reduce((s, d) => s + dueBuckets.get(d)!.filter(r => !isFriendOwed(r)).reduce((a, r) => a + dueAmount(r), 0), 0)
   const runningByDay = new Map<number, number>()
   ;(() => {
     let running = 0
@@ -738,7 +736,7 @@ export default function MasterTablePage() {
         {[
           // Was its own "Outstanding + Spend" tile between Total Debt and Investments — folded into
           // Funds Needed's sub-line instead (per request), since that's the figure it's actually a
-          // component of (every CC Outstanding/Spends row's due-day amount feeds totalFundsNeeded),
+          // component of (the card bill is one tier of calcOutflow's total),
           // rather than a seventh tile competing for the same row.
           // The caption names what the figure actually covers: all four debt groups when nothing is filtered,
           // otherwise only the groups left in the filtered rows, plus the unfiltered total for context.
@@ -762,12 +760,13 @@ export default function MasterTablePage() {
           // (committed + this month's card bill), so showing both side by side read as two separate costs.
           // The breakdown is in the sub-line; any remainder that isn't committed or card bill is shown, not hidden.
           (() => {
-            const bill = shared.ccOutstanding + shared.ccSpends
-            const other = totalFundsNeeded - shared.locked - bill
+            // Straight from the shared calculator (locked + card + renewals due now), so this tile and
+            // Lookup / Dashboard / Calendar / Hub / Budget show the same figure to the rupee. It used to
+            // add up this page's own rows, which counted a future I Owe lump sum and skipped loans with no due day.
             return {
-              label: 'Cash needed this month', value: fmtINR(totalFundsNeeded), accent: 'var(--danger)',
-              sub: `${fmtINR(shared.locked)} committed + ${fmtINR(bill)} card bill${Math.abs(other) >= 1 ? ` ${other > 0 ? '+' : '−'} ${fmtINR(Math.abs(other))} bills due` : ''}`,
-              hint: `Committed ${fmtINR(shared.locked)}/mo (real cash leaving every month) + credit-card outstanding ${fmtINR(shared.ccOutstanding)} + card spends ${fmtINR(shared.ccSpends)}${Math.abs(other) >= 1 ? ` + ${fmtINR(Math.abs(other))} of quarterly/annual bills and premiums that fall due this month at full amount` : ''}${provisionTotal > 0 ? `. Not included: ${fmtINR(provisionTotal)}/mo set aside for renewals.` : ''}`,
+              label: 'Cash needed this month', value: fmtINR(shared.total), accent: 'var(--danger)',
+              sub: outflowTierLine(shared),
+              hint: `Committed ${fmtINR(shared.locked)}/mo (real cash leaving every month) + credit-card outstanding ${fmtINR(shared.ccOutstanding)} + card spends ${fmtINR(shared.ccSpends)}${shared.dueNow > 0 ? ` + ${fmtINR(shared.dueNow)} of quarterly/yearly bills, premiums and one-off payments that fall due this month at full amount` : ''}${shared.setAside > 0 ? `. Not included: ${fmtINR(shared.setAside)}/mo set aside for renewals.` : ''}`,
             }
           })(),
           { label: 'Free / month', value: `${freeAfterCommitments >= 0 ? '+' : '−'}${fmtINR(Math.abs(freeAfterCommitments))}${incomePct(freeAfterCommitments, monthlyIncome)}`, sub: monthlyIncome > 0 ? `of ${fmtINR(monthlyIncome)} income · before card bill` : 'add income to see this', accent: freeAfterCommitments >= 0 ? 'var(--success)' : 'var(--danger)' },
@@ -1320,7 +1319,7 @@ export default function MasterTablePage() {
                   tag={isTodayGroup
                     ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--warning) 16%, transparent)', color: 'var(--warning)' }}>Today</span>
                     : isOverdueGroup
-                      ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--danger) 14%, transparent)', color: 'var(--danger)' }}>{Math.abs(daysAway ?? 0)}d overdue</span>
+                      ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--danger) 14%, transparent)', color: 'var(--danger)' }}>{today - d}d overdue</span>
                       : daysAway !== null ? <span className="text-[11px]" style={{ color: 'var(--text-faint)' }}>in {daysAway}d</span> : null}
                   right={g === 'No fixed date'
                     ? <span className="text-[12px]" style={{ color: 'var(--text-faint)' }}>no set date</span>

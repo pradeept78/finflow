@@ -92,7 +92,7 @@ export default function QuickLookupPage() {
     'Loan EMIs':'bg-red-500', 'CC EMIs':'bg-yellow-500', 'I Owe':'bg-yellow-400',
     'Bills':'bg-red-500', 'Insurance':'bg-blue-500', 'Savings':'bg-green-500',
     'Chit repayment':'bg-red-400', 'SIP':'bg-blue-400',
-    'CC outstanding':'bg-orange-500', 'CC spends':'bg-pink-500',
+    'CC outstanding':'bg-orange-500', 'CC spends':'bg-pink-500', 'Renewals & one-offs':'bg-purple-500',
   }
   const outflowRows = outflowRowsOf(o).map(r => ({ ...r, color: COLORS[r.label] ?? 'bg-gray-500' }))
 
@@ -181,8 +181,6 @@ export default function QuickLookupPage() {
     .sort((a, b) => (a.dueDay ?? 99) - (b.dueDay ?? 99))
 
   // Only the DISPLAYED list is filtered by kind; counts, totals, paid and overdue stay on every item.
-  // One-time payments due this month sit on top of the recurring total (same as Calendar's header).
-  const oneTimeDue = items.filter(it => it.kind === 'one-time').reduce((a, it) => a + it.amount, 0)
   const visibleItems = kindFilter.size > 0 ? items.filter(it => kindFilter.has(it.kind)) : items
   const byDay = new Map<number, typeof items>()
   visibleItems.forEach(item => { const d = item.dueDay ?? 0; if (!byDay.has(d)) byDay.set(d, []); byDay.get(d)!.push(item) })
@@ -253,8 +251,8 @@ export default function QuickLookupPage() {
             return (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <Tile accent="var(--danger)" label="Total due this month" className="col-span-2 md:col-span-1">
-                  <div className="text-[28px] font-semibold tracking-tight tabular-nums leading-tight" style={{ color: 'var(--danger)' }}>{fmtINR(Math.round(totalMonthly + oneTimeDue))}</div>
-                  <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>{outflowTierLine(o)}{oneTimeDue > 0 && <> + one-time {fmtINR(Math.round(oneTimeDue))}</>}</div>
+                  <div className="text-[28px] font-semibold tracking-tight tabular-nums leading-tight" style={{ color: 'var(--danger)' }}>{fmtINR(Math.round(totalMonthly))}</div>
+                  <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>{outflowTierLine(o)}</div>
                 </Tile>
                 {monthlyIncome > 0 && (
                   <Tile accent={free >= 0 ? 'var(--success)' : 'var(--danger)'} label="Free / month">
@@ -298,7 +296,7 @@ export default function QuickLookupPage() {
                   {notCounted.length > 0 && <button type="button" className="ml-1.5 hover:underline" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', font: 'inherit' }}
                     title="Left out of the count and every total — click to see which"
                     onClick={() => { const el = document.getElementById('ql-not-counted') as HTMLDetailsElement | null; if (el) { el.open = true; el.scrollIntoView({ behavior: 'smooth', block: 'center' }) } }}>(🚫 {notCounted.length} not counted)</button>}
-                  {o.insuranceProvision > 0 && <span className="ml-3" style={{ color: 'var(--purple)' }} title="Monthly-equivalent of non-monthly premiums — not due this month">set aside for renewals <span className="mono">{fmtINR(Math.round(o.insuranceProvision))}</span>/mo</span>}
+                  {o.setAside > 0 && <span className="ml-3" style={{ color: 'var(--purple)' }} title="Monthly share of every quarterly / yearly bill and premium — worth setting aside; only the ones renewing this month are in the total">set aside for renewals <span className="mono">{fmtINR(Math.round(o.setAside))}</span>/mo</span>}
                 </>}
                 chips={(() => {
                   const LABEL_KIND: Record<string, string> = { 'Loan EMIs': 'loan', 'CC EMIs': 'card-emi', 'I Owe': 'iowe', 'Bills': 'bill', 'Insurance': 'insurance', 'Savings': 'savings', 'Chit repayment': 'chit-repay', 'SIP': 'sip', 'CC outstanding': 'card-out', 'CC spends': 'card-spend' }
@@ -307,7 +305,7 @@ export default function QuickLookupPage() {
                   const cnt = new Map<string, number>(); const sum = new Map<string, number>()
                   items.forEach(it => { const k = it.kind; cnt.set(k, (cnt.get(k) ?? 0) + 1); sum.set(k, (sum.get(k) ?? 0) + it.amount) })
                   return [...cnt.entries()].map(([k, n]) => {
-                    const v = monthly.get(k) ?? sum.get(k) ?? 0
+                    const v = (k === 'bill' || k === 'insurance' ? sum.get(k) : monthly.get(k)) ?? sum.get(k) ?? 0
                     return { id: k, kind: k, count: n, sub: `${fmtINR(Math.round(v))}${monthly.has(k) && totalMonthly > 0 ? ` · ${Math.round(v / totalMonthly * 100)}%` : ''}` }
                   })
                 })()}

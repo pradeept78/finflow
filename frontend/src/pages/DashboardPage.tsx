@@ -148,7 +148,9 @@ export default function DashboardPage() {
   // ── SNAPSHOTS ──
   const trendData = [...snapshots].reverse()
   const lastSnap = trendData.length >= 1 ? trendData[trendData.length-1] : null
-  const nwTrend = lastSnap ? (() => {
+  // The backend snapshot never records net worth (it stays 0), so comparing against it reported the
+  // whole net worth as "change vs last snapshot". Only compare when a real value was saved.
+  const nwTrend = lastSnap && Number(lastSnap.netWorth ?? 0) !== 0 ? (() => {
     const diff = netWorth - Number(lastSnap.netWorth ?? 0)
     return Math.abs(diff) > 1000 ? diff : undefined
   })() : undefined
@@ -312,7 +314,7 @@ export default function DashboardPage() {
             /* Used to link to the retired /overview page. That page's job — a fuller breakdown of
                this same free-cash figure — now lives in this page's own Chart Modal, so this tile
                opens that instead of navigating away. */
-            {label:'Free / Month', value:`${freeCash>=0?'+':'−'}${fmtINR(Math.abs(freeCash))}${incomePct(freeCash, monthlyIncome)}`, sub:`incl. card bill · ${freeCash>=0?'buffer':'deficit'} vs ${fmtINR(monthlyIncome)} income`, accent:freeCash>=0?'var(--purple)':'var(--warning)', action:()=>setShowChart(true)},
+            {label:'Free / Month', value:`${freeCash>=0?'+':'−'}${fmtINR(Math.abs(freeCash))}${incomePct(freeCash, monthlyIncome)}`, sub:`incl. card bill · ${freeCash>=0?'buffer':'deficit'} vs ${fmtINR(monthlyIncome)} income`, accent:freeCash>=0?'var(--purple)':'var(--danger)', action:()=>setShowChart(true)},
             /* Tier split and itemisation from the shared calculator, so this reads identically on
                Hub, Budget, Calendar and Lookup. The hand-built version here grouped chit repayment
                into "EMIs" and — because `persEmi` was a zero placeholder (now fixed above) — left

@@ -9,7 +9,6 @@ export default function IncomeSplitCard({ o, income }: { o: OutflowComponents; i
   const { horizon } = useHorizonState()
   if (!(income > 0)) return null
   const emis = o.loanEmi + o.ccEmi + o.iOweEmi + o.chitRepay
-  const rest = Math.max(0, o.total - (emis + o.expenses + o.insuranceEmi + o.savings + o.sipInvest + o.card))
   return (
     <IncomeSplit income={income} horizonText={horizon ? horizonLabel(horizon) : undefined} parts={[
       { label: 'EMIs', value: emis, color: 'var(--danger)' },
@@ -17,7 +16,7 @@ export default function IncomeSplitCard({ o, income }: { o: OutflowComponents; i
       { label: 'Insurance', value: o.insuranceEmi, color: 'var(--pink)' },
       { label: 'Savings & SIPs', value: o.savings + o.sipInvest, color: 'var(--purple)' },
       { label: 'Card bill', value: o.card, color: 'var(--warning)' },
-      { label: 'Set-asides', value: rest, color: '#94a3b8' },
+      { label: 'Renewals & one-offs', value: o.dueNow, color: 'var(--text-faint)' },
     ]} />
   )
 }

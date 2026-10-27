@@ -323,7 +323,7 @@ export default function CalendarPage() {
        the shared calculator rather than being recomputed here with slightly different rules. */
     const regularOut = i === 0 ? shared.locked : (loanEmi + ccEmi + savEmi + repayEmi + persEmi + baseExpenses + insEmi + sipEmi)
     const totalOut = i === 0
-      ? shared.total + lumpSum + oneTime
+      ? shared.total   // already includes this month's lump sums, one-offs and renewals (calcOutflow dueNow)
       : regularOut + lumpSum + oneTime + ccOutstanding
     const free = monthlyIncome - totalOut
     const dropAmt = ending.filter(e => !e.type.includes('Due') && !e.type.includes('Matures')).reduce((s, e) => s + e.amount, 0)
