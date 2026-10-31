@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { insuranceApi, cardsApi } from '../api'
 import FilterMenu from '../components/common/FilterMenu'
 import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner, ErrorState, SortHeader } from '../components/common'
-import { fmtINR, toMonthly } from '../utils/format'
+import { fmtINR, toMonthly, freqMonths, isOneOff } from '../utils/format'
 import { Plus, Pencil, Trash2, ChevronDown, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
 
@@ -102,9 +102,12 @@ export default function InsurancePage() {
   // Monthly cash outflow = only Monthly-frequency policies (not bank EMIs, just paid every month).
   // Excludes `isCardEmi` policies — that premium is already a credit card EMI, counted on the Cards
   // page, so it must not also show up here (same exclusion calcOutflow.ts makes for every other page).
-  const emiMo    = active.filter((v:any)=>v.frequency==='Monthly'&&!v.isCardEmi).reduce((s:number,v:any)=>s+Number(v.premium??0),0)
+  // Shared, spelling-tolerant frequency rules (same as calcOutflow): "monthly" vs "Monthly", "One-time" vs "Single".
+  const isMonthlyPlan = (v:any) => !isOneOff(v.frequency) && freqMonths(v.frequency) <= 1
+  const isLumpPlan    = (v:any) => !isOneOff(v.frequency) && freqMonths(v.frequency) > 1
+  const emiMo    = active.filter((v:any)=>isMonthlyPlan(v)&&!v.isCardEmi).reduce((s:number,v:any)=>s+Number(v.premium??0),0)
   // Annual cost of all non-monthly policies (amortised per year)
-  const annualCost = active.filter((v:any)=>v.frequency!=='Monthly'&&v.frequency!=='Single'&&!v.isCardEmi).reduce((s:number,v:any)=>s+toMonthly(v.premium,v.frequency)*12,0)
+  const annualCost = active.filter((v:any)=>isLumpPlan(v)&&!v.isCardEmi).reduce((s:number,v:any)=>s+toMonthly(v.premium,v.frequency)*12,0)
   const totalCover = active.reduce((s:number,v:any)=>s+Number(v.sumAssured??0),0)
   const filtered = filterTypes.size===0 ? (items as any[]) : (items as any[]).filter((v:any)=>filterTypes.has(v.policyType||'Other'))
   const displayItems = [...filtered].sort((a:any, b:any) => {
@@ -117,7 +120,7 @@ export default function InsurancePage() {
     return sortDir === 'asc' ? cmp : -cmp
   })
   const filteredActive = filtered.filter((v:any)=>v.active!==false)
-  const filteredEmiMo = filteredActive.filter((v:any)=>v.frequency==='Monthly'&&!v.isCardEmi).reduce((s:number,v:any)=>s+Number(v.premium??0),0)
+  const filteredEmiMo = filteredActive.filter((v:any)=>isMonthlyPlan(v)&&!v.isCardEmi).reduce((s:number,v:any)=>s+Number(v.premium??0),0)
   const filteredCover = filteredActive.reduce((s:number,v:any)=>s+Number(v.sumAssured??0),0)
   const upcoming   = active.filter((v:any)=>{
     if(!v.endDate) return false
@@ -135,8 +138,8 @@ export default function InsurancePage() {
       {items.length > 0 && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            {label:'Monthly Premiums', value:fmtINR(Math.round(emiMo)),     sub:(()=>{const n=active.filter((v:any)=>v.frequency==='Monthly').length;return n>0?`${n} billed monthly · not a bank EMI`:'none billed monthly — see Annual Cost'})(), accent:'var(--cyan)'},
-            {label:'Annual Cost',   value:fmtINR(Math.round(annualCost)),   sub:`${active.filter((v:any)=>v.frequency!=='Monthly'&&v.frequency!=='Single').length} lump-sum policies`, accent:'var(--warning)'},
+            {label:'Monthly Premiums', value:fmtINR(Math.round(emiMo)),     sub:(()=>{const n=active.filter(isMonthlyPlan).length;return n>0?`${n} billed monthly · not a bank EMI`:'none billed monthly — see Annual Cost'})(), accent:'var(--cyan)'},
+            {label:'Annual Cost',   value:fmtINR(Math.round(annualCost)),   sub:`${active.filter(isLumpPlan).length} lump-sum policies`, accent:'var(--warning)'},
             {label:'Total Coverage',value:fmtINR(totalCover),               sub:'sum assured across all policies', accent:'var(--success)'},
             {label:'Renewing Soon', value:String(upcoming.length),          sub:'policies renewing within 30 days', accent:upcoming.length>0?'var(--danger)':'var(--purple)', noFormat:true},
           ].map(m=>(
