@@ -151,9 +151,6 @@ export default function LoansPage() {
   const COLS_MAIN = showDebit
     ? 'minmax(220px,2.6fr) minmax(90px,1fr) minmax(110px,1.3fr) minmax(110px,1.2fr) minmax(130px,1.5fr) minmax(55px,0.7fr) minmax(80px,1fr) minmax(80px,0.95fr)'
     : 'minmax(220px,2.6fr) minmax(110px,1.3fr) minmax(110px,1.2fr) minmax(130px,1.5fr) minmax(55px,0.7fr) minmax(80px,1fr) minmax(80px,0.95fr)'
-  const COLS_FOOT = showDebit
-    ? 'minmax(220px,2.6fr) minmax(90px,1fr) minmax(110px,1.3fr) minmax(130px,1.5fr) minmax(55px,0.7fr) minmax(80px,1fr) minmax(80px,0.95fr)'
-    : 'minmax(220px,2.6fr) minmax(110px,1.3fr) minmax(130px,1.5fr) minmax(55px,0.7fr) minmax(80px,1fr) minmax(80px,0.95fr)'
 
   // Footer sums scoped to the type filter above, same formulas as the unfiltered totals.
   const filteredActiveLoans = sorted.filter((l: any) => getEff(l).pending > 0)
@@ -567,11 +564,15 @@ export default function LoansPage() {
 
           {/* Footer */}
           <div className="hidden md:grid px-4 py-3 text-[13px] font-bold border-t"
-            style={{ gridTemplateColumns: COLS_FOOT, borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--text) 5%, transparent)', color: 'var(--text-faint)' }}>
+            style={{ gridTemplateColumns: COLS_MAIN, borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--text) 5%, transparent)', color: 'var(--text-faint)' }}>
+            {/* Same column template as the header and rows (it had its own, one column short, so the totals
+                drifted up to 73px off their columns): one cell per column, blanks where nothing adds up. */}
             <span>{filteredActiveLoans.length} active{filterLoanType!=='All'?` (${filterLoanType})`:''}</span>
             {showDebit && <span></span>}
             <span className="text-right mono" style={{ color: 'var(--danger)' }}>{fmtINR(filteredTotalEmi)}/mo</span>
+            <span></span>
             <span className="text-right mono" style={{ color: 'var(--warning)' }}>{fmtINR(filteredTotalPending + filteredTotalIntLeft)}</span>
+            <span></span>
             <span></span>
             <span></span>
           </div>
