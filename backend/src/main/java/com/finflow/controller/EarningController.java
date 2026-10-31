@@ -38,6 +38,7 @@ public class EarningController {
     @PostMapping
     public ResponseEntity<ApiResponse<Earning>> create(@RequestBody Earning entity) {
         User user = currentUser();
+        entity.setId(null);
         entity.setUser(user);
         Earning saved = repository.save(entity);
         syncLatestToIncome(user);

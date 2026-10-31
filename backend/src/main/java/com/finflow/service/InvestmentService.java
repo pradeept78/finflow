@@ -26,7 +26,7 @@ public class InvestmentService {
                 .orElseThrow(() -> new RuntimeException("Not found"));
     }
 
-    public Investment create(Investment entity) { entity.setUser(currentUser()); return repository.save(entity); }
+    public Investment create(Investment entity) { entity.setId(null); entity.setUser(currentUser()); return repository.save(entity); }
 
     public Investment update(Long id, Investment updated) {
         Investment existing = getById(id);

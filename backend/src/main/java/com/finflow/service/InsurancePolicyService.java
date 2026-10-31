@@ -26,7 +26,7 @@ public class InsurancePolicyService {
                 .orElseThrow(() -> new RuntimeException("Not found"));
     }
 
-    public InsurancePolicy create(InsurancePolicy entity) { entity.setUser(currentUser()); return repository.save(entity); }
+    public InsurancePolicy create(InsurancePolicy entity) { entity.setId(null); entity.setUser(currentUser()); return repository.save(entity); }
 
     public InsurancePolicy update(Long id, InsurancePolicy updated) {
         InsurancePolicy existing = getById(id);

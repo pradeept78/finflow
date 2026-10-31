@@ -26,7 +26,7 @@ public class SavingService {
                 .orElseThrow(() -> new RuntimeException("Not found"));
     }
 
-    public Saving create(Saving entity) { entity.setUser(currentUser()); return repository.save(entity); }
+    public Saving create(Saving entity) { entity.setId(null); entity.setUser(currentUser()); return repository.save(entity); }
 
     public Saving update(Long id, Saving updated) {
         Saving existing = getById(id);

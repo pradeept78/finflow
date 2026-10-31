@@ -26,7 +26,7 @@ public class PeopleOweService {
                 .orElseThrow(() -> new RuntimeException("Not found"));
     }
 
-    public PeopleOwe create(PeopleOwe entity) { entity.setUser(currentUser()); return repository.save(entity); }
+    public PeopleOwe create(PeopleOwe entity) { entity.setId(null); entity.setUser(currentUser()); return repository.save(entity); }
 
     public PeopleOwe update(Long id, PeopleOwe updated) {
         PeopleOwe existing = getById(id);

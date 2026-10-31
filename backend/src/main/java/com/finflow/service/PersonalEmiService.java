@@ -26,7 +26,7 @@ public class PersonalEmiService {
                 .orElseThrow(() -> new RuntimeException("Not found"));
     }
 
-    public PersonalEmi create(PersonalEmi entity) { entity.setUser(currentUser()); return repository.save(entity); }
+    public PersonalEmi create(PersonalEmi entity) { entity.setId(null); entity.setUser(currentUser()); return repository.save(entity); }
 
     public PersonalEmi update(Long id, PersonalEmi updated) {
         PersonalEmi existing = getById(id);
