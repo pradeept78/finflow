@@ -207,8 +207,8 @@ function AssignRow({ t, loans, cards, closed, pending, onAssign }: {
         }}>
         <option value="">Assign to...</option>
         {loans.length > 0 && <optgroup label="Loans">{loans.map(l => <option key={`L${l.id}`} value={`LOAN:${l.id}`}>{l.lender}</option>)}</optgroup>}
-        {cards.length > 0 && <optgroup label="Credit Cards">{cards.map(c => <option key={`C${c.id}`} value={`CARD:${c.id}`}>{c.banker}</option>)}</optgroup>}
-        {closed.length > 0 && <optgroup label="Closed Loans">{closed.map(cl => <option key={`X${cl.id}`} value={`CLOSED:${cl.id}`}>{cl.lender}</option>)}</optgroup>}
+        {cards.length > 0 && <optgroup label="Credit cards">{cards.map(c => <option key={`C${c.id}`} value={`CARD:${c.id}`}>{c.banker}</option>)}</optgroup>}
+        {closed.length > 0 && <optgroup label="Closed loans">{closed.map(cl => <option key={`X${cl.id}`} value={`CLOSED:${cl.id}`}>{cl.lender}</option>)}</optgroup>}
       </select>
     </div>
   )

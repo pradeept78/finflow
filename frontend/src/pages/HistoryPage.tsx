@@ -74,11 +74,11 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-4 text-[13px]">
-      <PageHeader title="Monthly History" action={
+      <PageHeader title="Monthly history" action={
         <div className="flex gap-2">
           <SegTabs options={[{id:'months',label:'Months'},{id:'table',label:'Table'}]} value={view as any} onChange={v=>setView(v as any)} />
           <button className="btn-primary btn-sm flex items-center gap-1.5" onClick={()=>genMut.mutate()} disabled={genMut.isPending} style={{background:snapshots.length===0?'linear-gradient(135deg,#f97316,#f59e0b)':''}}>
-            <RefreshCw size={13} className={genMut.isPending?'animate-spin':''}/>Save Snapshot
+            <RefreshCw size={13} className={genMut.isPending?'animate-spin':''}/>Save snapshot
           </button>
         </div>
       }/>
@@ -112,7 +112,7 @@ export default function HistoryPage() {
       {/* Live now */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          {label:'Monthly Outflow', value:fmtINR(liveOut),    sub:`EMIs ${fmtINR(liveLoanEmi+liveCcEmi+livePersonal)} · Savings ${fmtINR(liveSavEmi)} · Bills ${fmtINR(liveExp+Math.round(liveInsEmi))}`,      accent:'var(--danger)'},
+          {label:'Monthly outflow', value:fmtINR(liveOut),    sub:`EMIs ${fmtINR(liveLoanEmi+liveCcEmi+livePersonal)} · Savings ${fmtINR(liveSavEmi)} · Bills ${fmtINR(liveExp+Math.round(liveInsEmi))}`,      accent:'var(--danger)'},
           {label:'Free / month',    value:`${liveFree>=0?'+':''}${fmtINR(liveFree)}`, sub:'income − commitments · before card bills', accent:liveFree>=0?'var(--success)':'var(--danger)'},
           {label:'Income',          value:fmtINR(liveIncome), sub:'monthly income',        accent:'var(--success)'},
           {label:'Snapshots',       value:String(snapshots.length), sub:`${sorted[0]?.monthYear||'—'} → ${sorted[sorted.length-1]?.monthYear||'—'}`, accent:'var(--purple)'},
@@ -148,13 +148,13 @@ export default function HistoryPage() {
           <div className="text-3xl mb-3">📊</div>
           <div className="font-semibold mb-1">No snapshots yet</div>
           <div className="text-[13px] mb-4" style={{color:'var(--text-faint)'}}>Auto-generated on 1st of each month. Save one now to start tracking.</div>
-          <button className="btn-primary" onClick={()=>genMut.mutate()}>Generate Now</button>
+          <button className="btn-primary" onClick={()=>genMut.mutate()}>Generate now</button>
         </div>
       ) : view==='months' ? (
         <div className="rounded-2xl overflow-hidden" style={{background:'var(--bg-card)',border:'1px solid var(--border)',overflowX:'auto'}}>
           <div className="grid px-4 py-2 text-[12px] font-medium border-b"
             style={{gridTemplateColumns:'minmax(90px,0.9fr) minmax(190px,2.4fr) minmax(110px,1.1fr) minmax(110px,1.1fr) minmax(100px,1.0fr) minmax(90px,0.9fr)',borderColor:'var(--hairline)',background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-faint)'}}>
-<span>Month</span><span className="px-2">Breakdown</span><span className="text-right">Outflow</span><span className="text-right">Debt</span><span className="text-right">Free Cash</span><span className="text-right">MoM</span>
+<span>Month</span><span className="px-2">Breakdown</span><span className="text-right">Outflow</span><span className="text-right">Debt</span><span className="text-right">Free cash</span><span className="text-right">MoM</span>
           </div>
           {sorted.slice().reverse().map((s:any,idx:number)=>{
             const totalOut = Number(s.totalOutflow??0)

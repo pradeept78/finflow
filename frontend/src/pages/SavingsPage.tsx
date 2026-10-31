@@ -33,7 +33,7 @@ const getDueBadge = (dueDay: number | undefined | null, isPaid: boolean) => {
     diff = (daysInMonth - today) + dueDay
   }
 
-  if (diff === 0)             return { label: '🔴 Due Today',      color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
+  if (diff === 0)             return { label: '🔴 Due today',      color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
   if (diff < 0 && diff >= -7) return { label: `⚠ ${Math.abs(diff)}d overdue`, color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
   if (diff > 0 && diff <= 3)  return { label: `🔴 Due in ${diff}d`, color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
   if (diff > 3 && diff <= 7)  return { label: `⚡ Due in ${diff}d`, color: 'var(--warning)', bg: 'color-mix(in srgb, var(--warning) 15%, transparent)' }
@@ -127,16 +127,16 @@ export default function SavingsPage() {
   return (
     <div className="space-y-4 text-[13px]">
       <PageHeader links={<>
-        <FromLink to="/break-savings" className="text-[11px] font-semibold px-2.5 py-1 rounded-lg" style={{background:'color-mix(in srgb, var(--success) 12%, transparent)',color:'var(--success)',border:'1px solid color-mix(in srgb, var(--success) 20%, transparent)'}}>💡 Break Analysis →</FromLink>
-        <FromLink to="/payoff" className="text-[11px] font-semibold px-2.5 py-1 rounded-lg" style={{background:'color-mix(in srgb, var(--purple) 12%, transparent)',color:'var(--purple)',border:'1px solid color-mix(in srgb, var(--purple) 20%, transparent)'}}>🎯 Payoff Plan →</FromLink>
-      </>} title="Savings & Chit Funds" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}><Plus size={14}/> Add</button>}/>
+        <FromLink to="/break-savings" className="text-[11px] font-semibold px-2.5 py-1 rounded-lg" style={{background:'color-mix(in srgb, var(--success) 12%, transparent)',color:'var(--success)',border:'1px solid color-mix(in srgb, var(--success) 20%, transparent)'}}>💡 Break analysis →</FromLink>
+        <FromLink to="/payoff" className="text-[11px] font-semibold px-2.5 py-1 rounded-lg" style={{background:'color-mix(in srgb, var(--purple) 12%, transparent)',color:'var(--purple)',border:'1px solid color-mix(in srgb, var(--purple) 20%, transparent)'}}>🎯 Payoff plan →</FromLink>
+      </>} title="Savings & chit funds" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}><Plus size={14}/> Add</button>}/>
 
       {items.length > 0 && (
         <KpiRow className="grid grid-cols-4 gap-3" keep={[0, 1]}>
           {[
-            {label:'Building Corpus',  value:fmtINR(buildCorpus),  sub:`${building.length} active · ${fmtINR(totalMo)}/mo`,       accent:'var(--success)'},
-            {label:'Chit Repayment',   value:fmtINR(repayLeft),    sub:`${repaying.length} repaying · ${fmtINR(repaying.reduce((s:number,v:any)=>s+Number(v.monthly??0),0))}/mo`, accent:'var(--danger)'},
-            {label:'FD Equivalent',    value:fmtINR(Math.round(buildCorpus*0.065)), sub:'@ 6.5% p.a. on corpus',                  accent:'var(--cyan)'},
+            {label:'Building corpus',  value:fmtINR(buildCorpus),  sub:`${building.length} active · ${fmtINR(totalMo)}/mo`,       accent:'var(--success)'},
+            {label:'Chit repayment',   value:fmtINR(repayLeft),    sub:`${repaying.length} repaying · ${fmtINR(repaying.reduce((s:number,v:any)=>s+Number(v.monthly??0),0))}/mo`, accent:'var(--danger)'},
+            {label:'FD equivalent',    value:fmtINR(Math.round(buildCorpus*0.065)), sub:'@ 6.5% p.a. on corpus',                  accent:'var(--cyan)'},
             {label:'Completed',        value:String(done.length),  sub:`${fmtINR(done.reduce((s:number,v:any)=>s+getEff(v).paid*Number(v.monthly??0),0))} total paid`, accent:'var(--purple)', isCurrency:false},
           ].map((m:any)=>(
             <div key={m.label} className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{background:`linear-gradient(180deg, color-mix(in srgb, ${m.accent} 5%, var(--bg-card)) 0%, var(--bg-card) 70%)`,border:`1px solid var(--hairline)`}}>
@@ -177,8 +177,8 @@ export default function SavingsPage() {
               </select>
             </span>
             <span className="text-right"><SortHeader label="Monthly" col="monthly" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" /></span>
-            <span className="text-right"><SortHeader label="Paid / Corpus" col="corpus" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" /></span>
-            <span className="text-right"><SortHeader label="Repay Left" col="repayLeft" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" /></span>
+            <span className="text-right"><SortHeader label="Paid / corpus" col="corpus" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" /></span>
+            <span className="text-right"><SortHeader label="Repay left" col="repayLeft" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" /></span>
             <span className="text-center"><SortHeader label="%" col="pct" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="center" /></span>
             <span className="text-center"><SortHeader label="Due" col="due" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="center" /></span>
             <span className="text-center">End</span><span className="text-center">Action</span>
@@ -396,7 +396,7 @@ export default function SavingsPage() {
             <FormField label="Monthly (₹)"><input className="input" type="number" placeholder="e.g. 5000" value={modal.item.monthly||''} onChange={e=>setModal(m=>({...m,item:{...m.item,monthly:+e.target.value}}))}/></FormField>
             <FormField label="Tenure (months)"><input className="input" type="number" placeholder="e.g. 12" value={modal.item.tenure||''} onChange={e=>setModal(m=>({...m,item:{...m.item,tenure:+e.target.value}}))}/></FormField>
             <FormField label="Chit Value (₹)"><input className="input" type="number" placeholder="e.g. 100000" value={modal.item.chitValue||''} onChange={e=>setModal(m=>({...m,item:{...m.item,chitValue:+e.target.value}}))}/></FormField>
-            <FormField label="Start Date"><input className="input" type="date" value={modal.item.startDate||''} onChange={e=>setModal(m=>({...m,item:{...m.item,startDate:e.target.value}}))}/></FormField>
+            <FormField label="Start date"><input className="input" type="date" value={modal.item.startDate||''} onChange={e=>setModal(m=>({...m,item:{...m.item,startDate:e.target.value}}))}/></FormField>
             {modal.item.mode==='withdrew'&&<FormField label="Actual Received (₹)"><input className="input" type="number" value={modal.item.actualReceived||''} onChange={e=>setModal(m=>({...m,item:{...m.item,actualReceived:+e.target.value}}))}/></FormField>}
           </div>
         </Modal>

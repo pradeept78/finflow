@@ -30,7 +30,7 @@ const getDueBadge = (dueDay: number | undefined | null, isPaid: boolean) => {
     diff = (daysInMonth - today) + dueDay
   }
 
-  if (diff === 0)             return { label: '🔴 Due Today',      color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
+  if (diff === 0)             return { label: '🔴 Due today',      color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
   if (diff < 0 && diff >= -7) return { label: `⚠ ${Math.abs(diff)}d overdue`, color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
   if (diff > 0 && diff <= 3)  return { label: `🔴 Due in ${diff}d`, color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
   if (diff > 3 && diff <= 7)  return { label: `⚡ Due in ${diff}d`, color: 'var(--warning)', bg: 'color-mix(in srgb, var(--warning) 15%, transparent)' }
@@ -111,10 +111,10 @@ export default function ExpensesPage() {
       {items.length > 0 && (
         <KpiRow className="grid grid-cols-4 gap-3" keep={[0, 1]}>
           {[
-            {label:'Monthly Total',  value:fmtINR(total),              sub:`${recurring.length} recurring expenses`, accent:'var(--danger)'},
-            {label:'Annual Cost',    value:fmtINR(Math.round(total*12)),sub:'projected',                    accent:'var(--orange)'},
+            {label:'Monthly total',  value:fmtINR(total),              sub:`${recurring.length} recurring expenses`, accent:'var(--danger)'},
+            {label:'Annual cost',    value:fmtINR(Math.round(total*12)),sub:'projected',                    accent:'var(--orange)'},
             {label:'Avg per Item',   value:fmtINR(recurring.length>0?Math.round(total/recurring.length):0), sub:'per recurring expense', accent:'#94a3b8'},
-            {label:'Top Category',   value:catData[0]?.[0]||'—',       sub:catData[0]?fmtINR(catData[0][1]):'', accent:CAT_COLORS[catData[0]?.[0]]||'var(--text-muted)', isCurrency:false},
+            {label:'Top category',   value:catData[0]?.[0]||'—',       sub:catData[0]?fmtINR(catData[0][1]):'', accent:CAT_COLORS[catData[0]?.[0]]||'var(--text-muted)', isCurrency:false},
           ].map(m=>(
             <div key={m.label} className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{background:`linear-gradient(180deg, color-mix(in srgb, ${m.accent} 5%, var(--bg-card)) 0%, var(--bg-card) 70%)`,border:`1px solid var(--hairline)`}}>
               <div className="relative">
@@ -294,7 +294,7 @@ export default function ExpensesPage() {
                 rest of the app. */}
             <FormField label="Frequency"><select className="select" value={modal.item.frequency||'Monthly'} onChange={e=>setModal(m=>({...m,item:{...m.item,frequency:e.target.value}}))}>
               {['Monthly','Weekly','Quarterly','Half-Yearly','Yearly','One-time'].map(f=><option key={f}>{f}</option>)}</select></FormField>
-            <FormField label="Due Day"><input className={"input"+(formErrors.dueDay?' border-red-500':'')} type="number" min={1} max={31} placeholder="1–31" value={modal.item.dueDay||''} onChange={e=>{setModal(m=>({...m,item:{...m.item,dueDay:+e.target.value}}));setFormErrors(er=>({...er,dueDay:''}))}}/>{formErrors.dueDay&&<p className="text-[11px] text-red-400 mt-1">{formErrors.dueDay}</p>}</FormField>
+            <FormField label="Due day"><input className={"input"+(formErrors.dueDay?' border-red-500':'')} type="number" min={1} max={31} placeholder="1–31" value={modal.item.dueDay||''} onChange={e=>{setModal(m=>({...m,item:{...m.item,dueDay:+e.target.value}}));setFormErrors(er=>({...er,dueDay:''}))}}/>{formErrors.dueDay&&<p className="text-[11px] text-red-400 mt-1">{formErrors.dueDay}</p>}</FormField>
             <FormField label="Notes" className="form-full"><textarea className="input" rows={2} value={modal.item.notes||''} onChange={e=>setModal(m=>({...m,item:{...m.item,notes:e.target.value}}))}/></FormField>
           </div>
         </Modal>

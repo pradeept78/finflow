@@ -349,13 +349,13 @@ export default function ClosedAssetsPage() {
 
   return (
     <div className="space-y-4 text-[13px]">
-      <PageHeader title="Closed Assets"/>
+      <PageHeader title="Closed assets"/>
       {/* Accent summary cards */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          {label:'Total Paid',      value:fmtINR(totalPaid),            sub:`${items.length} closed entries`,         accent:'var(--info)'},
-          {label:'Interest Cost',   value:fmtINR(totalInterestWasted),  sub:'cost of borrowing',                      accent:'var(--danger)'},
-          {label:'Got Back',        value:fmtINR(totalRecovered),       sub:'recovered amount',                        accent:'var(--success)'},
+          {label:'Total paid',      value:fmtINR(totalPaid),            sub:`${items.length} closed entries`,         accent:'var(--info)'},
+          {label:'Interest cost',   value:fmtINR(totalInterestWasted),  sub:'cost of borrowing',                      accent:'var(--danger)'},
+          {label:'Got back',        value:fmtINR(totalRecovered),       sub:'recovered amount',                        accent:'var(--success)'},
           {label:'Net P&L',         value:(totalRecovered-totalPaid>=0?'+':'-')+fmtINR(Math.abs(totalRecovered-totalPaid)), sub:'recovered minus paid', accent:totalRecovered>=totalPaid?'var(--success)':'var(--danger)'},
         ].map(m=>(
           <div key={m.label} className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{background:`linear-gradient(180deg, color-mix(in srgb, ${m.accent} 5%, var(--bg-card)) 0%, var(--bg-card) 70%)`,border:`1px solid var(--hairline)`}}>
@@ -370,7 +370,7 @@ export default function ClosedAssetsPage() {
       <div className="flex items-center justify-between">
         <SegTabs options={[{ id: 'summary', label: '📊 Total picture' }, { id: 'list', label: '📋 Closed loans' }]} value={showSummary ? 'summary' : 'list'} onChange={(id: any) => setShowSummary(id === 'summary')} />
         <button className="btn-primary btn-sm" onClick={() => setModal({ open: true, item: emptyForm() })}>
-          <Plus size={14} /> Add Entry
+          <Plus size={14} /> Add entry
         </button>
       </div>
 
@@ -396,7 +396,7 @@ export default function ClosedAssetsPage() {
               <span style={{color:'var(--text-muted)'}}>Got back <span className="mono font-bold text-blue-400">{fmtINR(totalRecovered)}</span> <span style={{color:'var(--text-faint)'}}>▾</span></span>
             </summary>
             <div className="absolute z-50 mt-1 rounded-2xl p-3 text-[11px] shadow-xl" style={{background:'var(--bg-card)',border:'1px solid var(--border)',minWidth:'220px'}}>
-              <div className="font-bold mb-2" style={{color:'var(--text-muted)'}}>Got Back Breakdown</div>
+              <div className="font-bold mb-2" style={{color:'var(--text-muted)'}}>Got back breakdown</div>
               {items.filter((i:any)=>Number(i.recoveredAmount??0)>0).map((i:any)=>{
                 const pnl = Number(i.recoveredAmount??0) - Number(i.totalPaid??0)
                 return <div key={i.id} className="flex justify-between py-0.5 border-b" style={{borderColor:'var(--border)'}}>
@@ -464,14 +464,14 @@ export default function ClosedAssetsPage() {
             {/* ── BLOCK 1: TOTAL PICTURE ── */}
             <div className="rounded-2xl overflow-hidden" style={{background:'var(--bg-card)',border:'1px solid var(--border)'}}>
               <div className="px-4 py-2 text-[12px] font-medium " style={{background:'var(--bg-base)',color:'var(--text-muted)'}}>
-                Total Picture
+                Total picture
               </div>
               <div className="grid grid-cols-4 divide-x" style={{['--tw-divide-opacity' as any]:1, borderColor:'var(--border)'}}>
                 {[
-                  {label:'All Time Committed', val:allTimePaid+allDue, color:'text-white', sub:'EMIs paid + EMIs pending (excl. recurring)'},
-                  {label:'Paid So Far', val:allTimePaid, color:'text-green-400', sub:`closed ₹${Math.round(totalPaid/100000)}L + active ₹${Math.round(activeLoanEmiPaid/100000)}L`},
+                  {label:'All time committed', val:allTimePaid+allDue, color:'text-white', sub:'EMIs paid + EMIs pending (excl. recurring)'},
+                  {label:'Paid so far', val:allTimePaid, color:'text-green-400', sub:`closed ₹${Math.round(totalPaid/100000)}L + active ₹${Math.round(activeLoanEmiPaid/100000)}L`},
                   {label:'Still to Pay', val:allDue, color:'text-red-400', sub:`loans+I Owe+CC+chit`},
-                  {label:'Recurring Spent', val:totalRecurringSpent, color:'text-orange-400', sub:'expenses + insurance'},
+                  {label:'Recurring spent', val:totalRecurringSpent, color:'text-orange-400', sub:'expenses + insurance'},
                 ].map(m=>(
                   <div key={m.label} className="px-4 py-3">
                     <div className="text-[12px] mb-1" style={{color:'var(--text-muted)'}}>{m.label}</div>
@@ -488,7 +488,7 @@ export default function ClosedAssetsPage() {
                 return (
                   <div className="rounded-2xl overflow-hidden" style={{background:'var(--bg-card)',border:'1px solid var(--border)'}}>
                     <button className="w-full p-4 text-left" onClick={()=>setShowSH(!showSH)}>
-                      <div className="text-[12px] font-medium mb-1" style={{color:'var(--text-muted)'}}>Should Have Now <span className="text-[11px] normal-case">{showSH?'▲':'▼'}</span></div>
+                      <div className="text-[12px] font-medium mb-1" style={{color:'var(--text-muted)'}}>Should have now <span className="text-[11px] normal-case">{showSH?'▲':'▼'}</span></div>
                       <div className={`mono font-bold text-2xl ${shouldHave>=0?'text-green-400':'text-red-400'}`}>{shouldHave<0?'−':''}{fmtINR(Math.abs(shouldHave))}</div>
                       <div className="text-[11px] mt-0.5" style={{color:'var(--text-faint)'}}>tap to {showSH?'collapse':'see breakdown'}</div>
                     </button>
@@ -514,7 +514,7 @@ export default function ClosedAssetsPage() {
                 )
               })()}
               <div className="rounded-2xl p-4" style={{background:'var(--bg-card)',border:'1px solid var(--border)'}}>
-                <div className="text-[12px] font-medium mb-1" style={{color:'var(--text-muted)'}}>Debt Free Date</div>
+                <div className="text-[12px] font-medium mb-1" style={{color:'var(--text-muted)'}}>Debt free date</div>
                 <div className="mono font-bold text-2xl text-blue-400">{debtFreeDateStr}</div>
                 <div className="text-[11px] mt-1" style={{color:'var(--text-faint)'}}>{debtFreeMonths} months remaining · all debts</div>
                 <div className="text-[11px] mt-0.5" style={{color:'var(--text-faint)'}}>net worth after debt free: <span className="text-green-400 mono">+{fmtINR(netOwnedAssets+activeSavingsCorpus)}</span></div>
@@ -636,7 +636,7 @@ export default function ClosedAssetsPage() {
         return (
           <div className="rounded-2xl overflow-hidden mb-4" style={{background:'var(--bg-card)',border:'1px solid var(--border)'}}>
             <div className="px-4 py-2 flex items-center justify-between" style={{background:'var(--bg-base)',borderBottom:'1px solid var(--border)'}}>
-              <span className="text-[12px] font-medium " style={{color:'var(--text-muted)'}}>Debt Breakdown</span>
+              <span className="text-[12px] font-medium " style={{color:'var(--text-muted)'}}>Debt breakdown</span>
               <div className="flex items-center gap-3 text-[11px]">
                 <span style={{color:'var(--text-muted)'}}>Paid <span className="mono font-bold text-green-400">{fmtINR(rowPaid)}</span></span>
                 <span style={{color:'var(--text-muted)'}}>Pending <span className="mono font-bold text-red-400">{fmtINR(rowPending)}</span></span>
@@ -678,7 +678,7 @@ export default function ClosedAssetsPage() {
                     </tr>
                   )
                 })}
-                {closedLoansPaid>0&&<tr style={{borderBottom:'1px solid var(--border-subtle,#1e2130)',opacity:0.55}}><td className="px-4 py-2 font-semibold" style={{color:'var(--text-muted)'}}>Closed Assets <span className="text-[11px] font-normal ml-1" style={{color:'var(--text-faint)'}}>{items.filter((i:any)=>!(i.assetType==='Funded'&&Number(i.totalPaid??0)===0)).length} fully paid</span></td><td className="px-3 py-2 text-right" style={{color:'var(--text-faint)'}}>—</td><td className="px-3 py-2 text-right mono text-green-400">{fmtINR(closedLoansPaid)}</td><td className="px-3 py-2 text-right text-green-400">—</td><td className="px-4 py-2 text-right text-[11px] text-green-400">✓ done</td></tr>}
+                {closedLoansPaid>0&&<tr style={{borderBottom:'1px solid var(--border-subtle,#1e2130)',opacity:0.55}}><td className="px-4 py-2 font-semibold" style={{color:'var(--text-muted)'}}>Closed assets <span className="text-[11px] font-normal ml-1" style={{color:'var(--text-faint)'}}>{items.filter((i:any)=>!(i.assetType==='Funded'&&Number(i.totalPaid??0)===0)).length} fully paid</span></td><td className="px-3 py-2 text-right" style={{color:'var(--text-faint)'}}>—</td><td className="px-3 py-2 text-right mono text-green-400">{fmtINR(closedLoansPaid)}</td><td className="px-3 py-2 text-right text-green-400">—</td><td className="px-4 py-2 text-right text-[11px] text-green-400">✓ done</td></tr>}
                 {(activePersonal as any[]).map((p:any)=>{
                   // Was a hand-rolled compounding-interest loop that treated every non-lump entry as
                   // amortising — so an interest-only entry's balance was paid down here even though
@@ -689,9 +689,9 @@ export default function ClosedAssetsPage() {
                   const isIntOnly = f.mode === 'interest-only'
                   return <tr key={p.id} style={{borderBottom:'1px solid var(--border-subtle,#1e2130)'}}><td className="px-4 py-2"><span className="font-semibold">{p.person}</span> <span className={`badge text-[11px] ml-1 ${isLump?'badge-blue':'badge-orange'}`}>{isLump?'Lump Sum':isIntOnly?'Interest only':'I Owe'}</span></td><td className="px-3 py-2 text-right mono" style={{color:'var(--text-muted)'}}>{isLump?'—':fmtINR(p.emi)}</td><td className="px-3 py-2 text-right mono text-green-400">{isLump?'—':fmtINR(getEff(p).paid*Number(p.emi??0))}</td><td className="px-3 py-2 text-right mono text-orange-400 font-bold">{fmtINR(Math.round(f.principalLeft))}</td><td className="px-4 py-2 text-right text-[11px]" style={{color:'var(--text-faint)'}}>{isLump?`by ${p.paybackDate||'—'}`:isIntOnly?'not reducing':'principal'}</td></tr>
                 })}
-                {activeCCEmiLeft>0&&<tr style={{borderBottom:'1px solid var(--border-subtle,#1e2130)'}}><td className="px-4 py-2 font-semibold">Credit Cards <span className="text-[11px] font-normal" style={{color:'var(--text-faint)'}}>EMIs</span></td><td className="px-3 py-2" style={{color:'var(--text-faint)'}}>—</td><td className="px-3 py-2" style={{color:'var(--text-faint)'}}>—</td><td className="px-3 py-2 text-right mono text-red-400 font-bold">{fmtINR(activeCCEmiLeft)}</td><td></td></tr>}
+                {activeCCEmiLeft>0&&<tr style={{borderBottom:'1px solid var(--border-subtle,#1e2130)'}}><td className="px-4 py-2 font-semibold">Credit cards <span className="text-[11px] font-normal" style={{color:'var(--text-faint)'}}>EMIs</span></td><td className="px-3 py-2" style={{color:'var(--text-faint)'}}>—</td><td className="px-3 py-2" style={{color:'var(--text-faint)'}}>—</td><td className="px-3 py-2 text-right mono text-red-400 font-bold">{fmtINR(activeCCEmiLeft)}</td><td></td></tr>}
                 {activeCardDebt>0&&<tr style={{borderBottom:'1px solid var(--border-subtle,#1e2130)'}}><td className="px-4 py-2 font-semibold">CC Outstanding</td><td className="px-3 py-2" style={{color:'var(--text-faint)'}}>—</td><td className="px-3 py-2" style={{color:'var(--text-faint)'}}>—</td><td className="px-3 py-2 text-right mono text-red-400 font-bold">{fmtINR(activeCardDebt)}</td><td></td></tr>}
-                {activeChitRepayLeft>0&&<tr style={{borderBottom:'1px solid var(--border-subtle,#1e2130)'}}><td className="px-4 py-2 font-semibold">Chit Repayment</td><td className="px-3 py-2" style={{color:'var(--text-faint)'}}>—</td><td className="px-3 py-2" style={{color:'var(--text-faint)'}}>—</td><td className="px-3 py-2 text-right mono text-yellow-400 font-bold">{fmtINR(activeChitRepayLeft)}</td><td></td></tr>}
+                {activeChitRepayLeft>0&&<tr style={{borderBottom:'1px solid var(--border-subtle,#1e2130)'}}><td className="px-4 py-2 font-semibold">Chit repayment</td><td className="px-3 py-2" style={{color:'var(--text-faint)'}}>—</td><td className="px-3 py-2" style={{color:'var(--text-faint)'}}>—</td><td className="px-3 py-2 text-right mono text-yellow-400 font-bold">{fmtINR(activeChitRepayLeft)}</td><td></td></tr>}
                 <tr style={{background:'var(--bg-base)'}}><td className="px-4 py-2 font-bold">Total</td><td></td><td className="px-3 py-2 text-right mono font-bold text-green-400">{fmtINR(rowPaid)}</td><td className="px-3 py-2 text-right mono font-bold text-red-400">{fmtINR(rowPending)}</td><td className="px-4 py-2 text-right mono font-bold text-green-400">{rowPct}%</td></tr>
               </tbody>
             </table>
@@ -773,7 +773,7 @@ export default function ClosedAssetsPage() {
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="font-semibold">{item.lender}</span>
                       <span className="badge badge-blue text-[11px]">{item.assetType}</span>
-                      {stillOwned && <span className="badge text-[11px]" style={{background:'#1d4ed820',color:'var(--info)',border:'1px solid #1d4ed840'}}>📦 Still Own</span>}
+                      {stillOwned && <span className="badge text-[11px]" style={{background:'#1d4ed820',color:'var(--info)',border:'1px solid #1d4ed840'}}>📦 Still own</span>}
                       <span className={`text-[11px] font-bold ${v.color}`}>{v.text}</span>
                     </div>
                     <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>
@@ -813,21 +813,21 @@ export default function ClosedAssetsPage() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
                       {origVal > 0 && (
                         <div className="p-3 rounded-lg" style={{ background: 'var(--bg-card)' }}>
-                          <div className="text-[12px] mb-1" style={{ color: 'var(--text-muted)' }}>Original Value</div>
+                          <div className="text-[12px] mb-1" style={{ color: 'var(--text-muted)' }}>Original value</div>
                           <div className="mono font-bold">{fmtINR(origVal)}</div>
                           <div className="text-[11px]" style={{ color: 'var(--text-faint)' }}>loan amount / purchase price</div>
                         </div>
                       )}
                       {derivedPrincipal > 0 && (
                         <div className="p-3 rounded-lg" style={{ background: 'var(--bg-card)' }}>
-                          <div className="text-[12px] mb-1" style={{ color: 'var(--text-muted)' }}>Principal Paid</div>
+                          <div className="text-[12px] mb-1" style={{ color: 'var(--text-muted)' }}>Principal paid</div>
                           <div className="mono font-bold text-yellow-400">{fmtINR(derivedPrincipal)}</div>
                           <div className="text-[11px]" style={{ color: 'var(--text-faint)' }}>{princPaid > 0 ? 'actual asset cost' : 'derived: total paid − interest'}</div>
                         </div>
                       )}
                       {intPaid > 0 && (
                         <div className="p-3 rounded-lg border border-red-500/20 bg-red-500/5">
-                          <div className="text-[12px] mb-1 text-red-400">💸 Interest Cost</div>
+                          <div className="text-[12px] mb-1 text-red-400">💸 Interest cost</div>
                           <div className="mono font-bold text-red-400">{fmtINR(intPaid)}</div>
                           <div className="text-[11px]" style={{ color: 'var(--text-faint)' }}>cost of borrowing</div>
                         </div>
@@ -841,7 +841,7 @@ export default function ClosedAssetsPage() {
                       )}
                       {roi !== null && (
                         <div className={`p-3 rounded-lg border ${roi > 0 ? 'border-green-500/20 bg-green-500/5' : 'border-red-500/20 bg-red-500/5'}`}>
-                          <div className="text-[12px] mb-1" style={{ color: 'var(--text-muted)' }}>Annualized Return</div>
+                          <div className="text-[12px] mb-1" style={{ color: 'var(--text-muted)' }}>Annualized return</div>
                           <div className={`mono font-bold ${roi > 0 ? 'text-green-400' : 'text-red-400'}`}>{roi}% / year</div>
                           <div className="text-[11px]" style={{ color: 'var(--text-faint)' }}>over {months} months</div>
                         </div>
@@ -859,7 +859,7 @@ export default function ClosedAssetsPage() {
                           <div className="text-[11px] font-semibold text-yellow-400 mb-2">📉 Depreciation Analysis ({depRate}%/yr)</div>
                           <div className="grid grid-cols-3 gap-3 text-[11px]">
                             <div>
-                              <div style={{color:'var(--text-muted)'}}>Original Value</div>
+                              <div style={{color:'var(--text-muted)'}}>Original value</div>
                               <div className="mono font-bold">{fmtINR(item.originalValue)}</div>
                             </div>
                             <div>
@@ -924,7 +924,7 @@ export default function ClosedAssetsPage() {
       {recurringRows.length > 0 && (
         <div className="rounded-2xl overflow-hidden mb-6" style={{background:"var(--bg-card)",border:"1px solid var(--hairline)"}}>
           <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: 'var(--border)' }}>
-            <div className="text-[12px] font-medium " style={{ color: 'var(--text-muted)' }}>Recurring Spend History</div>
+            <div className="text-[12px] font-medium " style={{ color: 'var(--text-muted)' }}>Recurring spend history</div>
             <div className="text-[11px]" style={{ color: 'var(--text-faint)' }}>auto-calculated from start date · set start date in Expenses tab</div>
           </div>
           {/* Warning for missing start dates */}
@@ -951,7 +951,7 @@ export default function ClosedAssetsPage() {
                   <SortHeader label="Period" col="startDate" sortCol={recurSortCol} sortDir={recurSortDir} onSort={onRecurSort} />
                   <SortHeader label="Months" col="months" sortCol={recurSortCol} sortDir={recurSortDir} onSort={onRecurSort} align="right" />
                   <SortHeader label="Monthly" col="monthly" sortCol={recurSortCol} sortDir={recurSortDir} onSort={onRecurSort} align="right" />
-                  <SortHeader label="Total Spent" col="total" sortCol={recurSortCol} sortDir={recurSortDir} onSort={onRecurSort} align="right" />
+                  <SortHeader label="Total spent" col="total" sortCol={recurSortCol} sortDir={recurSortDir} onSort={onRecurSort} align="right" />
                 </div>
 
                 {[...recurringRows].sort((a, b) => {
@@ -987,7 +987,7 @@ export default function ClosedAssetsPage() {
 
                 <div className="grid px-4 py-3 text-[13px] font-bold border-t"
                   style={{gridTemplateColumns:COLS,borderColor:'var(--border)',background:'color-mix(in srgb, var(--text) 5%, transparent)'}}>
-                  <span>Total Recurring Spent</span><span/><span/><span/><span/>
+                  <span>Total recurring spent</span><span/><span/><span/><span/>
                   <span className="text-right mono text-red-400 font-bold">{fmtINR(totalRecurringSpent)}</span>
                 </div>
               </div>
@@ -1011,7 +1011,7 @@ export default function ClosedAssetsPage() {
               <input className="input" placeholder="L&T Finance, HDFC Chit..." value={modal.item.lender || ''}
                 onChange={e => setModal(m => ({ ...m, item: { ...m.item, lender: e.target.value } }))} />
             </FormField>
-            <FormField label="Asset Type">
+            <FormField label="Asset type">
               <select className="select" value={modal.item.assetType || 'Loan'}
                 onChange={e => setModal(m => ({ ...m, item: { ...m.item, assetType: e.target.value } }))}>
                 {ASSET_TYPES.map(t => <option key={t}>{t}</option>)}
@@ -1096,7 +1096,7 @@ export default function ClosedAssetsPage() {
                   }}))
                 }} />
             </FormField>
-            <FormField label="Closed Date">
+            <FormField label="Closed date">
               <input className="input" type="date" value={modal.item.closedDate || ''}
                 onChange={e => setModal(m => ({ ...m, item: { ...m.item, closedDate: e.target.value } }))} />
             </FormField>
@@ -1113,7 +1113,7 @@ export default function ClosedAssetsPage() {
                 onChange={e => setModal(m => ({ ...m, item: { ...m.item, fundedAmt: +e.target.value || 0 } }))} />
             </FormField>
 {!modal.item.recoveredAmount && (
-            <FormField label="Current Market Value">
+            <FormField label="Current market value">
               <input className="input" type="number" placeholder="today's value — leave blank if sold/lost" value={modal.item.currentValue || ''}
                 onChange={e => setModal(m => ({ ...m, item: { ...m.item, currentValue: +e.target.value || 0 } }))} />
             </FormField>

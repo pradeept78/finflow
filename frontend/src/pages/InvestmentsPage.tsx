@@ -109,16 +109,16 @@ export default function InvestmentsPage() {
     <div className="space-y-4 text-[13px]">
       <PageHeader links={<>
         <FromLink to="/dashboard" className="text-[11px] font-semibold px-2.5 py-1 rounded-lg" style={{background:'color-mix(in srgb, var(--info) 12%, transparent)',color:'var(--info)',border:'1px solid color-mix(in srgb, var(--info) 20%, transparent)'}}>📊 Dashboard →</FromLink>
-        <FromLink to="/earnings" className="text-[11px] font-semibold px-2.5 py-1 rounded-lg" style={{background:'color-mix(in srgb, var(--success) 12%, transparent)',color:'var(--success)',border:'1px solid color-mix(in srgb, var(--success) 20%, transparent)'}}>💰 Earnings History →</FromLink>
+        <FromLink to="/earnings" className="text-[11px] font-semibold px-2.5 py-1 rounded-lg" style={{background:'color-mix(in srgb, var(--success) 12%, transparent)',color:'var(--success)',border:'1px solid color-mix(in srgb, var(--success) 20%, transparent)'}}>💰 Earnings history →</FromLink>
       </>} title="Investments" action={<button className="btn-primary btn-sm" onClick={()=>openModal({})}><Plus size={14}/> Add</button>}/>
 
       {items.length > 0 && (
         <KpiRow className="grid grid-cols-4 gap-3" keep={[1, 2]}>
           {[
-            {label:'Total Invested',   value:fmtINR(totalInvested), sub:`${active.length} investments`,     accent:'var(--info)'},
-            {label:'Current Value',    value:fmtINR(totalValue),    sub:'market/maturity value · defaults to invested',  accent:totalValue>=totalInvested?'var(--success)':'var(--danger)'},
+            {label:'Total invested',   value:fmtINR(totalInvested), sub:`${active.length} investments`,     accent:'var(--info)'},
+            {label:'Current value',    value:fmtINR(totalValue),    sub:'market/maturity value · defaults to invested',  accent:totalValue>=totalInvested?'var(--success)':'var(--danger)'},
             {label:'Total P&L',        value:`${totalPnL>=0?'+':''}${fmtINR(totalPnL)}`, sub:totalInvested>0?`${((totalPnL/totalInvested)*100).toFixed(1)}% returns`:'', accent:totalPnL>=0?'var(--success)':'var(--danger)'},
-            {label:'SIP / Month',      value:fmtINR(totalSIP),      sub:`${active.filter((v:any)=>Number(v.monthly??0)>0).length} active SIPs`, accent:'var(--pink)'},
+            {label:'SIP / month',      value:fmtINR(totalSIP),      sub:`${active.filter((v:any)=>Number(v.monthly??0)>0).length} active SIPs`, accent:'var(--pink)'},
           ].map(m=>(
             <div key={m.label} className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{background:`linear-gradient(180deg, color-mix(in srgb, ${m.accent} 5%, var(--bg-card)) 0%, var(--bg-card) 70%)`,border:`1px solid var(--hairline)`}}>
               <div className="relative">
@@ -348,7 +348,7 @@ export default function InvestmentsPage() {
                   })
                 }}/>
             </FormField>
-            <FormField label="Start Date">
+            <FormField label="Start date">
               <input className="input" type="date" value={modal.item.startDate||''}
                 onChange={e=>{
                   const startDate = e.target.value
@@ -359,7 +359,7 @@ export default function InvestmentsPage() {
                   })
                 }}/>
             </FormField>
-            <FormField label="Maturity Date"><input className="input" type="date" value={modal.item.endDate||''} onChange={e=>setModal(m=>({...m,item:{...m.item,endDate:e.target.value}}))}/></FormField>
+            <FormField label="Maturity date"><input className="input" type="date" value={modal.item.endDate||''} onChange={e=>setModal(m=>({...m,item:{...m.item,endDate:e.target.value}}))}/></FormField>
           </div>
         </Modal>
       )}

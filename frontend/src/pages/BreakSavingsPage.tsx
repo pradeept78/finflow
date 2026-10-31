@@ -172,7 +172,7 @@ export default function BreakSavingsPage() {
 
   return (
     <div className="space-y-4 text-[13px]">
-      <PageHeader title="Break Savings Simulator"/>
+      <PageHeader title="Break savings simulator"/>
       {/* Smart insight */}
       {savingsAnalysis.length > 0 && savingsAnalysis.some((v:any)=>v.verdict==='BREAK') && (
         <div className="rounded-xl px-3.5 py-2 flex items-center gap-3" style={{background:'linear-gradient(135deg,color-mix(in srgb, var(--success) 8%, transparent) 0%,color-mix(in srgb, var(--success) 2%, transparent) 100%)',border:'1px solid color-mix(in srgb, var(--success) 15%, transparent)'}}>
@@ -190,8 +190,8 @@ export default function BreakSavingsPage() {
           {[
             {label:'Total to Break',  value:fmtINR(savingsAnalysis.reduce((s:number,v:any)=>s+v.netCashIfBreak,0)), sub:`${savingsAnalysis.length} savings`, accent:'var(--success)'},
             {label:'Still Owe',       value:fmtINR(savingsAnalysis.reduce((s:number,v:any)=>s+v.remainingEmi,0)),   sub:'if you break all',    accent:'var(--danger)'},
-            {label:'Interest Saved',  value:fmtINR(savingsAnalysis.reduce((s:number,v:any)=>s+v.intSaved,0)),       sub:'vs keeping loans',     accent:'var(--info)'},
-            {label:'Break Worthy',    value:`${savingsAnalysis.filter((v:any)=>v.verdict==='BREAK').length} of ${savingsAnalysis.length}`, sub:'worth breaking', accent:'var(--purple)'},
+            {label:'Interest saved',  value:fmtINR(savingsAnalysis.reduce((s:number,v:any)=>s+v.intSaved,0)),       sub:'vs keeping loans',     accent:'var(--info)'},
+            {label:'Break worthy',    value:`${savingsAnalysis.filter((v:any)=>v.verdict==='BREAK').length} of ${savingsAnalysis.length}`, sub:'worth breaking', accent:'var(--purple)'},
           ].map(m=>(
             <div key={m.label} className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{background:`linear-gradient(180deg, color-mix(in srgb, ${m.accent} 5%, var(--bg-card)) 0%, var(--bg-card) 70%)`,border:`1px solid var(--hairline)`}}>
               <div className="relative">
@@ -219,7 +219,7 @@ export default function BreakSavingsPage() {
           <div>
             <div className="grid px-4 py-2 text-[12px] font-medium border-b"
               style={{gridTemplateColumns:"minmax(190px,2.4fr) minmax(110px,1.02fr) minmax(110px,1.02fr) minmax(120px,1.12fr) minmax(200px,1.2fr)",borderColor:"var(--hairline)",background:"color-mix(in srgb, var(--text) 4%, transparent)",color:"var(--text-faint)"}}>
-              <span>Saving</span><span className="text-right">Paid In</span><span className="text-right">Net Benefit</span><span className="text-center">Verdict</span><span className="text-center">Action</span>
+              <span>Saving</span><span className="text-right">Paid in</span><span className="text-right">Net benefit</span><span className="text-center">Verdict</span><span className="text-center">Action</span>
             </div>
             <div>
                 {savingsAnalysis.map((s, idx) => (
@@ -327,13 +327,13 @@ export default function BreakSavingsPage() {
                               {s.doublesBonus > 0 && <div className="text-[11px] text-green-400">Doubles save you: {fmtINR(s.doublesBonus)} ({s.monthly > 0 ? Math.round(s.doublesBonus/s.monthly) : 0} months free)</div>}
                             </div>
                             <div>
-                              <div className="text-[12px] mb-1" style={{ color: 'var(--text-muted)' }}>If Prepay Loan</div>
+                              <div className="text-[12px] mb-1" style={{ color: 'var(--text-muted)' }}>If prepay loan</div>
                               <div>Put <span className="mono text-blue-400">{fmtINR(s.netCashIfBreak)}</span> toward loan</div>
                               <div>Save <span className="mono text-green-400">{fmtINR(s.intSaved)}</span> interest</div>
                               <div className="text-[11px] text-yellow-400">Note: still pay {fmtINR(s.monthly)}/mo for {s.pendingMonths} months</div>
                             </div>
                             <div>
-                              <div className="text-[12px] mb-1" style={{ color: 'var(--text-muted)' }}>Net Decision</div>
+                              <div className="text-[12px] mb-1" style={{ color: 'var(--text-muted)' }}>Net decision</div>
                               <div className={`font-bold text-lg mono ${s.netBenefit > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                 {s.netBenefit > 0 ? '+' : ''}{fmtINR(s.netBenefit)}
                               </div>
@@ -397,12 +397,12 @@ export default function BreakSavingsPage() {
               {/* Summary row */}
               <div className="grid grid-cols-3 gap-3">
                 <div className="p-3 rounded-lg border border-red-500/20 text-center">
-                  <div className="text-[12px] mb-1" style={{color:'var(--text-muted)'}}>Without Breaking</div>
+                  <div className="text-[12px] mb-1" style={{color:'var(--text-muted)'}}>Without breaking</div>
                   <div className="mono text-xl font-bold text-red-400">{baseline.months} mo</div>
                   <div className="text-[11px]" style={{color:'var(--text-muted)'}}>{baseline.debtFreeDate}</div>
                 </div>
                 <div className="p-3 rounded-lg border border-green-500/30 bg-green-500/5 text-center">
-                  <div className="text-[12px] mb-1" style={{color:'var(--text-muted)'}}>With Break</div>
+                  <div className="text-[12px] mb-1" style={{color:'var(--text-muted)'}}>With break</div>
                   <div className="mono text-xl font-bold text-green-400">{combinedResult.months} mo</div>
                   {baseline.months - combinedResult.months > 0
                     ? <div className="text-[11px] text-green-400">−{baseline.months - combinedResult.months}mo faster</div>

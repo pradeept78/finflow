@@ -89,16 +89,16 @@ export default function ExportPage() {
 
   const sections = [
     { key: 'loans',      label: 'Loans',           icon: '🏦', data: loans,      count: loans.length },
-    { key: 'cards',      label: 'Credit Cards',     icon: '💳', data: cards.map(c => ({ ...c, emis: undefined, spends: undefined })), count: cards.length },
+    { key: 'cards',      label: 'Credit cards',     icon: '💳', data: cards.map(c => ({ ...c, emis: undefined, spends: undefined })), count: cards.length },
     { key: 'personal',   label: 'I Owe',            icon: '🤝', data: personal,   count: personal.length },
     { key: 'savings',    label: 'Savings / Chit',   icon: '🪙', data: savings,    count: savings.length },
     { key: 'investments',label: 'Investments',      icon: '📈', data: investments,count: investments.length },
     { key: 'insurance',  label: 'Insurance',        icon: '🛡️', data: insurance,  count: insurance.length },
     { key: 'expenses',   label: 'Expenses',         icon: '🔄', data: expenses,   count: expenses.length },
     { key: 'income',     label: 'Income',           icon: '💰', data: income,     count: income.length },
-    { key: 'peopleOwe',  label: 'People Owe Me',    icon: '🤑', data: peopleOwe, count: peopleOwe.length },
-    { key: 'closedLoans',label: 'Closed Loans',     icon: '✅', data: closedLoans,count: closedLoans.length },
-    { key: 'earnings',   label: 'Earnings History',  icon: '💰', data: earnings,    count: earnings.length },
+    { key: 'peopleOwe',  label: 'People owe me',    icon: '🤑', data: peopleOwe, count: peopleOwe.length },
+    { key: 'closedLoans',label: 'Closed loans',     icon: '✅', data: closedLoans,count: closedLoans.length },
+    { key: 'earnings',   label: 'Earnings history',  icon: '💰', data: earnings,    count: earnings.length },
   ]
 
   // Minimal shape/type check run before each item is sent to the API. A hand-edited or malformed
@@ -316,7 +316,7 @@ export default function ExportPage() {
       {previewData && (
         <div className="modal-overlay" onClick={() => setPreviewData(null)}>
           <div className="modal-box" style={{maxWidth:480}} onClick={e=>e.stopPropagation()}>
-            <div className="modal-header"><div className="modal-title">Import Preview</div></div>
+            <div className="modal-header"><div className="modal-title">Import preview</div></div>
             <div className="modal-body space-y-2">
               <div className="text-[11px]" style={{color:'var(--text-muted)'}}>File: {previewData.fileName}</div>
               {Object.entries(previewData.data).filter(([k,v])=>Array.isArray(v)&&(v as any[]).length>0).map(([k,v])=>(
@@ -329,13 +329,13 @@ export default function ExportPage() {
             <div className="modal-footer flex gap-2">
               <button className="btn-secondary flex-1" onClick={()=>setPreviewData(null)}>Cancel</button>
               <button className="btn-primary flex-1" onClick={()=>{ importFromJSON(new Blob([JSON.stringify(previewData.data)],{type:'application/json'}) as any); setPreviewData(null) }}>
-                Import All
+                Import all
               </button>
             </div>
           </div>
         </div>
       )}
-      <PageHeader title="Export & Backup"/>
+      <PageHeader title="Export & backup"/>
 
       {exportDisabled && (
         <div className="rounded-2xl p-3 flex items-center gap-2 text-[12px]" style={{background:'color-mix(in srgb, var(--danger) 8%, transparent)', border:'1px solid color-mix(in srgb, var(--danger) 30%, transparent)', color:'var(--danger)'}}>
@@ -422,7 +422,7 @@ export default function ExportPage() {
 
           {importLog.length > 0 && (
             <div className="rounded-2xl p-4" style={{background:"var(--bg-card)",border:"1px solid var(--hairline)"}}>
-              <div className="text-[12px] font-medium mb-3" style={{ color: 'var(--text-muted)' }}>Import Log</div>
+              <div className="text-[12px] font-medium mb-3" style={{ color: 'var(--text-muted)' }}>Import log</div>
               <div className="space-y-1.5">
                 {importLog.map((line, i) => (
                   <div key={i} className="text-[13px] font-mono">{line}</div>
@@ -430,7 +430,7 @@ export default function ExportPage() {
               </div>
               {importDone && (
                 <button className="btn-primary btn-sm mt-4 w-full" onClick={() => window.location.reload()}>
-                  Reload App
+                  Reload app
                 </button>
               )}
             </div>

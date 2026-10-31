@@ -90,10 +90,10 @@ export default function EarningsPage() {
     <div className="space-y-4 text-[13px]">
       <PageHeader links={<>
         <FromLink to="/dashboard" className="text-[11px] font-semibold px-2.5 py-1 rounded-lg" style={{background:'color-mix(in srgb, var(--success) 12%, transparent)',color:'var(--success)',border:'1px solid color-mix(in srgb, var(--success) 20%, transparent)'}}>📊 Dashboard →</FromLink>
-        <FromLink to="/budget" className="text-[11px] font-semibold px-2.5 py-1 rounded-lg" style={{background:'color-mix(in srgb, var(--warning) 12%, transparent)',color:'var(--warning)',border:'1px solid color-mix(in srgb, var(--warning) 20%, transparent)'}}>📋 Budget Rules →</FromLink>
-      </>} title="Earnings History" action={
+        <FromLink to="/budget" className="text-[11px] font-semibold px-2.5 py-1 rounded-lg" style={{background:'color-mix(in srgb, var(--warning) 12%, transparent)',color:'var(--warning)',border:'1px solid color-mix(in srgb, var(--warning) 20%, transparent)'}}>📋 Budget rules →</FromLink>
+      </>} title="Earnings history" action={
         <button className="btn-primary btn-sm" onClick={() => setModal({ open: true, item: empty() })}>
-          <Plus size={14} /> Add Period
+          <Plus size={14} /> Add period
         </button>
       } />
       <div className="rounded-xl px-3.5 py-2 flex items-center gap-3" style={{background:'linear-gradient(135deg, color-mix(in srgb, var(--info) 8%, transparent) 0%, color-mix(in srgb, var(--info) 2%, transparent) 100%)',border:'1px solid color-mix(in srgb, var(--info) 15%, transparent)'}}>
@@ -108,7 +108,7 @@ export default function EarningsPage() {
         <div className="rounded-2xl p-4 relative overflow-hidden" style={{background:'linear-gradient(180deg, color-mix(in srgb, var(--success) 5%, var(--bg-card)) 0%, var(--bg-card) 75%)',border:'1px solid var(--hairline)'}}>
           <div className="relative flex items-center justify-between flex-wrap gap-4">
             <div>
-              <div className="text-[12px] font-medium mb-1 flex items-center gap-1.5" style={{color:'var(--text-muted)'}}><span className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:'var(--success)'}} />💰 Lifetime Earnings</div>
+              <div className="text-[12px] font-medium mb-1 flex items-center gap-1.5" style={{color:'var(--text-muted)'}}><span className="inline-block w-1.5 h-1.5 rounded-full flex-shrink-0" style={{background:'var(--success)'}} />💰 Lifetime earnings</div>
               <div className="text-[34px] leading-none font-semibold tracking-tight tabular-nums" style={{color:'var(--success)'}}>{fmtINR(totalEarned)}</div>
               <div className="text-[11px] mt-1" style={{color:'var(--text-faint)'}}>{sorted.length} salary periods</div>
             </div>
@@ -177,7 +177,7 @@ export default function EarningsPage() {
             return (
               <div className="rounded-2xl p-4" style={{background:"var(--bg-card)",border:"1px solid var(--hairline)"}}>
                 <div className="flex items-center justify-between mb-1">
-                  <div className="text-[13px] font-semibold" style={{color:'var(--text-muted)'}}>Salary Growth</div>
+                  <div className="text-[13px] font-semibold" style={{color:'var(--text-muted)'}}>Salary growth</div>
                   <div className="flex gap-4 text-[11px]">
                     <span style={{color:'var(--text-muted)'}}>Peak: <span className="mono text-green-400">{fmtINR(peak)}/mo</span></span>
                     {growth && <span style={{color:'var(--text-muted)'}}>Growth: <span className="mono text-green-400">+{growth}%</span></span>}
@@ -208,7 +208,7 @@ export default function EarningsPage() {
             <span><SortHeader label="Label" col="label" sortCol={sortCol} sortDir={sortDir} onSort={onSort} /></span>
             <span className="text-right"><SortHeader label="Monthly" col="monthlyAmount" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" /></span>
             <span className="text-right"><SortHeader label="Months" col="months" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" /></span>
-            <span className="text-right"><SortHeader label="Total Earned" col="total" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" /></span>
+            <span className="text-right"><SortHeader label="Total earned" col="total" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" /></span>
             <span className="text-center">Status</span><span className="text-center">Actions</span>
           </div>
           {displaySorted.map((e: any, idx: number) => {
@@ -274,7 +274,7 @@ export default function EarningsPage() {
                 onChange={e => { setModal(m => ({ ...m, item: { ...m.item, monthlyAmount: +e.target.value } })); setFormErrors(er => ({...er, monthlyAmount:''})) }} />
               {formErrors.monthlyAmount && <p className="text-[11px] text-red-400 mt-1">{formErrors.monthlyAmount}</p>}
             </FormField>
-            <FormField label="From Date">
+            <FormField label="From date">
               <input className="input" type="date" value={modal.item.fromDate || ''}
                 onChange={e => { setModal(m => ({ ...m, item: { ...m.item, fromDate: e.target.value } })); setFormErrors(er => ({...er, toDate:''})) }} />
             </FormField>

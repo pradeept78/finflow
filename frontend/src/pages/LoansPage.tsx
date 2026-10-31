@@ -174,7 +174,7 @@ export default function LoansPage() {
     <div className="space-y-4 text-[13px]">
       <PageHeader title="Loans" action={
         <button className="btn-primary btn-sm" onClick={() => setModal({ open: true, loan: { loanType: 'Personal Loan' } })}>
-          <Plus size={14} /> Add Loan
+          <Plus size={14} /> Add loan
         </button>
       } />
 
@@ -184,12 +184,12 @@ export default function LoansPage() {
         <KpiRow className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 [&>*]:min-w-0" keep={[0, 2]}>
           {[
             { label: 'Monthly EMI',     value: fmtINR(totalEmi),                    sub: `${activeLoans.length - notStarted.length} paying now${startingEmi > 0 ? ` · +${fmtINR(startingEmi)} from ${notStarted.some((l: any) => { const d = new Date(l.startDate); const n = new Date(); return d.getFullYear() * 12 + d.getMonth() === n.getFullYear() * 12 + n.getMonth() + 1 }) ? nextMonthName : 'later'}` : ''}`, accent: '#f97316' },
-            { label: 'Total Loan',      value: fmtINR(totalLoanAmount),             sub: `${fmtINR(totalWithInterest)} with interest`,  accent: '#2dd4bf' },
+            { label: 'Total loan',      value: fmtINR(totalLoanAmount),             sub: `${fmtINR(totalWithInterest)} with interest`,  accent: '#2dd4bf' },
             { label: 'Total to Clear',  value: fmtINR(totalPending + totalIntLeft), sub: `principal ${fmtINR(totalPending)} + interest ${fmtINR(totalIntLeft)}`, accent: 'var(--warning)' },
-            { label: 'Paid So Far',     value: fmtINR(totalPaidSoFar),              sub: `${fmtINR(totalIntPaid)} was interest`,        accent: 'var(--cyan)' },
+            { label: 'Paid so far',     value: fmtINR(totalPaidSoFar),              sub: `${fmtINR(totalIntPaid)} was interest`,        accent: 'var(--cyan)' },
             assetVal > 0
-              ? { label: 'Asset Equity',  value: fmtINR(Math.abs(netAsset)), sub: netAsset >= 0 ? 'net positive' : 'underwater', accent: netAsset >= 0 ? 'var(--success)' : 'var(--danger)' }
-              : { label: 'Last Loan Ends', value: debtFreeDate,              sub: `${maxPending} months away`,                    accent: 'var(--purple)' },
+              ? { label: 'Asset equity',  value: fmtINR(Math.abs(netAsset)), sub: netAsset >= 0 ? 'net positive' : 'underwater', accent: netAsset >= 0 ? 'var(--success)' : 'var(--danger)' }
+              : { label: 'Last loan ends', value: debtFreeDate,              sub: `${maxPending} months away`,                    accent: 'var(--purple)' },
           ].map((m: any) => (
             <div key={m.label} className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${m.accent} 5%, var(--bg-card)) 0%, var(--bg-card) 70%)`, border: `1px solid var(--hairline)` }}>
               <div className="relative">
@@ -272,7 +272,7 @@ export default function LoansPage() {
           <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b"
             style={{ gridTemplateColumns: COLS_MAIN, borderColor: 'var(--border)', color: 'var(--text-faint)' }}>
             <SortHeader label="Lender" col="lender" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
-            {showDebit && <SortHeader label="Debited From" col="debited" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="center" />}
+            {showDebit && <SortHeader label="Debited from" col="debited" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="center" />}
             <SortHeader label="EMI / month" col="emi" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" />
             <SortHeader label="Tenure" col="tenure" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="center" />
             <SortHeader label="To clear" col="toclear" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" />
@@ -499,10 +499,10 @@ export default function LoansPage() {
                           {/* 2x2 grid: Paid row / Left row */}
                           <div className="grid grid-cols-2 gap-2">
                             {[
-                              { label: 'Principal Paid', val: principalPaid, color: 'var(--info)' },
-                              { label: 'Interest Paid', val: sp.intPaid, color: '#94a3b8' },
-                              { label: 'Principal Left', val: sp.princLeft, color: 'var(--warning)' },
-                              { label: 'Interest Left', val: sp.intLeft, color: 'var(--danger)' },
+                              { label: 'Principal paid', val: principalPaid, color: 'var(--info)' },
+                              { label: 'Interest paid', val: sp.intPaid, color: '#94a3b8' },
+                              { label: 'Principal left', val: sp.princLeft, color: 'var(--warning)' },
+                              { label: 'Interest left', val: sp.intLeft, color: 'var(--danger)' },
                             ].map(m => (
                               <div key={m.label} className="rounded-lg px-3 py-2.5" style={{ background: 'var(--bg-card)' }}>
                                 <div className="text-[12px] mb-1" style={{ color: 'var(--text-faint)' }}>{m.label}</div>
@@ -593,14 +593,14 @@ export default function LoansPage() {
           footer={<><button className="btn-secondary" onClick={() => { setModal({ open: false, loan: {} }); setFormErrors({}) }}>Cancel</button><button className="btn-primary" disabled={saveMut.isPending || Object.keys(validateLoan(modal.loan)).length > 0} onClick={() => { const errs = validateLoan(modal.loan); if (Object.keys(errs).length > 0) { setFormErrors(errs); return; } saveMut.mutate(modal.loan) }}>{saveMut.isPending ? 'Saving...' : 'Save'}</button></>}>
           <div className="form-grid">
             <FormField label="Lender *"><input className={"input" + (formErrors.lender ? ' border-red-500' : '')} value={modal.loan.lender || ''} onChange={e => { setModal(m => ({ ...m, loan: { ...m.loan, lender: e.target.value } })); setFormErrors(er => ({...er, lender:''})) }} />{formErrors.lender && <p className="text-[11px] text-red-400 mt-1">{formErrors.lender}</p>}</FormField>
-            <FormField label="Loan Type"><select className="select" value={modal.loan.loanType || 'Personal Loan'} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, loanType: e.target.value } }))}>
+            <FormField label="Loan type"><select className="select" value={modal.loan.loanType || 'Personal Loan'} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, loanType: e.target.value } }))}>
               <option>Personal Loan</option><option>Home Loan</option><option>Car Loan</option><option>Bike Loan</option><option>Gold Loan</option><option>Education Loan</option><option>Business Loan</option>
             </select></FormField>
             <FormField label="Loan Amount / Received (₹) *"><input className={"input" + (formErrors.amount ? ' border-red-500' : '')} type="number" value={modal.loan.amount || ''} onChange={e => { setModal(m => ({ ...m, loan: { ...m.loan, amount: +e.target.value } })); setFormErrors(er => ({...er, amount:'', emi:''})) }} />{formErrors.amount && <p className="text-[11px] text-red-400 mt-1">{formErrors.amount}</p>}</FormField>
             <FormField label="EMI/month (₹) *"><input className={"input" + (formErrors.emi ? ' border-red-500' : '')} type="number" value={modal.loan.emi || ''} onChange={e => { setModal(m => ({ ...m, loan: { ...m.loan, emi: +e.target.value } })); setFormErrors(er => ({...er, emi:''})) }} />{formErrors.emi && <p className="text-[11px] text-red-400 mt-1">{formErrors.emi}</p>}</FormField>
             <FormField label="Tenure (months) *"><input className={"input" + (formErrors.tenure ? ' border-red-500' : '')} type="number" value={modal.loan.tenure || ''} onChange={e => { setModal(m => ({ ...m, loan: { ...m.loan, tenure: +e.target.value } })); setFormErrors(er => ({...er, tenure:''})) }} />{formErrors.tenure && <p className="text-[11px] text-red-400 mt-1">{formErrors.tenure}</p>}</FormField>
             <FormField label="Start Date *"><input className={"input" + (formErrors.startDate ? ' border-red-500' : '')} type="date" value={modal.loan.startDate || ''} onChange={e => { setModal(m => ({ ...m, loan: { ...m.loan, startDate: e.target.value } })); setFormErrors(er => ({...er, startDate:''})) }} />{formErrors.startDate && <p className="text-[11px] text-red-400 mt-1">{formErrors.startDate}</p>}</FormField>
-            <FormField label="Due Day"><input className="input" type="number" min={1} max={31} placeholder="1–31" value={modal.loan.dueDay || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, dueDay: +e.target.value } }))} /></FormField>
+            <FormField label="Due day"><input className="input" type="number" min={1} max={31} placeholder="1–31" value={modal.loan.dueDay || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, dueDay: +e.target.value } }))} /></FormField>
             <MoreFields>
             <FormField label="Asset Current Value (₹)"><input className="input" type="number" placeholder="e.g. car current value" value={modal.loan.currentValue || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, currentValue: +e.target.value || undefined } }))} /></FormField>
             <FormField label="EMI debited from (bank/account)"><input className="input" placeholder="e.g. HDFC ••1234" value={modal.loan.debitAccount || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, debitAccount: e.target.value } }))} /></FormField>
@@ -620,7 +620,7 @@ export default function LoansPage() {
             { label: 'New principal', value: fmtINR(calcModal.result.newPrincipalRemaining), color: 'text-green-400' },
           ]}
           onClose={() => setCalcModal({ type: null, loan: null, result: null })}
-          actions={[{ label: 'Update Principal', onClick: () => { saveMut.mutate({ ...calcModal.loan, principalPaid: calcModal.result.newPrincipalRemaining }); setCalcModal({ type: null, loan: null, result: null }); toast.success('Updated!') } }]}
+          actions={[{ label: 'Update principal', onClick: () => { saveMut.mutate({ ...calcModal.loan, principalPaid: calcModal.result.newPrincipalRemaining }); setCalcModal({ type: null, loan: null, result: null }); toast.success('Updated!') } }]}
         />
       )}
       {calcModal.type === 'foreclose' && calcModal.result && (

@@ -165,14 +165,15 @@ export default function QuickAdd({ sidebarTrigger = false, hideTrigger = false }
 
   return (
     <>
-      {/* Floating button — bottom right (it used to sit bottom-left, on top of the sidebar's user/Logout block) */}
+      {/* Desktop with the top menu bar only: a small corner button. Phones open this from the "+" in the
+          bottom tab bar, and the side menu has its own Quick add row — a floating button on phones sat on
+          top of the amount column of every list. */}
       <button
         onClick={() => setOpen(true)}
-        // Phones: a full-size thumb button sitting just above the bottom tab bar. Desktop keeps the small corner dot.
-        className={`fixed right-4 bottom-[calc(68px+env(safe-area-inset-bottom))] md:right-3 md:bottom-3 ${hideTrigger ? 'hidden ' : ''}${sidebarTrigger ? 'md:hidden ' : ''}w-12 h-12 md:w-8 md:h-8 rounded-full text-white shadow-lg flex items-center justify-center transition-all hover:scale-110 z-40 md:opacity-50 md:hover:opacity-100 print:hidden`}
+        className={`${hideTrigger || sidebarTrigger ? 'hidden' : 'hidden md:flex'} fixed right-3 bottom-3 w-8 h-8 rounded-full text-white shadow-lg items-center justify-center transition-all hover:scale-110 z-40 opacity-50 hover:opacity-100 print:hidden`}
         style={{ background: '#c2410c' }}
         title="Quick add" aria-label="Quick add">
-        <Plus size={22} className="md:hidden" /><Plus size={16} className="hidden md:block" />
+        <Plus size={16} />
       </button>
 
       {open && (
