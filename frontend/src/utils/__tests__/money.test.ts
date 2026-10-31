@@ -91,14 +91,13 @@ describe('isPaidThisMonth', () => {
   const past = Math.max(1, today - 1)
   const future = Math.min(28, today + 1)
 
-  it('treats a day already past as paid', () => {
-    expect(isPaidThisMonth('k', past, [])).toBe(true)
+  // Paid means ticked. A past day used to be assumed paid, which hid missed payments.
+  it('treats a day already past as unpaid until ticked', () => {
+    expect(isPaidThisMonth('k', past, [])).toBe(false)
   })
 
-  it('treats an explicitly un-marked past day as NOT paid', () => {
-    // Calendar checked `markedKeys.includes(key)` only, so a past-due item the user had
-    // deliberately un-marked showed as PAID — the inverse of what they meant.
-    expect(isPaidThisMonth('k', past, ['k'])).toBe(false)
+  it('treats a ticked past day as paid', () => {
+    expect(isPaidThisMonth('k', past, ['k'])).toBe(true)
   })
 
   it('treats a future day as unpaid unless explicitly ticked', () => {

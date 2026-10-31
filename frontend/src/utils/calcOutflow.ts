@@ -1,7 +1,9 @@
-import { getEff, toMonthly, isOneOff, freqMonths } from './format'
+import { getEff, toMonthly, isOneOff, freqMonths, isDueInMonth } from './format'
 import { isLive } from './ended'
 import { isChitRepaying } from './kinds'
 import { ioweFacts } from './iowe'
+import { cardCycle, emiStartsLater } from './cardCycle'
+import { startsAfterThisMonth, newCommitmentsNextMonth } from './nextMonth'
 
 /**
  * SINGLE SOURCE OF TRUTH for monthly outflow.
@@ -23,7 +25,11 @@ import { ioweFacts } from './iowe'
  *   card   — a balance, not a commitment. Clear it and it is gone; next month it is whatever was
  *            spent. Statement outstanding plus the current unbilled cycle.
  *
- * `total` is locked + card: what actually has to be settled this month. Free cash is measured
+ *   dueNow — non-monthly money that actually falls due THIS month at its full amount: a quarterly or
+ *            yearly bill/premium in its renewal month, a one-time payment dated this month, an I Owe
+ *            lump sum paid back this month. Same rules as buildDueRows, so the due list adds up to it.
+ *
+ * `total` is locked + card + dueNow: what actually has to be settled this month. Free cash is measured
  * against `locked` alone, because subtracting the card balance as well understates free cash in
  * every month the card is cleared in full.
  */
@@ -41,18 +47,31 @@ export interface OutflowComponents {
   insuranceEmi: number
   /** Monthly-equivalent of NON-monthly premiums: a set-aside, not a payment. */
   insuranceProvision: number
+  /** expenseProvision + insuranceProvision — the one "set aside for renewals" figure every page shows. */
+  setAside:     number
   savings:      number
   chitRepay:    number
   sipInvest:    number
   /** Sum of everything above: the standing monthly commitment. */
   locked:       number
+  /** New monthly commitments whose first payment is NEXT month (loans, card EMIs, I Owe, savings, SIPs) —
+   *  not in `locked`; shown as "(+₹X from Nov)" so the change is visible a month ahead. */
+  startingNext: number
+  /** Short name of next month, e.g. "Nov" */
+  nextMonthLabel: string
 
+  /** Statement balance and logged spends that fall DUE this month (see cardCycle.ts). */
   ccOutstanding: number
   ccSpends:      number
-  /** Statement balance plus the unbilled cycle. A one-month figure. */
+  /** What has to be paid on cards this month. A one-month figure. */
   card:          number
+  /** Already on the cards but due in a later month — the next bill. Not part of `total`. */
+  cardNext:      number
 
-  /** locked + card — what has to be settled this month. */
+  /** Full amounts of non-monthly bills, premiums, one-time payments and lump sums due this month. */
+  dueNow:        number
+
+  /** locked + card + dueNow — what has to be settled this month. */
   total:         number
 }
 
@@ -69,10 +88,13 @@ export function calcOutflow(
   investments: any[] = [],
   expenses:    any[] = [],
   insurance:   any[] = [],
+  now:         Date  = new Date(),
 ): OutflowComponents {
 
+  // Not started yet (first EMI after this month): no payment this month — see utils/nextMonth.
+  const notYet = (v: any) => startsAfterThisMonth(v, now)
   const loanEmi = loans
-    .filter(l => getEff(l).pending > 0)
+    .filter(l => getEff(l).pending > 0 && !notYet(l))
     .reduce((s, l) => s + num(l.emi), 0)
 
   // A spend/EMI tagged "for a friend" and not yet paid back is real money leaving the account this
@@ -82,14 +104,14 @@ export function calcOutflow(
 
   const ccEmi = cards.reduce((s, c) =>
     s + (c.emis ?? [])
-      .filter((e: any) => getEff(e).pending > 0 && !isFriendOwed(e))
+      .filter((e: any) => getEff(e).pending > 0 && !isFriendOwed(e) && !emiStartsLater(c, e, now))
       .reduce((a: number, e: any) => a + num(e.emi), 0), 0)
 
   // An interest-only entry keeps paying for as long as it is open, so its servicing cost belongs
   // here — but its principal is not amortising and must not be shown as reducing. `ioweFacts`
   // classifies each row and returns the right monthly figure for its shape.
   const iOweEmi = personal
-    .filter(p => p.active !== false)
+    .filter(p => p.active !== false && !notYet(p))
     .reduce((s, p) => s + ioweFacts(p).monthly, 0)
 
   // Same bug class the header above already fixed for insurance, just never applied here: this
@@ -125,26 +147,46 @@ export function calcOutflow(
   // repaid — that is an outflow against a debt. Anything still building is a savings contribution.
   const isRepaying = isChitRepaying
 
-  const openPlans = savings.filter(v => getEff(v).pending > 0)
+  const openPlans = savings.filter(v => getEff(v).pending > 0 && !notYet(v))
   const savings_  = openPlans.filter(v => !isRepaying(v)).reduce((s, v) => s + num(v.monthly), 0)
   const chitRepay = openPlans.filter(isRepaying).reduce((s, v) => s + num(v.monthly), 0)
 
   const sipInvest = investments
-    .filter(v => isLive(v))
+    .filter(v => isLive(v) && !notYet(v))
     .reduce((s, v) => s + num(v.monthly), 0)
 
   const locked = loanEmi + ccEmi + iOweEmi + expenses_ + insuranceEmi + savings_ + chitRepay + sipInvest
 
-  const ccOutstanding = cards.reduce((s, c) => s + num(c.outstanding), 0)
-  const ccSpends = cards.reduce((s, c) =>
-    s + (c.spends ?? []).filter((sp: any) => !isFriendOwed(sp)).reduce((a: number, sp: any) => a + num(sp.amount), 0), 0)
+  // Each card's money counts in the month its bill is DUE: a spend after the statement date lands on
+  // next month's bill (cardNext), not this month's.
+  const cycles = cards.map(c => cardCycle(c, now))
+  const ccOutstanding = cycles.reduce((s, c) => s + c.outstandingThisMonth, 0)
+  const ccSpends = cycles.reduce((s, c) => s + c.spendsThisMonth, 0)
+  const cardNext = cycles.reduce((s, c) => s + c.nextBill, 0)
   const card = ccOutstanding + ccSpends
+
+  // Kept in step with buildDueRows (dueRows.ts): the same items it lists as due this month, at the
+  // same full amounts. A provision above is the smoothed monthly share; this is the actual bill.
+  const y = now.getFullYear(), m = now.getMonth()
+  const inThisMonth = (iso?: string) => {
+    const d = iso ? new Date(iso) : null
+    return !!d && !isNaN(d.getTime()) && d.getFullYear() === y && d.getMonth() === m
+  }
+  const renewsNow = (v: any) => isOneOff(v.frequency) ? inThisMonth(v.startDate)
+    : freqMonths(v.frequency) > 1 && isDueInMonth(v.startDate, v.frequency, y, m)
+  const dueNow =
+      expenses.filter(v => isLive(v) && renewsNow(v)).reduce((s, v) => s + num(v.amount), 0)
+    + insurance.filter(v => isLive(v) && !v.isCardEmi && renewsNow(v)).reduce((s, v) => s + num(v.premium), 0)
+    + personal.filter(p => p.active !== false && inThisMonth(p.paybackDate)).reduce((s, p) => s + num(p.amount), 0)
 
   return {
     loanEmi, ccEmi, iOweEmi, expenses: expenses_, expenseProvision, insuranceEmi, insuranceProvision,
+    setAside: expenseProvision + insuranceProvision,
     savings: savings_, chitRepay, sipInvest, locked,
-    ccOutstanding, ccSpends, card,
-    total: locked + card,
+    ccOutstanding, ccSpends, card, cardNext, dueNow,
+    startingNext: newCommitmentsNextMonth({ loans, cards, personal, savings, investments }, now).filter(x => !x.owedBy).reduce((s, x) => s + x.amount, 0),
+    nextMonthLabel: new Date(now.getFullYear(), now.getMonth() + 1, 1).toLocaleDateString('en-IN', { month: 'short' }),
+    total: locked + card + dueNow,
   }
 }
 
@@ -164,6 +206,7 @@ export const outflowRows = (o: OutflowComponents) => ([
   { label: 'SIP',            val: o.sipInvest,     tier: 'locked' as const },
   { label: 'CC outstanding', val: o.ccOutstanding, tier: 'card' as const },
   { label: 'CC spends',      val: o.ccSpends,      tier: 'card' as const },
+  { label: 'Renewals & one-offs', val: o.dueNow,    tier: 'due' as const },
 ]).filter(r => r.val > 0)
 
 /**
@@ -178,6 +221,19 @@ export const outflowRows = (o: OutflowComponents) => ([
 export const outflowSubLine = (o: OutflowComponents): string =>
   outflowRows(o).map(r => `${r.label} ₹${Math.round(r.val).toLocaleString('en-IN')}`).join(' · ')
 
-/** "committed ₹2,76,575 + card bill ₹1,83,690" — the two-tier split as a single line of text. Same words on every page. */
+/** "committed ₹2,76,575 + card bill ₹1,83,690 + renewals ₹45,000" — the tiers of `total` as one line. Same words on every page. */
 export const outflowTierLine = (o: OutflowComponents): string =>
-  `committed ₹${Math.round(o.locked).toLocaleString('en-IN')} + card bill ₹${Math.round(o.card).toLocaleString('en-IN')}`
+  `committed ₹${Math.round(o.locked).toLocaleString('en-IN')}`
+  + (o.startingNext > 0 ? ` (+₹${Math.round(o.startingNext).toLocaleString('en-IN')} from ${o.nextMonthLabel})` : '')
+  + ` + card bill ₹${Math.round(o.card).toLocaleString('en-IN')}`
+  + (o.dueNow > 0 ? ` + renewals & one-offs ₹${Math.round(o.dueNow).toLocaleString('en-IN')}` : '')
+
+/**
+ * The two "free" figures — one formula each, one name each, on every page.
+ *  - free: "Free / month" = income − committed. Repeats every month; card bills are NOT taken off,
+ *          so it doesn't swing with what was spent on the cards.
+ *  - left: "Left this month" = income − everything due this month (committed + card bill + renewals
+ *          and one-offs). This month's real end-of-month position.
+ * Pages used to show either one under the same "Free / month" label, so two pages could disagree.
+ */
+export const freeFigures = (o: OutflowComponents, income: number) => ({ free: income - o.locked, left: income - o.total })

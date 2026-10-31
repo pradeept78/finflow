@@ -8,7 +8,7 @@ import {
   PiggyBank, TrendingUp, Wallet, Receipt, Users,
   Calendar, Target, CheckCircle2, LogOut, ChevronRight,
   Archive, History, Menu, X, Shield, BadgeDollarSign, FileSpreadsheet,
-  Plus, Keyboard, ListTree, PanelTop
+  Plus, Keyboard, ListTree, PanelTop, Home, MoreHorizontal
 } from 'lucide-react'
 import { Suspense, useState, useEffect, useRef } from 'react'
 import { LoadingSpinner } from '../common'
@@ -349,11 +349,12 @@ export default function Layout() {
         <SidebarContent />
       </aside>
 
-      {/* Mobile overlay sidebar */}
+      {/* Phone "More" sheet: the full menu (every section and page, search, theme, sign out) sliding up
+          from the bottom tab bar. */}
       {mobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden print:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute left-0 top-0 bottom-0 w-64 border-r flex flex-col" style={{background:'#0c0e14',borderColor:'#252836'}}>
+          <aside aria-label="Menu" className="sheet-up absolute inset-x-0 bottom-0 max-h-[85vh] rounded-t-2xl border-t flex flex-col" style={{background:'#0c0e14',borderColor:'#252836',paddingBottom:'env(safe-area-inset-bottom)'}}>
             <SidebarContent />
           </aside>
         </div>
@@ -363,20 +364,17 @@ export default function Layout() {
       <main id="main-content" className="flex-1 overflow-y-auto">
         <h1 className="sr-only">{(PAGE_LABELS as Record<string, string>)[location.pathname] ?? 'FinFlow'}</h1>
         {/* Mobile top bar */}
-        {!fullScreen && <div className="md:hidden flex items-center gap-3 px-4 py-3 border-b bg-[#0c0e14] sticky top-0 z-30 print:hidden" style={{borderColor:"#252836"}}>
-          <button onClick={() => setMobileOpen(true)} className="text-[#aab2c2] hover:text-[#eef0f6]">
-            <Menu size={20} />
-          </button>
+        {!fullScreen && <div className="md:hidden flex items-center gap-2.5 px-4 py-2.5 border-b bg-[#0c0e14] sticky top-0 z-30 print:hidden" style={{borderColor:"#252836"}}>
           <div className="w-6 h-6 rounded-md bg-orange-500 flex items-center justify-center">
             <span className="text-white font-black text-xs">F</span>
           </div>
-          <span className="font-semibold text-sm text-[#eef0f6]">FinFlow</span>
-          <span className="ml-auto text-xs text-[#aab2c2] capitalize">
-            {location.pathname.replace('/', '') || 'lookup'}
+          <span className="font-semibold text-sm text-[#eef0f6] truncate">
+            {(PAGE_LABELS as Record<string, string>)[location.pathname] ?? 'FinFlow'}
           </span>
         </div>}
 
-        <div className="p-2 md:p-4 pb-20 md:pb-14 w-full">
+        {/* Phones: room at the bottom for the tab bar (and the iPhone home indicator) */}
+        <div className="p-2 md:p-4 pb-[calc(84px+env(safe-area-inset-bottom))] md:pb-14 w-full">
           <Suspense fallback={<LoadingSpinner />}><Outlet /></Suspense>
         </div>
       </main>
@@ -401,6 +399,37 @@ export default function Layout() {
           </div>
         </div>
       )}
+
+      {/* Phone bottom tab bar — the main sections under your thumb. Sidebar colours are fixed values on purpose
+          (the nav is dark in both themes). Debt and Savings reopen the tab you were last on, like the sidebar. */}
+      {!fullScreen && (() => {
+        const p = location.pathname
+        const sec = sectionOf(p)?.hub
+        const tabs = [
+          { key: 'home',    label: 'Home',    icon: Home,           accent: '#38bdf8', active: sec === '/hub/overview' && p !== '/lookup', go: () => navigate('/hub/overview') },
+          { key: 'due',     label: 'Due',     icon: CheckCircle2,   accent: '#fb923c', active: p === '/lookup',                          go: () => navigate('/lookup') },
+          { key: 'debt',    label: 'Debt',    icon: Landmark,       accent: '#f87171', active: sec === '/hub/debt',                      go: () => goSection(hubNav[1]) },
+          { key: 'savings', label: 'Savings', icon: PiggyBank,      accent: '#34d399', active: sec === '/hub/savings',                   go: () => goSection(hubNav[2]) },
+          { key: 'more',    label: 'More',    icon: MoreHorizontal, accent: '#a78bfa', active: mobileOpen || sec === '/hub/history' || sec === '/statements/overview', go: () => setMobileOpen(o => !o) },
+        ]
+        return (
+          <nav aria-label="Sections" className="md:hidden fixed inset-x-0 bottom-0 z-[60] border-t flex print:hidden"
+            style={{ background: '#0c0e14', borderColor: '#252836', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+            {tabs.map(t => {
+              const Icon = t.icon
+              return (
+                <button key={t.key} onClick={() => { if (t.key !== 'more') setMobileOpen(false); t.go() }}
+                  aria-current={t.active && t.key !== 'more' ? 'page' : undefined} aria-expanded={t.key === 'more' ? mobileOpen : undefined}
+                  className="flex-1 flex flex-col items-center justify-center gap-0.5 h-14 text-[11px] font-medium"
+                  style={{ color: t.active ? t.accent : '#aab2c2' }}>
+                  <Icon size={21} strokeWidth={t.active ? 2.4 : 2} />
+                  {t.label}
+                </button>
+              )
+            })}
+          </nav>
+        )
+      })()}
 
       {/* Always mounted: the sidebar's "+" fires an event this component listens for, so unmounting it in
           full screen made that button do nothing. Only its floating button is hidden there. */}

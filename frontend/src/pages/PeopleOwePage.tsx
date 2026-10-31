@@ -6,6 +6,7 @@ import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner,
 import { fmtINR } from '../utils/format'
 import { Plus, Pencil, Trash2, CheckCircle, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { KpiRow } from '../components/common/KpiTile'
 
 const empty: PeopleOwe = { person: '', amount: 0, status: 'Pending' }
 
@@ -50,7 +51,7 @@ export default function PeopleOwePage() {
       <PageHeader title="People Owe Me" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}><Plus size={14}/> Add</button>}/>
 
       {items.length > 0 && (
-        <div className="grid grid-cols-4 gap-3">
+        <KpiRow className="grid grid-cols-4 gap-3" keep={[0, 2]}>
           {[
             {label:'Pending Recovery', value:fmtINR(totalPending), sub:`${pending.length} pending`,        accent:'var(--success)'},
             {label:'Collected So Far', value:fmtINR(totalPaid),    sub:`${paid.length} settled`,           accent:'var(--cyan)'},
@@ -70,7 +71,7 @@ export default function PeopleOwePage() {
               </div>
             </div>
           ))}
-        </div>
+        </KpiRow>
       )}
 
       {/* Smart insight */}

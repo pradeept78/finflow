@@ -3,7 +3,8 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { loansApi, cardsApi, personalEmiApi, expensesApi, savingsApi, investmentsApi, insuranceApi, incomeApi, paidMarksApi, closedLoansApi, peopleOweApi } from '../api'
 import { fmtINR, getEff, toMonthly, resolveDueDay, isPaidThisMonth, isDueThisMonth, freqMonths, monthlyIncomeTotal, isOneOff } from '../utils/format'
-import { calcOutflow, outflowTierLine, outflowRows as outflowRowsOf, outflowSubLine } from '../utils/calcOutflow'
+import { cardCycle, fmtDueDate } from '../utils/cardCycle'
+import { calcOutflow, outflowTierLine, outflowRows as outflowRowsOf, outflowSubLine, freeFigures } from '../utils/calcOutflow'
 import { ioweFacts } from '../utils/iowe'
 import { calcLoanSplit } from '../utils/loanCalc'
 import { LoadingSpinner, PageHeader, ErrorState } from '../components/common'
@@ -12,6 +13,7 @@ import { buildDueRows, type DueRow } from '../utils/dueRows'
 import { cardLimitUse } from '../utils/cardLimit'
 import { useState } from 'react'
 import { CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react'
+import NextMonthHeadsUp from '../components/common/NextMonthHeadsUp'
 
 export default function QuickLookupPage() {
   const navigate = useNavigateFrom()
@@ -46,17 +48,18 @@ export default function QuickLookupPage() {
   const [search, setSearch] = useState('')
   const today = new Date().getDate()
   const monthYear = new Date().toISOString().slice(0, 7)
-  // Paid = auto if dueDay passed, user can toggle (unmark or early-mark)
+  // Paid = ticked. Nothing is assumed paid just because its day has passed.
   const isMarked = (key: string, dueDay?: number) => isPaidThisMonth(key, dueDay, markedKeys as string[])
-  // Overdue = past dueDay AND explicitly unmarked (toggled off auto-paid)
-  const isOverdue = (key: string, dueDay?: number) => {
-    const toggled = markedKeys.includes(key)
-    const autoPaid = !!dueDay && dueDay > 0 && dueDay < today
-    return autoPaid && toggled  // was auto-paid but user unmarked it
-  }
+  // Overdue = day has passed and it isn't ticked
+  const isOverdue = (key: string, dueDay?: number) => !!dueDay && dueDay > 0 && dueDay < today && !isMarked(key, dueDay)
   // Upcoming = dueDay in future or today
   const isUpcoming = (key: string, dueDay?: number) => !!dueDay && dueDay > 0 && dueDay >= today && !markedKeys.includes(key)
   const toggle = (key: string) => toggleMut.mutate(key)
+  // "Due soon": card bills already generated but due next month. Ticked for the month they're due, so the
+  // tick is still there when that month starts and the bill moves into its normal day.
+  const nextYM = (() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + 1); return d.toISOString().slice(0, 7) })()
+  const { data: nextMarks = [] } = useQuery({ queryKey: ['paid-marks', nextYM], queryFn: () => paidMarksApi.getFor(nextYM) })
+  const toggleNextMut = useMutation({ mutationFn: ({ key, month }: { key: string; month: string }) => paidMarksApi.toggleFor(key, month), onSuccess: () => qc.invalidateQueries({ queryKey: ['paid-marks'] }) })
 
   // resolveDueDay and isPaidThisMonth now live in utils/format so Calendar shares them.
   /* ── Calculations ──────────────────────────────────────────────────────────────────────────
@@ -92,14 +95,14 @@ export default function QuickLookupPage() {
     'Loan EMIs':'bg-red-500', 'CC EMIs':'bg-yellow-500', 'I Owe':'bg-yellow-400',
     'Bills':'bg-red-500', 'Insurance':'bg-blue-500', 'Savings':'bg-green-500',
     'Chit repayment':'bg-red-400', 'SIP':'bg-blue-400',
-    'CC outstanding':'bg-orange-500', 'CC spends':'bg-pink-500',
+    'CC outstanding':'bg-orange-500', 'CC spends':'bg-pink-500', 'Renewals & one-offs':'bg-purple-500',
   }
   const outflowRows = outflowRowsOf(o).map(r => ({ ...r, color: COLORS[r.label] ?? 'bg-gray-500' }))
 
   // ── Due items ──
   // Which payments exist this month (and which are "not counted") is decided once, in utils/dueRows —
   // the same list Calendar's current month uses. This page only decides how each row is drawn.
-  const { rows: dueRows, notCounted } = buildDueRows({ loans, cards, personal, expenses, savings, investments, insurance })
+  const { rows: dueRows, notCounted, upcoming } = buildDueRows({ loans, cards, personal, expenses, savings, investments, insurance })
   const ICONS: Record<string, string> = { loan: '🏦', 'card-emi': '💳', 'card-out': '💳', 'card-spend': '💳', iowe: '🤝', 'iowe-lump': '🤝', bill: '🔄', 'one-time': '🔄', savings: '🪙', 'chit-repay': '⚠️', insurance: '🛡️', sip: '📈' }
   const detailOf = (r: DueRow): React.ReactNode => {
     const x = r.ref
@@ -181,12 +184,11 @@ export default function QuickLookupPage() {
     .sort((a, b) => (a.dueDay ?? 99) - (b.dueDay ?? 99))
 
   // Only the DISPLAYED list is filtered by kind; counts, totals, paid and overdue stay on every item.
-  // One-time payments due this month sit on top of the recurring total (same as Calendar's header).
-  const oneTimeDue = items.filter(it => it.kind === 'one-time').reduce((a, it) => a + it.amount, 0)
   const visibleItems = kindFilter.size > 0 ? items.filter(it => kindFilter.has(it.kind)) : items
   const byDay = new Map<number, typeof items>()
   visibleItems.forEach(item => { const d = item.dueDay ?? 0; if (!byDay.has(d)) byDay.set(d, []); byDay.get(d)!.push(item) })
-  const days = [...byDay.keys()].sort((a, b) => a - b)
+  // Day 0 = no due day set: listed last as "Any day this month", never overdue.
+  const days = [...byDay.keys()].sort((a, b) => (a === 0 ? 99 : a) - (b === 0 ? 99 : b))
   // totalDue: outstanding already inside items (card chips show outstanding as amount)
   const totalDue = items.filter(x => !isMarked(x.key, x.dueDay)).reduce((s, x) => s + x.amount, 0)
 
@@ -243,7 +245,7 @@ export default function QuickLookupPage() {
            from the shared calculator so it matches Hub, Dashboard, Budget and Calendar exactly. */
         <div className="space-y-3">
           {(() => {
-            const free = monthlyIncome - lockedMonthly
+            const free = freeFigures(o, monthlyIncome).free
             const Tile = ({ accent, label, children, className = '' }: any) => (
               <div className={`rounded-2xl px-4 sm:px-5 py-4 min-w-0 ${className}`} style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${accent} 5%, var(--bg-card)) 0%, var(--bg-card) 75%)`, border: '1px solid var(--hairline)' }}>
                 <div className="text-[12px] font-medium flex items-center gap-1.5 mb-1" style={{ color: 'var(--text-muted)' }}><span className="w-1.5 h-1.5 rounded-full" style={{ background: accent }} />{label}</div>
@@ -253,15 +255,15 @@ export default function QuickLookupPage() {
             return (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 <Tile accent="var(--danger)" label="Total due this month" className="col-span-2 md:col-span-1">
-                  <div className="text-[28px] font-semibold tracking-tight tabular-nums leading-tight" style={{ color: 'var(--danger)' }}>{fmtINR(Math.round(totalMonthly + oneTimeDue))}</div>
-                  <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>{outflowTierLine(o)}{oneTimeDue > 0 && <> + one-time {fmtINR(Math.round(oneTimeDue))}</>}</div>
+                  <div className="text-[28px] font-semibold tracking-tight tabular-nums leading-tight" style={{ color: 'var(--danger)' }}>{fmtINR(Math.round(totalMonthly))}</div>
+                  <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>{outflowTierLine(o)}</div>
                 </Tile>
                 {monthlyIncome > 0 && (
                   <Tile accent={free >= 0 ? 'var(--success)' : 'var(--danger)'} label="Free / month">
                     <div className="text-[22px] sm:text-[28px] font-semibold tracking-tight tabular-nums leading-tight" style={{ color: free >= 0 ? 'var(--success)' : 'var(--danger)' }}>
                       {free >= 0 ? '+' : '−'}{fmtINR(Math.abs(Math.round(free)))}
                     </div>
-                    <div className="text-[11px] mt-0.5" style={{ color: free >= 0 ? 'var(--text-faint)' : 'var(--danger)' }}>{free >= 0 ? 'before card bill' : '⚠ over income · before card bill'}</div>
+                    <div className="text-[11px] mt-0.5" style={{ color: free >= 0 ? 'var(--text-faint)' : 'var(--danger)' }}>{free >= 0 ? 'before card bills' : '⚠ over income · before card bills'}</div>
                   </Tile>
                 )}
                 {biggest && (
@@ -298,7 +300,7 @@ export default function QuickLookupPage() {
                   {notCounted.length > 0 && <button type="button" className="ml-1.5 hover:underline" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'inherit', font: 'inherit' }}
                     title="Left out of the count and every total — click to see which"
                     onClick={() => { const el = document.getElementById('ql-not-counted') as HTMLDetailsElement | null; if (el) { el.open = true; el.scrollIntoView({ behavior: 'smooth', block: 'center' }) } }}>(🚫 {notCounted.length} not counted)</button>}
-                  {o.insuranceProvision > 0 && <span className="ml-3" style={{ color: 'var(--purple)' }} title="Monthly-equivalent of non-monthly premiums — not due this month">set aside for renewals <span className="mono">{fmtINR(Math.round(o.insuranceProvision))}</span>/mo</span>}
+                  {o.setAside > 0 && <span className="ml-3" style={{ color: 'var(--purple)' }} title="Monthly share of every quarterly / yearly bill and premium — worth setting aside; only the ones renewing this month are in the total">set aside for renewals <span className="mono">{fmtINR(Math.round(o.setAside))}</span>/mo</span>}
                 </>}
                 chips={(() => {
                   const LABEL_KIND: Record<string, string> = { 'Loan EMIs': 'loan', 'CC EMIs': 'card-emi', 'I Owe': 'iowe', 'Bills': 'bill', 'Insurance': 'insurance', 'Savings': 'savings', 'Chit repayment': 'chit-repay', 'SIP': 'sip', 'CC outstanding': 'card-out', 'CC spends': 'card-spend' }
@@ -307,7 +309,7 @@ export default function QuickLookupPage() {
                   const cnt = new Map<string, number>(); const sum = new Map<string, number>()
                   items.forEach(it => { const k = it.kind; cnt.set(k, (cnt.get(k) ?? 0) + 1); sum.set(k, (sum.get(k) ?? 0) + it.amount) })
                   return [...cnt.entries()].map(([k, n]) => {
-                    const v = monthly.get(k) ?? sum.get(k) ?? 0
+                    const v = (k === 'bill' || k === 'insurance' ? sum.get(k) : monthly.get(k)) ?? sum.get(k) ?? 0
                     return { id: k, kind: k, count: n, sub: `${fmtINR(Math.round(v))}${monthly.has(k) && totalMonthly > 0 ? ` · ${Math.round(v / totalMonthly * 100)}%` : ''}` }
                   })
                 })()}
@@ -324,12 +326,13 @@ export default function QuickLookupPage() {
           to `c.billingDay` via `resolveDueDay` — a card set up with only a billing day (no explicit
           due day) showed up correctly in the due list but this nudge never fired for it. */}
       {cards.filter((c: any) => {
-        const cardSpends = (c.spends ?? []).reduce((a: number, sp: any) => a + Number(sp.amount ?? 0), 0)
-        const dueDay = resolveDueDay(c, c.billingDay)
-        return cardSpends > 0 && (dueDay ?? 0) > 0 && (dueDay ?? 0) < today
+        // Only spends on a bill that fell due THIS month and has passed (cardCycle) — not the ongoing cycle's.
+        const cy = cardCycle(c)
+        return cy.spendsThisMonth > 0 && !!cy.billDue && cy.billDue.getDate() < today
       }).map((c: any) => {
-        const cardSpends = (c.spends ?? []).reduce((a: number, sp: any) => a + Number(sp.amount ?? 0), 0)
-        const dueDay = resolveDueDay(c, c.billingDay)
+        const cy = cardCycle(c)
+        const cardSpends = cy.spendsThisMonth
+        const dueDay = cy.billDue?.getDate() ?? resolveDueDay(c, c.billingDay)
         const paidKey = `spend-cleared-${c.id}`
         if (isMarked(paidKey, dueDay)) return null   // was `item.dueDay` — `item` is not in scope here
         return (
@@ -430,14 +433,14 @@ export default function QuickLookupPage() {
             const lc = isOv ? 'text-red-400' : isTd ? 'text-orange-400' : isSn ? 'text-yellow-400' : allPaid ? 'text-green-400' : ''
             const bl = isOv ? 'border-l-red-500' : isTd ? 'border-l-orange-500' : isSn ? 'border-l-yellow-500' : allPaid ? 'border-l-green-500' : 'border-l-[var(--border)]'
             const accent = isOv ? 'var(--danger)' : isTd ? 'var(--orange)' : isSn ? 'var(--warning)' : allPaid ? 'var(--success)' : 'var(--text-faint)'
-            const when = day === 0 ? 'no date' : isTd ? 'today' : isOv ? 'overdue' : day > today ? `in ${day - today} day${day - today === 1 ? '' : 's'}` : 'earlier'
+            const when = day === 0 ? 'any day' : isTd ? 'today' : isOv ? 'overdue' : day > today ? `in ${day - today} day${day - today === 1 ? '' : 's'}` : 'earlier'
             return (
               <div key={day} className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--hairline)', borderLeft: `3px solid ${accent}` }}>
                 <div className="flex flex-col sm:flex-row">
                   <div className="sm:w-28 flex-shrink-0 flex sm:flex-col items-baseline sm:items-start justify-between sm:justify-center gap-1 px-4 py-3 sm:border-r" style={{ borderColor: 'var(--hairline)', background: `color-mix(in srgb, ${accent} 6%, transparent)` }}>
                     <div className="flex items-baseline gap-1.5 sm:flex-col sm:gap-0">
                       <span className="text-[24px] font-semibold tabular-nums leading-none" style={{ color: day === 0 ? 'var(--text-muted)' : accent === 'var(--text-faint)' ? 'var(--text)' : accent }}>{day === 0 ? '—' : day}</span>
-                      <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>{day === 0 ? 'No date' : when}</span>
+                      <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>{day === 0 ? 'Any day this month' : when}</span>
                     </div>
                     {!allPaid ? <span className="mono text-[12px] font-semibold tabular-nums" style={{ color: accent === 'var(--text-faint)' ? 'var(--text)' : accent }}>{fmtINR(dayUnpaid)}</span> : <span className="text-[11px] font-semibold" style={{ color: 'var(--success)' }}>✓ done</span>}
                   </div>
@@ -475,6 +478,41 @@ export default function QuickLookupPage() {
             )
           })}
           </>}
+          <div className="flex"><NextMonthHeadsUp /></div>
+          {upcoming.length > 0 && (() => {
+            const startOfToday = new Date(new Date().toDateString()).getTime()
+            const left = upcoming.filter(u => !(nextMarks as string[]).includes(u.key)).reduce((a, u) => a + u.amount, 0)
+            return (
+              <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--hairline)', borderLeft: '3px solid var(--warning)' }}>
+                <div className="flex items-start justify-between gap-3 px-4 pt-3">
+                  <div>
+                    <div className="text-[14px] font-semibold">Due soon · next month</div>
+                    <div className="text-[11px]" style={{ color: 'var(--text-faint)' }}>Card bills already generated. They count in next month's total, not this month's.</div>
+                  </div>
+                  <span className="mono text-[13px] font-semibold tabular-nums flex-shrink-0" style={{ color: left > 0 ? 'var(--warning)' : 'var(--success)' }}>{left > 0 ? fmtINR(left) : '✓ all paid'}</span>
+                </div>
+                <div className="p-2.5 grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
+                  {upcoming.map(u => {
+                    const paid = (nextMarks as string[]).includes(u.key)
+                    const inDays = Math.round((u.dueDate!.getTime() - startOfToday) / 86400000)
+                    return (
+                      <div key={u.key} className="flex items-center gap-2.5 rounded-xl pl-2.5 pr-3 py-2 min-w-0" style={{ border: `1px solid ${paid ? 'color-mix(in srgb, var(--success) 30%, transparent)' : 'var(--hairline)'}` }}>
+                        <button type="button" role="checkbox" aria-checked={paid} aria-label={`${paid ? 'Unmark' : 'Mark'} ${u.label} as paid`} title={paid ? 'Paid — click to unmark' : 'Mark this bill as paid'}
+                          onClick={() => toggleNextMut.mutate({ key: u.key, month: u.monthYear! })}
+                          className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold"
+                          style={{ border: `1.5px solid ${paid ? 'var(--success)' : 'var(--warning)'}`, background: paid ? 'var(--success)' : 'transparent', color: '#fff', cursor: 'pointer' }}>{paid ? '✓' : ''}</button>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[13px] font-medium truncate" style={{ color: paid ? 'var(--text-muted)' : 'var(--text)', textDecoration: paid ? 'line-through' : 'none' }}><span className="mr-1">{ICONS[u.kind] ?? '💳'}</span>{u.label}</div>
+                          <div className="text-[11px] truncate" style={{ color: inDays <= 3 && !paid ? 'var(--warning)' : 'var(--text-faint)' }}>due {fmtDueDate(u.dueDate)} · {inDays <= 0 ? 'today' : inDays === 1 ? 'tomorrow' : `in ${inDays} days`}</div>
+                        </div>
+                        <span className="mono text-[13px] font-semibold tabular-nums flex-shrink-0" style={{ color: paid ? 'var(--success)' : 'var(--text)' }}>{paid ? 'paid' : fmtINR(u.amount)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
           {notCounted.length > 0 && (
             <details id="ql-not-counted" className="px-4 py-2 text-[11px]" style={{ color: 'var(--text-faint)' }}>
               <summary className="cursor-pointer select-none">🚫 {notCounted.length} not counted · {fmtINR(Math.round(notCounted.reduce((a, x) => a + x.amount, 0)))}/mo <span style={{color:'var(--text-faint)'}}>— left out of the count and every total</span></summary>

@@ -287,7 +287,7 @@ export function buildMasterRows(
     const isProvision = freqMonths(v.frequency) > 1
     const dueNow = isProvision && isDueThisMonth(v.startDate, v.frequency)
     rows.push({
-      key: `exp-${v.id}`, due: resolveDueDay(v, 1) ?? null, type: 'Expense', name: v.label, sub: v.category ?? v.frequency, category: v.category || 'Other',
+      key: `exp-${v.id}`, due: resolveDueDay(v) ?? null, type: 'Expense', name: v.label, sub: v.category ?? v.frequency, category: v.category || 'Other',
       loanAmount: null, totalLimit: null, ccOutstanding: null,
       emi: toMonthly(v.amount, v.frequency), pendingEmis: null, paidEmis: null, totalEmis: null,
       totalPending: 0, isProvision, dueThisMonth: dueNow, fullAmount: Number(v.amount ?? 0), route: '/expenses',
@@ -299,7 +299,7 @@ export function buildMasterRows(
     const isProvision = freqMonths(v.frequency) > 1
     const dueNow = isProvision && isDueThisMonth(v.startDate, v.frequency)
     rows.push({
-      key: `insurance-${v.id}`, due: resolveDueDay(v, 1) ?? null, type: 'Insurance', name: v.name,
+      key: `insurance-${v.id}`, due: resolveDueDay(v) ?? null, type: 'Insurance', name: v.name,
       sub: v.isCardEmi ? 'already a Card EMI' : undefined,
       loanAmount: v.sumAssured ?? null, totalLimit: null, ccOutstanding: null,
       emi: toMonthly(v.premium, v.frequency), pendingEmis: null, paidEmis: null, totalEmis: null,
@@ -322,7 +322,7 @@ export function buildMasterRows(
   }
   ;(insurance as any[]).filter((v: any) => v.active !== false && isOneOff(v.frequency) && !v.isCardEmi && dueOnce(v.startDate) && Number(v.premium ?? 0) > 0).forEach((v: any) => {
     rows.push({
-      key: `insurance-${v.id}`, due: resolveDueDay(v, 1) ?? null, type: 'Insurance', name: v.name, sub: 'one-time premium · due this month',
+      key: `insurance-${v.id}`, due: resolveDueDay(v) ?? null, type: 'Insurance', name: v.name, sub: 'one-time premium · due this month',
       loanAmount: v.sumAssured ?? null, totalLimit: null, ccOutstanding: null,
       emi: null, pendingEmis: null, paidEmis: null, totalEmis: null,
       totalPending: 0, isProvision: true, dueThisMonth: true, fullAmount: Number(v.premium ?? 0), isOneTime: true,
@@ -332,7 +332,7 @@ export function buildMasterRows(
   })
   ;(expenses as any[]).filter((v: any) => v.active !== false && isOneOff(v.frequency) && dueOnce(v.startDate) && Number(v.amount ?? 0) > 0).forEach((v: any) => {
     rows.push({
-      key: `exp-${v.id}`, due: resolveDueDay(v, 1) ?? null, type: 'Expense', name: v.label, sub: `${v.category ?? 'One-time'} · one-time, due this month`, category: v.category || 'Other',
+      key: `exp-${v.id}`, due: resolveDueDay(v) ?? null, type: 'Expense', name: v.label, sub: `${v.category ?? 'One-time'} · one-time, due this month`, category: v.category || 'Other',
       loanAmount: null, totalLimit: null, ccOutstanding: null,
       emi: null, pendingEmis: null, paidEmis: null, totalEmis: null,
       totalPending: 0, isProvision: true, dueThisMonth: true, fullAmount: Number(v.amount ?? 0), isOneTime: true, route: '/expenses',

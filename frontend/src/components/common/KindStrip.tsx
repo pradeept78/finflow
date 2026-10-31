@@ -72,7 +72,7 @@ export function KindStrip({ chips, selected, onChange, lead, trail, className = 
             show all ✕
           </button>
         )}
-        {trail && <span className="ml-auto text-[11px] opacity-80" style={{ color: 'var(--text-faint)' }}>{trail}</span>}
+        {trail && <span className="ml-auto text-[11px]" style={{ color: 'var(--text-faint)' }}>{trail}</span>}
       </div>
     </div>
   )

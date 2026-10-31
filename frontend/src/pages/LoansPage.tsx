@@ -4,11 +4,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { loansApi, paidMarksApi, closedLoansApi, incomeApi } from '../api'
 import FilterMenu from '../components/common/FilterMenu'
 import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner, ErrorState, AlertModal, InputModal, SortHeader } from '../components/common'
-import { fmtINR, getEff, resolveDueDay, isPaidThisMonth, monthlyIncomeTotal } from '../utils/format'
+import { fmtINR, getEff, resolveDueDay, isPaidThisMonth, monthlyIncomeTotal, ordinal } from '../utils/format'
 import { calcLoanSplit } from '../utils/loanCalc'
 import { emiFacts } from '../utils/emiFacts'
 import { Plus, Pencil, Trash2, Archive, ChevronDown } from 'lucide-react'
+import NextMonthHeadsUp from '../components/common/NextMonthHeadsUp'
+import { startsAfterThisMonth } from '../utils/nextMonth'
+import { MoreFields } from '../components/common/MoreFields'
 import toast from 'react-hot-toast'
+import { KpiRow } from '../components/common/KpiTile'
 
 export default function LoansPage() {
   const qc = useQueryClient()
@@ -82,7 +86,12 @@ export default function LoansPage() {
   const pickedLoans = activeLoans.filter((l: any) => wi.picked.has(String(l.id)))
   const pickNeed = pickedLoans.reduce((s: number, l: any) => s + getEff(l).pending * Number(l.emi ?? 0), 0)
   const pickFree = pickedLoans.reduce((s: number, l: any) => s + Number(l.emi ?? 0), 0)
-  const totalEmi = activeLoans.reduce((s: number, l: any) => s + Number(l.emi ?? 0), 0)
+  // EMIs paid this month: a loan whose first EMI is after this month isn't one yet (utils/nextMonth) — same
+  // rule as every total; its EMI shows as "+₹X from Nov" instead.
+  const notStarted = activeLoans.filter((l: any) => startsAfterThisMonth(l))
+  const totalEmi = activeLoans.filter((l: any) => !startsAfterThisMonth(l)).reduce((s: number, l: any) => s + Number(l.emi ?? 0), 0)
+  const startingEmi = notStarted.reduce((s: number, l: any) => s + Number(l.emi ?? 0), 0)
+  const nextMonthName = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toLocaleDateString('en-IN', { month: 'short' })
   const totalPending = loans.reduce((s: number, l: any) => { const e = getEff(l), t = l.tenure ?? (e.paid + e.pending); return s + calcLoanSplit(l.amount ?? 0, l.emi ?? 0, t, e.paid, l.principalPaid ?? undefined).princLeft }, 0)
   const totalIntLeft = loans.reduce((s: number, l: any) => { const e = getEff(l), t = l.tenure ?? (e.paid + e.pending); return s + calcLoanSplit(l.amount ?? 0, l.emi ?? 0, t, e.paid, l.principalPaid ?? undefined).intLeft }, 0)
   const totalIntPaid = loans.reduce((s: number, l: any) => { const e = getEff(l), t = l.tenure ?? (e.paid + e.pending); return s + calcLoanSplit(l.amount ?? 0, l.emi ?? 0, t, e.paid, l.principalPaid ?? undefined).intPaid }, 0)
@@ -149,13 +158,10 @@ export default function LoansPage() {
   const COLS_MAIN = showDebit
     ? 'minmax(220px,2.6fr) minmax(90px,1fr) minmax(110px,1.3fr) minmax(110px,1.2fr) minmax(130px,1.5fr) minmax(55px,0.7fr) minmax(80px,1fr) minmax(80px,0.95fr)'
     : 'minmax(220px,2.6fr) minmax(110px,1.3fr) minmax(110px,1.2fr) minmax(130px,1.5fr) minmax(55px,0.7fr) minmax(80px,1fr) minmax(80px,0.95fr)'
-  const COLS_FOOT = showDebit
-    ? 'minmax(220px,2.6fr) minmax(90px,1fr) minmax(110px,1.3fr) minmax(130px,1.5fr) minmax(55px,0.7fr) minmax(80px,1fr) minmax(80px,0.95fr)'
-    : 'minmax(220px,2.6fr) minmax(110px,1.3fr) minmax(130px,1.5fr) minmax(55px,0.7fr) minmax(80px,1fr) minmax(80px,0.95fr)'
 
   // Footer sums scoped to the type filter above, same formulas as the unfiltered totals.
   const filteredActiveLoans = sorted.filter((l: any) => getEff(l).pending > 0)
-  const filteredTotalEmi = filteredActiveLoans.reduce((s: number, l: any) => s + Number(l.emi ?? 0), 0)
+  const filteredTotalEmi = filteredActiveLoans.filter((l: any) => !startsAfterThisMonth(l)).reduce((s: number, l: any) => s + Number(l.emi ?? 0), 0)
   const filteredTotalPending = sorted.reduce((s: number, l: any) => { const e = getEff(l), t = l.tenure ?? (e.paid + e.pending); return s + calcLoanSplit(l.amount ?? 0, l.emi ?? 0, t, e.paid, l.principalPaid ?? undefined).princLeft }, 0)
   const filteredTotalIntLeft = sorted.reduce((s: number, l: any) => { const e = getEff(l), t = l.tenure ?? (e.paid + e.pending); return s + calcLoanSplit(l.amount ?? 0, l.emi ?? 0, t, e.paid, l.principalPaid ?? undefined).intLeft }, 0)
 
@@ -175,9 +181,9 @@ export default function LoansPage() {
       {loans.length === 0 ? <EmptyState icon="🏦" title="No loans" sub="Add your first loan to track EMIs and payoff date" action={<button className="btn-primary btn-sm" onClick={() => setModal({ open: true, loan: { loanType: 'Personal Loan' } })}>+ Add loan</button>} /> : (<>
 
         {/* ── SUMMARY ROW ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 [&>*]:min-w-0">
+        <KpiRow className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 [&>*]:min-w-0" keep={[0, 2]}>
           {[
-            { label: 'Monthly EMI',     value: fmtINR(totalEmi),                    sub: `${activeLoans.length} active loans`, accent: '#f97316' },
+            { label: 'Monthly EMI',     value: fmtINR(totalEmi),                    sub: `${activeLoans.length - notStarted.length} paying now${startingEmi > 0 ? ` · +${fmtINR(startingEmi)} from ${notStarted.some((l: any) => { const d = new Date(l.startDate); const n = new Date(); return d.getFullYear() * 12 + d.getMonth() === n.getFullYear() * 12 + n.getMonth() + 1 }) ? nextMonthName : 'later'}` : ''}`, accent: '#f97316' },
             { label: 'Total Loan',      value: fmtINR(totalLoanAmount),             sub: `${fmtINR(totalWithInterest)} with interest`,  accent: '#2dd4bf' },
             { label: 'Total to Clear',  value: fmtINR(totalPending + totalIntLeft), sub: `principal ${fmtINR(totalPending)} + interest ${fmtINR(totalIntLeft)}`, accent: 'var(--warning)' },
             { label: 'Paid So Far',     value: fmtINR(totalPaidSoFar),              sub: `${fmtINR(totalIntPaid)} was interest`,        accent: 'var(--cyan)' },
@@ -193,7 +199,7 @@ export default function LoansPage() {
               </div>
             </div>
           ))}
-        </div>
+        </KpiRow>
 
         {/* Insights row: upcoming debits + high rate tip, side by side */}
         {(() => {
@@ -241,9 +247,9 @@ export default function LoansPage() {
           )
         })()}
 
+        <div className="flex"><NextMonthHeadsUp /></div>
         {/* ── TABLE ── */}
         <WhatIfBar count={pickedLoans.length} need={pickNeed} free={pickFree} billNow={totalEmi} income={monthlyIncomeTotal(incomeRows as any[])} onClear={wi.clear} />
-        <div className="md:hidden text-[11px] text-right mb-1 print:hidden" style={{ color: 'var(--text-faint)' }}>swipe sideways for more columns ↔</div>
         <div className="rounded-2xl overflow-hidden text-[13px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', overflowX: 'auto' }}>
 
           {/* Filter bar — sorting now lives on the column headers below (click a header, arrow shows direction) */}
@@ -262,8 +268,8 @@ export default function LoansPage() {
             </div>
           </div>
 
-          {/* Column headers */}
-          <div className="grid px-4 py-2 text-[12px] font-medium border-b"
+          {/* Column headers — phones show card rows instead, so no headers there */}
+          <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b"
             style={{ gridTemplateColumns: COLS_MAIN, borderColor: 'var(--border)', color: 'var(--text-faint)' }}>
             <SortHeader label="Lender" col="lender" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
             {showDebit && <SortHeader label="Debited From" col="debited" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="center" />}
@@ -295,11 +301,7 @@ export default function LoansPage() {
             }
             const rate = l.amount > 0 && l.emi > 0 && t > 0 ? calcRate(Number(l.amount), Number(l.emi), t) : Number(l.interestRate ?? 0)
             const paidKey = `loan-${l.id}`
-            // Was checking raw `l.dueDay` only — a loan with no explicit due day but an inferable
-            // one via `startDate` (same fallback the due-badge display and CreditCardsPage/
-            // PersonalEmiPage already use through `resolveDueDay`) could never become "auto-paid"
-            // here, so its paid-state logic silently diverged from every other page's records.
-            // `isPaidThisMonth` is the same shared helper those pages use for this exact check.
+            // Same shared paid rule (ticked = paid) every other page uses.
             const isPaid = isPaidThisMonth(paidKey, resolveDueDay(l), markedKeys as string[])
             const done = eff.pending === 0
             const missed = l.missedMonths ?? 0
@@ -307,9 +309,32 @@ export default function LoansPage() {
 
             return (
               <div key={l.id} style={{ borderTop: idx === 0 ? 'none' : '1px solid color-mix(in srgb, var(--text) 5%, transparent)' }}>
-                {/* Main row */}
+                {/* Phone row: one card per loan — name and EMI, then type, due day and EMIs left, and a progress
+                    bar. Tap opens the same details and actions as the table row below (which phones don't show). */}
+                <button type="button" className={`md:hidden w-full text-left px-4 py-3 ${done ? 'opacity-50' : ''}`}
+                  style={{ background: isExp ? 'var(--bg-base)' : 'transparent' }}
+                  aria-expanded={isExp} onClick={() => setExpanded(isExp ? null : l.id)}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="font-medium text-[14px] truncate">{l.lender}</span>
+                    <span className="mono font-semibold text-[14px] tabular-nums flex-shrink-0" style={{ color: 'var(--danger)' }}>{fmtINR(l.emi ?? 0)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 mt-0.5 text-[12px]" style={{ color: 'var(--text-muted)' }}>
+                    <span className="truncate">
+                      {(l.loanType || 'Loan').replace(/ Loan$/, '')}{resolveDueDay(l) ? ` · due ${ordinal(resolveDueDay(l)!)}` : ''}
+                      {missed > 0 && <span style={{ color: 'var(--danger)' }}> · {missed} missed</span>}
+                    </span>
+                    <span className="flex-shrink-0 tabular-nums">{done ? '✓ closed' : isPaid ? '✓ paid this month' : `${eff.pending} left`}</span>
+                  </div>
+                  {!done && t > 0 && (
+                    <div className="h-1 rounded-full mt-2 overflow-hidden" style={{ background: 'var(--border)' }}>
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'var(--success)' }} />
+                    </div>
+                  )}
+                </button>
+
+                {/* Main row (tablet and desktop) */}
                 <div
-                  className="grid items-center px-4 py-3 cursor-pointer transition-colors"
+                  className="hidden md:grid items-center px-4 py-3 cursor-pointer transition-colors"
                   style={{ gridTemplateColumns: COLS_MAIN, background: isExp ? 'var(--bg-base)' : 'transparent' }}
                   onMouseEnter={e => { if (!isExp) (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
                   onMouseLeave={e => { if (!isExp) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
@@ -546,12 +571,16 @@ export default function LoansPage() {
           })}
 
           {/* Footer */}
-          <div className="grid px-4 py-3 text-[13px] font-bold border-t"
-            style={{ gridTemplateColumns: COLS_FOOT, borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--text) 5%, transparent)', color: 'var(--text-faint)' }}>
+          <div className="hidden md:grid px-4 py-3 text-[13px] font-bold border-t"
+            style={{ gridTemplateColumns: COLS_MAIN, borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--text) 5%, transparent)', color: 'var(--text-faint)' }}>
+            {/* Same column template as the header and rows (it had its own, one column short, so the totals
+                drifted up to 73px off their columns): one cell per column, blanks where nothing adds up. */}
             <span>{filteredActiveLoans.length} active{filterLoanType!=='All'?` (${filterLoanType})`:''}</span>
             {showDebit && <span></span>}
             <span className="text-right mono" style={{ color: 'var(--danger)' }}>{fmtINR(filteredTotalEmi)}/mo</span>
+            <span></span>
             <span className="text-right mono" style={{ color: 'var(--warning)' }}>{fmtINR(filteredTotalPending + filteredTotalIntLeft)}</span>
+            <span></span>
             <span></span>
             <span></span>
           </div>
@@ -572,10 +601,12 @@ export default function LoansPage() {
             <FormField label="Tenure (months) *"><input className={"input" + (formErrors.tenure ? ' border-red-500' : '')} type="number" value={modal.loan.tenure || ''} onChange={e => { setModal(m => ({ ...m, loan: { ...m.loan, tenure: +e.target.value } })); setFormErrors(er => ({...er, tenure:''})) }} />{formErrors.tenure && <p className="text-[11px] text-red-400 mt-1">{formErrors.tenure}</p>}</FormField>
             <FormField label="Start Date *"><input className={"input" + (formErrors.startDate ? ' border-red-500' : '')} type="date" value={modal.loan.startDate || ''} onChange={e => { setModal(m => ({ ...m, loan: { ...m.loan, startDate: e.target.value } })); setFormErrors(er => ({...er, startDate:''})) }} />{formErrors.startDate && <p className="text-[11px] text-red-400 mt-1">{formErrors.startDate}</p>}</FormField>
             <FormField label="Due Day"><input className="input" type="number" min={1} max={31} placeholder="1–31" value={modal.loan.dueDay || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, dueDay: +e.target.value } }))} /></FormField>
+            <MoreFields>
             <FormField label="Asset Current Value (₹)"><input className="input" type="number" placeholder="e.g. car current value" value={modal.loan.currentValue || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, currentValue: +e.target.value || undefined } }))} /></FormField>
             <FormField label="EMI debited from (bank/account)"><input className="input" placeholder="e.g. HDFC ••1234" value={modal.loan.debitAccount || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, debitAccount: e.target.value } }))} /></FormField>
             <FormField label="Processing fee (₹)"><input className="input" type="number" value={modal.loan.processingFee || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, processingFee: +e.target.value || undefined } }))} /></FormField>
             <FormField label="Notes" className="form-full"><textarea className="input" rows={2} value={modal.loan.notes || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, notes: e.target.value } }))} /></FormField>
+            </MoreFields>
           </div>
         </Modal>
       )}

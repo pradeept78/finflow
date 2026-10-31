@@ -7,11 +7,14 @@ import { advanceAll } from '../utils/projection'
 import HorizonBar from '../components/common/HorizonBar'
 import IncomeSplitCard from '../components/common/IncomeSplitCard'
 import { useQuery } from '@tanstack/react-query'
-import { loansApi, cardsApi, personalEmiApi, savingsApi, insuranceApi, investmentsApi, expensesApi, incomeApi } from '../api'
-import { fmtINR, monthlyIncomeTotal } from '../utils/format'
-import { calcOutflow } from '../utils/calcOutflow'
+import { loansApi, cardsApi, personalEmiApi, savingsApi, insuranceApi, investmentsApi, expensesApi, incomeApi, paidMarksApi } from '../api'
+import { masterKeyOf } from '../utils/dueRows'
+import { cardCycle, fmtDueDate } from '../utils/cardCycle'
+import { fmtINR, monthlyIncomeTotal, ordinal } from '../utils/format'
+import { calcOutflow, outflowTierLine, freeFigures } from '../utils/calcOutflow'
 import { PageHeader, LoadingSpinner, ErrorState, SortHeader } from '../components/common'
 import { Download } from 'lucide-react'
+import { PhoneRow } from '../components/common/PhoneRow'
 import { rateColor } from '../utils/emiFacts'
 import { investTotals } from '../utils/investValue'
 import FilterMenu from '../components/common/FilterMenu'
@@ -19,6 +22,7 @@ import { usePicks, PickBox, WhatIfBar, SelectAllLink } from '../components/commo
 import { KindStrip } from '../components/common/KindStrip'
 import { masterKind } from '../utils/kinds'
 import { buildMasterRows, TYPE_COLOR, isFriendOwed, amountSortVal, fmtMonthYear, type MasterRow } from '../utils/buildMasterRows'
+import { KpiRow } from '../components/common/KpiTile'
 
 /**
  * Everything you owe or are committed to paying, in one place — renamed back to "All Commitments"
@@ -108,6 +112,10 @@ function GroupHead({ title, tag, count, open, onToggle, accent, right, share }: 
 export default function MasterTablePage() {
   const navigate = useNavigate()
   const { data: loansRaw = [], isLoading: l1, isError: e1, refetch: r1 } = useQuery({ queryKey: ['loans'], queryFn: loansApi.getAll })
+  // Ticks from Lookup / Calendar (due-list keys), mapped onto this page's row keys. A past day is only
+  // "overdue" while something on it is still unticked.
+  const { data: markedKeys = [] } = useQuery({ queryKey: ['paid-marks'], queryFn: paidMarksApi.getAll })
+  const paidRows = new Set((markedKeys as string[]).map(masterKeyOf))
   const { data: cardsRaw = [], isLoading: l2, isError: e2, refetch: r2 } = useQuery({ queryKey: ['cards'], queryFn: cardsApi.getAll })
   const { data: personalRaw = [], isLoading: l3, isError: e3, refetch: r3 } = useQuery({ queryKey: ['personal'], queryFn: personalEmiApi.getAll })
   const { data: savingsRaw = [], isLoading: l4, isError: e4, refetch: r4 } = useQuery({ queryKey: ['savings'], queryFn: savingsApi.getAll })
@@ -498,8 +506,7 @@ export default function MasterTablePage() {
   // they can't disagree with Dashboard/Hub/Finance Overview even though this page shows far more.
   const shared = calcOutflow(loans as any[], cards as any[], personal as any[], savings as any[], investments as any[], expenses as any[], insurance as any[])
   const monthlyIncome = monthlyIncomeTotal(income as any[])
-  const freeAfterCommitments = monthlyIncome - shared.locked
-  const provisionTotal = shared.expenseProvision + shared.insuranceProvision
+  const freeAfterCommitments = freeFigures(shared, monthlyIncome).free
   // Investments shown as a single summary tile (current worth), to match Total Debt's role on the
   // liability side — the table below still lists each investment as its own row.
   const totalCurrentValue = investTotals(investments as any[]).value
@@ -511,20 +518,31 @@ export default function MasterTablePage() {
   // (A one-time/"Single" premium needs no such tag: it's never pushed into this due-amount logic as a
   // recurring row in the first place, since it isn't a provision and has no recurring `emi`.)
   const dueAmount = (r: MasterRow) => (r.isCardEmi || r.paidThisCycle) ? 0 : (r.isProvision ? (r.dueThisMonth ? (r.fullAmount ?? 0) : 0) : (r.emi ?? r.totalPending ?? 0))
+  // Card statement balances / spends whose bill falls due NEXT month (statement already generated, see
+  // utils/cardCycle) get their own "Due next month" group (key -1) after this month's days, with the real
+  // date — under "Day 2" they read as 29 days overdue in a month they aren't due in.
+  const NEXT = -1
+  const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59)
+  const nextBillDue = new Map<string, Date>()
+  ;(cards as any[]).forEach((c: any) => cardCycle(c).parts.forEach(pt => {
+    if (pt.kind === 'emi' || pt.due <= monthEnd) return
+    const k = pt.kind === 'out' ? `cc-out-${c.id}` : `cc-spend-${c.id}`
+    if (!nextBillDue.has(k) || pt.due < nextBillDue.get(k)!) nextBillDue.set(k, pt.due)
+  }))
   const dueBuckets = new Map<number, MasterRow[]>()
-  filtered.forEach(r => { const d = r.due ?? 0; if (!dueBuckets.has(d)) dueBuckets.set(d, []); dueBuckets.get(d)!.push(r) })
+  filtered.forEach(r => { const d = !r.charging && nextBillDue.has(r.key) ? NEXT : (r.due ?? 0); if (!dueBuckets.has(d)) dueBuckets.set(d, []); dueBuckets.get(d)!.push(r) })
   const dueDays = [...dueBuckets.keys()].sort((a, b) => {
+    if (a === NEXT) return 1; if (b === NEXT) return -1
     if (a === 0) return 1; if (b === 0) return -1
     return a - b
   })
-  const dueGroupKey = (d: number) => d === 0 ? 'No fixed date' : `Day ${d}`
+  const dueGroupKey = (d: number) => d === NEXT ? 'Due next month' : d === 0 ? 'Any day this month' : `Day ${d}`
   const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()
   const daysAwayFor = (d: number) => d >= today ? d - today : (daysInMonth - today + d)
-  const totalFundsNeeded = dueDays.filter(d => d !== 0).reduce((s, d) => s + dueBuckets.get(d)!.filter(r => !isFriendOwed(r)).reduce((a, r) => a + dueAmount(r), 0), 0)
   const runningByDay = new Map<number, number>()
   ;(() => {
     let running = 0
-    dueDays.filter(d => d !== 0).forEach(d => {
+    dueDays.filter(d => d > 0).forEach(d => {
       running += dueBuckets.get(d)!.filter(r => !isFriendOwed(r)).reduce((a, r) => a + dueAmount(r), 0)
       runningByDay.set(d, running)
     })
@@ -719,7 +737,7 @@ export default function MasterTablePage() {
             {tilesCollapsed ? '▸' : '▾'}<span className="hidden sm:inline"> Summary</span>
           </button>
         )}
-        <button onClick={() => setShowAbout(a => !a)} className={`text-[11px] ${pageTab === 'view' ? '' : 'ml-auto'}`} style={{ background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer' }}>{showAbout ? '✕' : <>ⓘ<span className="hidden sm:inline"> About this page</span></>}</button>
+        <button onClick={() => setShowAbout(a => !a)} aria-label={showAbout ? 'Close about this page' : 'About this page'} title="About this page" className={`text-[11px] ${pageTab === 'view' ? '' : 'ml-auto'}`} style={{ background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer' }}>{showAbout ? '✕' : <>ⓘ<span className="hidden lg:inline"> About this page</span></>}</button>
       </div>
       {showAbout && (
         <div className="text-[11px] print:hidden rounded-lg p-3" style={{ color: 'var(--text-faint)', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
@@ -734,11 +752,11 @@ export default function MasterTablePage() {
       {pageTab === 'view' && (
       <>
       {!tilesCollapsed && (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 print:hidden">
+      <KpiRow className="grid grid-cols-2 lg:grid-cols-4 gap-2 print:hidden" keep={[2, 3]}>
         {[
           // Was its own "Outstanding + Spend" tile between Total Debt and Investments — folded into
           // Funds Needed's sub-line instead (per request), since that's the figure it's actually a
-          // component of (every CC Outstanding/Spends row's due-day amount feeds totalFundsNeeded),
+          // component of (the card bill is one tier of calcOutflow's total),
           // rather than a seventh tile competing for the same row.
           // The caption names what the figure actually covers: all four debt groups when nothing is filtered,
           // otherwise only the groups left in the filtered rows, plus the unfiltered total for context.
@@ -762,15 +780,16 @@ export default function MasterTablePage() {
           // (committed + this month's card bill), so showing both side by side read as two separate costs.
           // The breakdown is in the sub-line; any remainder that isn't committed or card bill is shown, not hidden.
           (() => {
-            const bill = shared.ccOutstanding + shared.ccSpends
-            const other = totalFundsNeeded - shared.locked - bill
+            // Straight from the shared calculator (locked + card + renewals due now), so this tile and
+            // Lookup / Dashboard / Calendar / Hub / Budget show the same figure to the rupee. It used to
+            // add up this page's own rows, which counted a future I Owe lump sum and skipped loans with no due day.
             return {
-              label: 'Cash needed this month', value: fmtINR(totalFundsNeeded), accent: 'var(--danger)',
-              sub: `${fmtINR(shared.locked)} committed + ${fmtINR(bill)} card bill${Math.abs(other) >= 1 ? ` ${other > 0 ? '+' : '−'} ${fmtINR(Math.abs(other))} bills due` : ''}`,
-              hint: `Committed ${fmtINR(shared.locked)}/mo (real cash leaving every month) + credit-card outstanding ${fmtINR(shared.ccOutstanding)} + card spends ${fmtINR(shared.ccSpends)}${Math.abs(other) >= 1 ? ` + ${fmtINR(Math.abs(other))} of quarterly/annual bills and premiums that fall due this month at full amount` : ''}${provisionTotal > 0 ? `. Not included: ${fmtINR(provisionTotal)}/mo set aside for renewals.` : ''}`,
+              label: 'Cash needed this month', value: fmtINR(shared.total), accent: 'var(--danger)',
+              sub: outflowTierLine(shared),
+              hint: `Committed ${fmtINR(shared.locked)}/mo (real cash leaving every month) + credit-card outstanding ${fmtINR(shared.ccOutstanding)} + card spends ${fmtINR(shared.ccSpends)}${shared.dueNow > 0 ? ` + ${fmtINR(shared.dueNow)} of quarterly/yearly bills, premiums and one-off payments that fall due this month at full amount` : ''}${shared.setAside > 0 ? `. Not included: ${fmtINR(shared.setAside)}/mo set aside for renewals.` : ''}`,
             }
           })(),
-          { label: 'Free / month', value: `${freeAfterCommitments >= 0 ? '+' : '−'}${fmtINR(Math.abs(freeAfterCommitments))}${incomePct(freeAfterCommitments, monthlyIncome)}`, sub: monthlyIncome > 0 ? `of ${fmtINR(monthlyIncome)} income · before card bill` : 'add income to see this', accent: freeAfterCommitments >= 0 ? 'var(--success)' : 'var(--danger)' },
+          { label: 'Free / month', value: `${freeAfterCommitments >= 0 ? '+' : '−'}${fmtINR(Math.abs(freeAfterCommitments))}${incomePct(freeAfterCommitments, monthlyIncome)}`, sub: monthlyIncome > 0 ? `of ${fmtINR(monthlyIncome)} income · before card bills` : 'add income to see this', accent: freeAfterCommitments >= 0 ? 'var(--success)' : 'var(--danger)' },
         ].map(m => (
           <div key={m.label} title={(m as any).hint} className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${m.accent} 5%, var(--bg-card)) 0%, var(--bg-card) 70%)`, border: `1px solid var(--hairline)` }}>
             <div className="text-[12px] font-medium mb-1" style={{ color: 'var(--text-muted)' }}>
@@ -782,7 +801,7 @@ export default function MasterTablePage() {
             <div className="text-[11px] leading-snug line-clamp-2" title={String(m.sub)} style={{ color: 'var(--text-faint)' }}>{m.sub}</div>
           </div>
         ))}
-      </div>
+      </KpiRow>
       )}
       {!tilesCollapsed && <div className="print:hidden"><IncomeSplitCard o={shared} income={monthlyIncome} /></div>}
       </>
@@ -1189,8 +1208,26 @@ export default function MasterTablePage() {
         renderGroupedByKey(typeGroupKeys, typeBuckets, true)
       ) : viewMode === 'card' ? (
         renderGroupedByKey(cardGroupKeys, cardBuckets, true)
-      ) : viewMode === 'list' ? (
-        <div className="rounded-2xl overflow-x-auto text-[12px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+      ) : viewMode === 'list' ? (<>
+        {/* Phones: one row per commitment (tap opens its page); the full 12-column table is tablet and desktop only */}
+        <div className="md:hidden rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          {sorted.map((r, idx) => {
+            const amountPrimary = r.ccOutstanding ?? r.loanAmount ?? null
+            return (
+              <div key={r.key} style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--border)' }}>
+                <PhoneRow title={r.name}
+                  amount={r.emi != null ? <>{fmtINR(r.emi)}<span className="text-[11px] font-normal">/mo</span></> : amountPrimary != null ? fmtINR(amountPrimary) : '—'}
+                  amountColor={r.emi != null ? 'var(--warning)' : r.ccOutstanding != null ? 'var(--danger)' : undefined}
+                  left={`${r.type}${r.due ? ` · due ${ordinal(r.due)}` : ''}${isFriendOwed(r) ? ` · for ${r.owedBy}` : ''}`}
+                  right={r.totalPending > 0 ? `${fmtINR(r.totalPending)} left` : ''}
+                  pct={r.totalEmis ? Math.min(100, ((r.paidEmis ?? 0) / r.totalEmis) * 100) : undefined}
+                  dim={isFriendOwed(r) || !!r.isCardEmi}
+                  onToggle={() => navigate(r.route, { state: { from: 'master' } })} />
+              </div>
+            )
+          })}
+        </div>
+        <div className="hidden md:block rounded-2xl overflow-x-auto text-[12px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
           <table className="w-full" style={{ borderCollapse: 'collapse', minWidth: 1020 }}>
             <thead>
               <tr className="text-[11px] font-medium" style={{ background: 'color-mix(in srgb, var(--text) 4%, var(--bg-card))', color: 'var(--text-faint)', borderBottom: '1px solid var(--hairline)' }}>
@@ -1297,9 +1334,9 @@ export default function MasterTablePage() {
             </tfoot>
           </table>
         </div>
-      ) : (
+      </>      ) : (
         <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-          {dueGroupList.every(g => (dueBuckets.get(g === 'No fixed date' ? 0 : Number(g.replace('Day ', ''))) ?? []).length === 0) ? (
+          {dueGroupList.every(g => (dueBuckets.get(g === 'Any day this month' ? 0 : Number(g.replace('Day ', ''))) ?? []).length === 0) ? (
             <div className="p-8 text-center" style={{ color: 'var(--text-faint)' }}>No items match "{search}"</div>
           ) : dueDays.map(d => {
             const g = dueGroupKey(d)
@@ -1309,20 +1346,25 @@ export default function MasterTablePage() {
             const ownGroupRows = groupRows.filter(r => !isFriendOwed(r))
             const groupDueAmount = ownGroupRows.reduce((s, r) => s + dueAmount(r), 0)
             const isTodayGroup = d === today
-            const isOverdueGroup = d > 0 && d < today
+            const groupPaid = ownGroupRows.some(r => dueAmount(r) > 0) && ownGroupRows.filter(r => dueAmount(r) > 0).every(r => paidRows.has(r.key))
+            const isOverdueGroup = d > 0 && d < today && !groupPaid
             const daysAway = d > 0 ? daysAwayFor(d) : null
             const running = d > 0 ? runningByDay.get(d) : null
             return (
               <div key={g}>
                 <GroupHead
                   title={g} count={groupRows.length} open={!isCollapsed} onToggle={() => toggleGroup(g)}
-                  accent={g === 'No fixed date' ? 'var(--text-faint)' : isTodayGroup ? 'var(--warning)' : isOverdueGroup ? 'var(--danger)' : 'var(--info)'}
-                  tag={isTodayGroup
+                  accent={d === NEXT ? 'var(--warning)' : g === 'Any day this month' ? 'var(--text-faint)' : isTodayGroup ? 'var(--warning)' : isOverdueGroup ? 'var(--danger)' : groupPaid && d < today ? 'var(--success)' : 'var(--info)'}
+                  tag={d === NEXT
+                    ? <span className="text-[11px]" style={{ color: 'var(--warning)' }}>card bills · from {fmtDueDate(new Date(Math.min(...groupRows.map(r => nextBillDue.get(r.key)?.getTime() ?? Infinity))))}</span>
+                    : isTodayGroup
                     ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--warning) 16%, transparent)', color: 'var(--warning)' }}>Today</span>
+                    : groupPaid && d > 0 && d < today
+                      ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--success) 14%, transparent)', color: 'var(--success)' }}>✓ Paid</span>
                     : isOverdueGroup
-                      ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--danger) 14%, transparent)', color: 'var(--danger)' }}>{Math.abs(daysAway ?? 0)}d overdue</span>
+                      ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--danger) 14%, transparent)', color: 'var(--danger)' }}>{today - d}d overdue</span>
                       : daysAway !== null ? <span className="text-[11px]" style={{ color: 'var(--text-faint)' }}>in {daysAway}d</span> : null}
-                  right={g === 'No fixed date'
+                  right={g === 'Any day this month'
                     ? <span className="text-[12px]" style={{ color: 'var(--text-faint)' }}>no set date</span>
                     : (
                       <span className="flex flex-col items-end leading-tight tabular-nums">

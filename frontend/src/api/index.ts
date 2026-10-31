@@ -1,4 +1,5 @@
 import api from './axios'
+import { withCycleDates } from '../utils/cardCycle'
 import type { LoginRequest, RegisterRequest } from '../types'
 import type { Loan, CreditCard, PersonalEmi, Saving, Investment, InsurancePolicy, IncomeEntry, Expense, PeopleOwe, ClosedLoan } from '../types'
 
@@ -22,7 +23,14 @@ export const loansApi = {
   markPaid: (id: number) => api.patch<{ data: Loan }>(`/loans/${id}/mark-paid`).then(r => r.data.data),
 }
 
-export const cardsApi       = crud<CreditCard>('credit-cards')
+// Card EMIs are tagged with their first billed due date on load (utils/cardCycle withCycleDates), so every
+// page counts instalments paid from the statement cycle, not the day the EMI was taken.
+const cardsCrud = crud<CreditCard>('credit-cards')
+export const cardsApi = {
+  ...cardsCrud,
+  getAll: () => cardsCrud.getAll().then(cs => (cs ?? []).map(withCycleDates)),
+  getById: (id: number) => cardsCrud.getById(id).then(withCycleDates),
+}
 export const personalEmiApi = crud<PersonalEmi>('personal-emis')
 export const savingsApi     = crud<Saving>('savings')
 export const investmentsApi = crud<Investment>('investments')
@@ -47,11 +55,15 @@ export const adminApi = {
 export const snapshotApi = {
   getLast6: () => api.get<{ data: any[] }>('/snapshots/last6').then(r => r.data.data),
   getAll: () => api.get<{ data: any[] }>('/snapshots').then(r => r.data.data),
-  generate: () => api.post<{ data: any }>('/snapshots/generate').then(r => r.data.data),
+  // netWorth comes from the frontend's shared calculators; the backend records it as sent.
+  generate: (body?: { netWorth?: number }) => api.post<{ data: any }>('/snapshots/generate', body ?? {}).then(r => r.data.data),
   restore: (snapshots: any[]) => api.post<{ data: number }>('/snapshots/restore', snapshots).then(r => r.data.data),
 }
 
 export const paidMarksApi = {
   getAll: () => api.get<{ data: string[] }>('/paid-marks').then(r => r.data.data),
   toggle: (itemKey: string) => api.post<{ data: boolean }>('/paid-marks/toggle', { itemKey }).then(r => r.data.data),
+  // A bill due in another month (a card statement generated now, due next month): read and tick it for that month.
+  getFor: (month: string) => api.get<{ data: string[] }>('/paid-marks', { params: { month } }).then(r => r.data.data),
+  toggleFor: (itemKey: string, monthYear: string) => api.post<{ data: boolean }>('/paid-marks/toggle', { itemKey, monthYear }).then(r => r.data.data),
 }

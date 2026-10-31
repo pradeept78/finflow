@@ -1,4 +1,6 @@
 import { getEff, resolveDueDay, isDueThisMonth, isOneOff, toMonthly } from './format'
+import { cardCycle, fmtDueDate, emiStartsLater } from './cardCycle'
+import { startsAfterThisMonth } from './nextMonth'
 import { isLive } from './ended'
 import { ioweFacts } from './iowe'
 import { isChitRepaying } from './kinds'
@@ -36,6 +38,9 @@ export interface DueRow {
   pending?: number
   /** Bill category, for bill rows. */
   category?: string
+  /** Upcoming rows only: the actual due date, and the month to tick it paid in (it's due next month). */
+  dueDate?: Date
+  monthYear?: string
 }
 export interface NotCountedRow { key: string; label: string; sub: string; amount: number; dueDay?: number; why: string }
 
@@ -43,18 +48,22 @@ export interface DueData {
   loans?: any[]; cards?: any[]; personal?: any[]; expenses?: any[]; savings?: any[]; investments?: any[]; insurance?: any[]
 }
 
+const monthEndOf = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59)
+
 const sameMonth = (iso: string | undefined, now: Date) => {
   const d = iso ? new Date(iso) : null
   return !!d && !isNaN(d.getTime()) && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
 }
 
-export function buildDueRows(data: DueData, now: Date = new Date()): { rows: DueRow[]; notCounted: NotCountedRow[] } {
+export function buildDueRows(data: DueData, now: Date = new Date()): { rows: DueRow[]; notCounted: NotCountedRow[]; upcoming: DueRow[] } {
   const rows: DueRow[] = []
   const notCounted: NotCountedRow[] = []
+  const upcoming: DueRow[] = []
   const { loans = [], cards = [], personal = [], expenses = [], savings = [], investments = [], insurance = [] } = data
 
   // Loans
   loans.forEach(l => {
+    if (startsAfterThisMonth(l, now)) return     // first EMI after this month — not due yet
     const eff = getEff(l)
     if (eff.pending <= 0) return
     rows.push({ key: `loan-${l.id}`, kind: 'loan', label: l.lender, sub: l.loanType ?? '', amount: Number(l.emi ?? 0), dueDay: resolveDueDay(l), ref: l, pending: eff.pending, isLast: eff.pending === 1 })
@@ -70,19 +79,43 @@ export function buildDueRows(data: DueData, now: Date = new Date()): { rows: Due
         notCounted.push({ key: `card-emi-${e.id}`, label: `${c.banker} — ${e.label}`, sub: 'CC EMI', amount: Number(e.emi ?? 0), dueDay, why: `carried for ${e.owedBy}` })
         return
       }
+      if (emiStartsLater(c, e, now)) return   // first instalment is on next month's bill — listed under "next bill" below
       rows.push({ key: `card-emi-${e.id}`, kind: 'card-emi', label: `${c.banker} — ${e.label}`, sub: `CC EMI · ${eff.pending} left`, amount: Number(e.emi ?? 0), dueDay, ref: e, parent: c, pending: eff.pending, isLast: eff.pending === 1 })
     })
-    if (Number(c.outstanding ?? 0) > 0) {
-      rows.push({ key: `card-out-${c.id}`, kind: 'card-out', label: `${c.banker} Outstanding`, sub: 'CC statement balance', amount: Number(c.outstanding), dueDay, ref: c, parent: c })
+    // Statement balance and spends: only what falls DUE this month is listed (same rule as calcOutflow, via
+    // cardCycle). Money already on the card for a later bill goes to "not counted" with its due date.
+    const cyc = cardCycle(c, now)
+    const billDay = cyc.billDue ? cyc.billDue.getDate() : dueDay
+    if (cyc.outstandingThisMonth > 0) {
+      rows.push({ key: `card-out-${c.id}`, kind: 'card-out', label: `${c.banker} Outstanding`, sub: 'CC statement balance', amount: cyc.outstandingThisMonth, dueDay: billDay, ref: c, parent: c })
     }
-    const own = (c.spends ?? []).filter((sp: any) => !(sp.owedBy && !sp.owedSettled)).reduce((a: number, sp: any) => a + Number(sp.amount ?? 0), 0)
-    if (own > 0) {
-      rows.push({ key: `spend-${c.id}`, kind: 'card-spend', label: c.banker, sub: '🛍️ Spends — next bill', amount: own, dueDay, ref: c, parent: c })
+    if (cyc.spendsThisMonth > 0) {
+      rows.push({ key: `spend-${c.id}`, kind: 'card-spend', label: c.banker, sub: `🛍️ Spends — bill due ${fmtDueDate(cyc.billDue)}`, amount: cyc.spendsThisMonth, dueDay: billDay, ref: c, parent: c })
+    }
+    // A card bill already on the card but due NEXT month: if it's due within 30 days it's a real "due soon"
+    // row (same key as next month's row, ticked for that month); anything further out stays a next-bill note.
+    const soonLimit = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30)
+    const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    let later = 0, laterDue: Date | undefined
+    cyc.parts.forEach(pt => {
+      if (pt.due <= monthEndOf(now)) return
+      if (pt.kind !== 'emi' && pt.due <= soonLimit) {
+        upcoming.push({
+          key: pt.kind === 'out' ? `card-out-${c.id}` : `spend-${c.id}`, kind: pt.kind === 'out' ? 'card-out' : 'card-spend',
+          label: pt.kind === 'out' ? `${c.banker} Outstanding` : c.banker,
+          sub: pt.kind === 'out' ? `CC statement balance · due ${fmtDueDate(pt.due)}` : `🛍️ Spends — bill due ${fmtDueDate(pt.due)}`,
+          amount: pt.amount, dueDay: pt.due.getDate(), dueDate: pt.due, monthYear: ym(pt.due), ref: c, parent: c,
+        })
+      } else { later += pt.amount; if (!laterDue || pt.due < laterDue) laterDue = pt.due }
+    })
+    if (later > 0) {
+      notCounted.push({ key: `card-next-${c.id}`, label: `${c.banker} — next bill`, sub: 'Credit card', amount: later, dueDay: laterDue?.getDate(), why: `due ${fmtDueDate(laterDue)}, next month` })
     }
   })
 
   // I Owe: EMI / interest-only, plus a lump sum falling due this month.
   personal.forEach(p => {
+    if (startsAfterThisMonth(p, now)) return
     if (p.active === false) return
     if (Number(p.emi ?? 0) > 0) {
       const isOpen = ioweFacts(p).mode !== 'amortising'
@@ -100,22 +133,23 @@ export function buildDueRows(data: DueData, now: Date = new Date()): { rows: Due
   expenses.forEach(e => {
     if (!isLive(e)) return
     if (isOneOff(e.frequency)) {
-      if (sameMonth(e.startDate, now) && Number(e.amount ?? 0) > 0) rows.push({ key: `exp-${e.id}`, kind: 'one-time', label: e.label, sub: 'One-time expense', amount: Number(e.amount), dueDay: resolveDueDay(e, 1), ref: e, category: e.category })
+      if (sameMonth(e.startDate, now) && Number(e.amount ?? 0) > 0) rows.push({ key: `exp-${e.id}`, kind: 'one-time', label: e.label, sub: 'One-time expense', amount: Number(e.amount), dueDay: resolveDueDay(e), ref: e, category: e.category })
       return
     }
     if (!isDueThisMonth(e.startDate, e.frequency)) return
-    rows.push({ key: `exp-${e.id}`, kind: 'bill', label: e.label, sub: e.category ?? 'Expense', amount: Number(e.amount ?? 0), dueDay: resolveDueDay(e, 1), ref: e, category: e.category })
+    rows.push({ key: `exp-${e.id}`, kind: 'bill', label: e.label, sub: e.category ?? 'Expense', amount: Number(e.amount ?? 0), dueDay: resolveDueDay(e), ref: e, category: e.category })
   })
 
   // Savings / chit: still-building is a savings contribution; paid-out is a repayment.
   savings.forEach(v => {
+    if (startsAfterThisMonth(v, now)) return
     const eff = getEff(v)
     if (eff.pending <= 0) return
     const repaying = isChitRepaying(v)
     rows.push({
       key: `sav-${v.id}`, kind: repaying ? 'chit-repay' : 'savings',
       label: repaying ? `${v.name} (${v.prizeTaken ? 'won - paying back' : 'withdrew'})` : v.name,
-      sub: repaying ? 'Still Owe' : (v.savingType ?? 'Savings'), amount: Number(v.monthly ?? 0), dueDay: resolveDueDay(v) ?? 10, ref: v, pending: eff.pending, isLast: eff.pending === 1,
+      sub: repaying ? 'Still Owe' : (v.savingType ?? 'Savings'), amount: Number(v.monthly ?? 0), dueDay: resolveDueDay(v), ref: v, pending: eff.pending, isLast: eff.pending === 1,
     })
   })
 
@@ -123,26 +157,28 @@ export function buildDueRows(data: DueData, now: Date = new Date()): { rows: Due
   insurance.forEach(v => {
     if (!isLive(v)) return
     if (v.isCardEmi) {
-      if (!isOneOff(v.frequency)) notCounted.push({ key: `ins-${v.id}`, label: v.name, sub: 'Insurance', amount: toMonthly(v.premium, v.frequency), dueDay: resolveDueDay(v, 1), why: 'already a Card EMI' })
+      if (!isOneOff(v.frequency)) notCounted.push({ key: `ins-${v.id}`, label: v.name, sub: 'Insurance', amount: toMonthly(v.premium, v.frequency), dueDay: resolveDueDay(v), why: 'already a Card EMI' })
       return
     }
     const amt = Number(v.premium ?? 0)
     if (amt <= 0) return
     if (isOneOff(v.frequency)) {
-      if (sameMonth(v.startDate, now)) rows.push({ key: `ins-${v.id}`, kind: 'one-time', label: v.name, sub: 'One-time premium', amount: amt, dueDay: resolveDueDay(v, 1), ref: v })
+      if (sameMonth(v.startDate, now)) rows.push({ key: `ins-${v.id}`, kind: 'one-time', label: v.name, sub: 'One-time premium', amount: amt, dueDay: resolveDueDay(v), ref: v })
       return
     }
     if (!isDueThisMonth(v.startDate, v.frequency)) return
-    rows.push({ key: `ins-${v.id}`, kind: 'insurance', label: v.name, sub: `Insurance · ${v.frequency}`, amount: amt, dueDay: resolveDueDay(v, 1), ref: v })
+    rows.push({ key: `ins-${v.id}`, kind: 'insurance', label: v.name, sub: `Insurance · ${v.frequency}`, amount: amt, dueDay: resolveDueDay(v), ref: v })
   })
 
   // SIP / investments
   investments.forEach(v => {
+    if (startsAfterThisMonth(v, now)) return
     if (!isLive(v) || !(Number(v.monthly ?? 0) > 0)) return
-    rows.push({ key: `inv-${v.id}`, kind: 'sip', label: v.name, sub: v.investType ?? 'SIP', amount: Number(v.monthly), dueDay: resolveDueDay(v) ?? 1, ref: v })
+    rows.push({ key: `inv-${v.id}`, kind: 'sip', label: v.name, sub: v.investType ?? 'SIP', amount: Number(v.monthly), dueDay: resolveDueDay(v), ref: v })
   })
 
-  return { rows, notCounted }
+  upcoming.sort((a, b) => a.dueDate!.getTime() - b.dueDate!.getTime())
+  return { rows, notCounted, upcoming }
 }
 
 /**

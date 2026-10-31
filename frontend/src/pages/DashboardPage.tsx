@@ -12,7 +12,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import axiosApi from '../api/axios'
 import { loansApi, cardsApi, personalEmiApi, savingsApi, investmentsApi, incomeApi, expensesApi, insuranceApi, snapshotApi } from '../api'
-import { calcOutflow, outflowTierLine } from '../utils/calcOutflow'
+import { calcOutflow, outflowTierLine, freeFigures } from '../utils/calcOutflow'
 import { calcDebt, debtRows } from '../utils/calcDebt'
 import { investTotals } from '../utils/investValue'
 import { debtFreeMonths } from '../utils/debtFree'
@@ -51,7 +51,7 @@ export default function DashboardPage() {
   const { data: expensesRaw = [],    isLoading: l7, isError: e7 } = useQuery({ queryKey: ['expenses'],    queryFn: expensesApi.getAll })
   const { data: insuranceRaw = [],   isLoading: l8, isError: e8 } = useQuery({ queryKey: ['insurance'],   queryFn: insuranceApi.getAll })
   const { data: peopleOweMe = [], isLoading: l10, isError: e10 } = useQuery({ queryKey: ['people-owes'], queryFn: peopleOweMeApi2.getAll })
-  const { data: snapshots = [] } = useQuery({ queryKey: ['snapshots'], queryFn: snapshotApi.getLast6 })
+  const { data: snapshots = [], isFetched: snapsFetched } = useQuery({ queryKey: ['snapshots'], queryFn: snapshotApi.getLast6 })
   // Look ahead (shared with the Hub): everything below is computed from the data as it will stand N months from now.
   const hz = useHorizonState()
   const proj = advanceAll({ loans: loansRaw as any[], cards: cardsRaw as any[], personal: personalRaw as any[], savings: savingsRaw as any[], investments: investmentsRaw as any[], expenses: expensesRaw as any[], insurance: insuranceRaw as any[] }, hz.horizon, hz)
@@ -68,7 +68,7 @@ export default function DashboardPage() {
   const isError = e1||e2||e3||e4||e5||e6||e7||e8||e10
 
   const [showInsights, setShowInsights] = useState(false)
-  const snapMut = useMutation({ mutationFn: snapshotApi.generate, onSuccess: ()=>{ qc.invalidateQueries({queryKey:['snapshots']}); qc.invalidateQueries({queryKey:['snapshots-all']}); toast.success('Snapshot saved') }, onError: ()=>toast.error('Could not save the snapshot') })
+  const snapMut = useMutation({ mutationFn: (v: { netWorth: number; silent?: boolean }) => snapshotApi.generate({ netWorth: v.netWorth }), onSuccess: (_d, v)=>{ qc.invalidateQueries({queryKey:['snapshots']}); qc.invalidateQueries({queryKey:['snapshots-all']}); if (!v.silent) toast.success('Snapshot saved') }, onError: ()=>toast.error('Could not save the snapshot') })
   const [showChart, setShowChart] = useState(false)
 
   // ── DEBT ──
@@ -117,6 +117,16 @@ export default function DashboardPage() {
      readings can never drift apart. */
   const netWorth = totalAssets - d.totalPrincipal
 
+  // Record this month's net worth once, so the trend line builds itself instead of waiting for a click.
+  // Only from real (not look-ahead) data, and only when this month has no recorded figure yet.
+  const recordedThisMonth = (snapshots as any[]).some(s => s.monthYear === new Date().toISOString().slice(0, 7) && Number(s.netWorth ?? 0) !== 0)
+  const autoSnapTried = useRef(false)
+  useEffect(() => {
+    if (autoSnapTried.current || isLoading || isError || !snapsFetched || hz.horizon || recordedThisMonth || netWorth === 0) return
+    autoSnapTried.current = true
+    snapMut.mutate({ netWorth: Math.round(netWorth), silent: true })
+  }, [isLoading, isError, snapsFetched, hz.horizon, recordedThisMonth, netWorth])
+
   // ── CASH FLOW ──
   const monthlyIncome = monthlyIncomeTotal(income)
   /* Every component now comes from utils/calcOutflow so this page cannot drift from Lookup,
@@ -139,15 +149,18 @@ export default function DashboardPage() {
   const lockedMonthly   = o.locked
   const cardThisMonth   = o.card
   const recurringOutflow = o.total
-  const freeCash = monthlyIncome - recurringOutflow
-  // recurringOutflow already contains totalCC and ccSpends — don't subtract them twice.
-  const freeCashThisMonth = monthlyIncome - recurringOutflow
+  // Free / month (income − committed) and Left this month (income − everything due) — same two figures,
+  // same names, as every other page (calcOutflow.freeFigures). Both used to be income − total here.
+  const { free: freeCash, left: freeCashThisMonth } = freeFigures(o, monthlyIncome)
   const dti = monthlyIncome > 0 ? Math.round((loanEmi + ccEmi) / monthlyIncome * 100) : 0
   const savingsRate = monthlyIncome > 0 ? Math.round((savMo + sipMo) / monthlyIncome * 100) : 0
 
   // ── SNAPSHOTS ──
   const trendData = [...snapshots].reverse()
-  const lastSnap = trendData.length >= 1 ? trendData[trendData.length-1] : null
+  const thisYM = new Date().toISOString().slice(0, 7)
+  // "vs last snapshot" means last MONTH's: this month's own snapshot is today's figure, so comparing
+  // against it always reads zero. Older snapshots (before net worth was recorded) carry 0 — skip those.
+  const lastSnap = [...trendData].reverse().find((s: any) => s.monthYear < thisYM && Number(s.netWorth ?? 0) !== 0) ?? null
   const nwTrend = lastSnap ? (() => {
     const diff = netWorth - Number(lastSnap.netWorth ?? 0)
     return Math.abs(diff) > 1000 ? diff : undefined
@@ -295,7 +308,7 @@ export default function DashboardPage() {
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <button className="btn-secondary btn-xs" title="Save today's net worth so the trend line can start" disabled={snapMut.isPending} onClick={()=>snapMut.mutate()}>{snapMut.isPending?'Saving…':'Save first snapshot'}</button>
+              <button className="btn-secondary btn-xs" title="Save today's net worth so the trend line can start" disabled={snapMut.isPending} onClick={()=>snapMut.mutate({ netWorth: Math.round(netWorth) })}>{snapMut.isPending?'Saving…':'Save first snapshot'}</button>
             )}
           </div>
         </div>
@@ -312,7 +325,7 @@ export default function DashboardPage() {
             /* Used to link to the retired /overview page. That page's job — a fuller breakdown of
                this same free-cash figure — now lives in this page's own Chart Modal, so this tile
                opens that instead of navigating away. */
-            {label:'Free / Month', value:`${freeCash>=0?'+':'−'}${fmtINR(Math.abs(freeCash))}${incomePct(freeCash, monthlyIncome)}`, sub:`incl. card bill · ${freeCash>=0?'buffer':'deficit'} vs ${fmtINR(monthlyIncome)} income`, accent:freeCash>=0?'var(--purple)':'var(--warning)', action:()=>setShowChart(true)},
+            {label:'Free / month', value:`${freeCash>=0?'+':'−'}${fmtINR(Math.abs(freeCash))}${incomePct(freeCash, monthlyIncome)}`, sub:`before card bills · left this month ${freeCashThisMonth>=0?'+':'−'}${fmtINR(freeCashThisMonth)}`, accent:freeCash>=0?'var(--purple)':'var(--danger)', action:()=>setShowChart(true)},
             /* Tier split and itemisation from the shared calculator, so this reads identically on
                Hub, Budget, Calendar and Lookup. The hand-built version here grouped chit repayment
                into "EMIs" and — because `persEmi` was a zero placeholder (now fixed above) — left
@@ -512,11 +525,11 @@ export default function DashboardPage() {
               <div className="mono font-bold text-[13px] text-yellow-400">{fmtINR(recurringOutflow)}</div>
             </div>
             <div className="flex items-center justify-between px-4 py-2.5" style={{background:'color-mix(in srgb, var(--success-strong) 6%, transparent)'}}>
-              <div><div className="text-[13px] font-bold text-green-400">Free / Month</div><div className="text-[11px]" style={{color:'var(--text-faint)'}}>after fixed commitments + card bill</div></div>
+              <div><div className="text-[13px] font-bold text-green-400">Free / month</div><div className="text-[11px]" style={{color:'var(--text-faint)'}}>income − commitments · before card bills</div></div>
               <div className={`mono font-bold text-[13px] ${freeCash>=0?'text-green-400':'text-red-400'}`}>{freeCash>=0?'+':'−'}{fmtINR(Math.abs(freeCash))}</div>
             </div>
             <div className="flex items-center justify-between px-4 py-2.5" style={{background:freeCashThisMonth<0?'color-mix(in srgb, var(--danger-strong) 6%, transparent)':'var(--bg-base)'}}>
-              <div><div className="text-[13px] font-bold">After This Month</div><div className="text-[11px]" style={{color:'var(--text-faint)'}}>incl. CC outstanding + spends</div></div>
+              <div><div className="text-[13px] font-bold">Left this month</div><div className="text-[11px]" style={{color:'var(--text-faint)'}}>after card bills and renewals due this month</div></div>
               <div className={`mono font-bold text-[13px] ${freeCashThisMonth>=0?'text-green-400':'text-red-400'}`}>{freeCashThisMonth>=0?'+':'−'}{fmtINR(Math.abs(freeCashThisMonth))}</div>
             </div>
           </div>

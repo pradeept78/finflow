@@ -73,6 +73,8 @@ export interface CreditCard {
   outstanding: number
   dueDay?: number
   billingDay?: number
+  /** Date the outstanding amount was entered (or the statement it was picked for) — which statement it is. */
+  outstandingAsOf?: string
   notes?: string
   emis?: CardEmi[]
   spends?: CardSpend[]

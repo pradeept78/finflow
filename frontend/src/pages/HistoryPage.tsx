@@ -2,7 +2,7 @@ import SegTabs from '../components/common/SegTabs'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { snapshotApi, loansApi, cardsApi, savingsApi, investmentsApi, incomeApi, expensesApi, insuranceApi, personalEmiApi } from '../api'
 import { fmtINR, monthlyIncomeTotal } from '../utils/format'
-import { calcOutflow } from '../utils/calcOutflow'
+import { calcOutflow, freeFigures } from '../utils/calcOutflow'
 import { LoadingSpinner, PageHeader, ErrorState } from '../components/common'
 import { RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
@@ -39,7 +39,7 @@ export default function HistoryPage() {
   const [view, setView] = useState<'months'|'table'>('months')
   const [expandedMonth, setExpandedMonth] = useState<string|null>(null)
 
-  const genMut = useMutation({ mutationFn: snapshotApi.generate, onSuccess: ()=>{ qc.invalidateQueries({queryKey:['snapshots-all']}); qc.invalidateQueries({queryKey:['snapshots']}); toast.success('Snapshot saved') } })
+  const genMut = useMutation({ mutationFn: () => snapshotApi.generate(), onSuccess: ()=>{ qc.invalidateQueries({queryKey:['snapshots-all']}); qc.invalidateQueries({queryKey:['snapshots']}); toast.success('Snapshot saved') } })
 
   useQuery({ queryKey: ['snapshot-auto'], queryFn: async ()=>{ await snapshotApi.generate(); return true }, enabled: !isLoading && snapshots.length===0, staleTime: Infinity, retry: false })
 
@@ -58,7 +58,7 @@ export default function HistoryPage() {
   const liveExp     = o.expenses
   const livePersonal= o.iOweEmi
   const liveOut     = o.locked
-  const liveFree    = liveIncome - liveOut
+  const liveFree    = freeFigures(o, liveIncome).free
 
   if (anyLoading) return <LoadingSpinner/>
   if (anyError) return <ErrorState message="Failed to load some of your data. The figures below would be wrong if we showed them anyway." onRetry={refetchAll} />
@@ -113,7 +113,7 @@ export default function HistoryPage() {
       <div className="grid grid-cols-4 gap-3">
         {[
           {label:'Monthly Outflow', value:fmtINR(liveOut),    sub:`EMIs ${fmtINR(liveLoanEmi+liveCcEmi+livePersonal)} · Savings ${fmtINR(liveSavEmi)} · Bills ${fmtINR(liveExp+Math.round(liveInsEmi))}`,      accent:'var(--danger)'},
-          {label:'Free / Month',    value:`${liveFree>=0?'+':''}${fmtINR(liveFree)}`, sub:'fixed commitments · before card bill', accent:liveFree>=0?'var(--success)':'var(--danger)'},
+          {label:'Free / month',    value:`${liveFree>=0?'+':''}${fmtINR(liveFree)}`, sub:'income − commitments · before card bills', accent:liveFree>=0?'var(--success)':'var(--danger)'},
           {label:'Income',          value:fmtINR(liveIncome), sub:'monthly income',        accent:'var(--success)'},
           {label:'Snapshots',       value:String(snapshots.length), sub:`${sorted[0]?.monthYear||'—'} → ${sorted[sorted.length-1]?.monthYear||'—'}`, accent:'var(--purple)'},
         ].map(m=>(
@@ -174,7 +174,7 @@ export default function HistoryPage() {
                 </div>
                 <div className="text-right"><span className="mono font-semibold" style={{color:'var(--danger)'}}>{fmtINR(totalOut)}</span></div>
                 <div className="text-right"><span className="mono text-[13px]" style={{color:'var(--text-faint)'}}>{fmtINR(Number(s.totalDebt??0))}</span></div>
-                <div className="text-right"><span className="mono font-semibold" style={{color:free>=0?'var(--success)':'var(--danger)'}}>{free>=0?'+':''}{fmtINR(free)}</span></div>
+                <div className="text-right"><span className="mono font-semibold" style={{color:free>=0?'var(--success)':'var(--danger)'}}>{free>=0?'+':'−'}{fmtINR(free)}</span></div>
                 <div className="text-right">
                   {idx<sorted.length-1?(()=>{
                     const prev=sorted[sorted.length-2-idx]
@@ -217,7 +217,7 @@ export default function HistoryPage() {
                 <span className="text-right mono" style={{color:'var(--orange)'}}>{fmtINR(s.expenses)}</span>
                 <span className="text-right mono" style={{color:'var(--warning)'}}>{fmtINR(s.personalEmi)}</span>
                 <span className="text-right mono" style={{color:'var(--text-faint)'}}>{fmtINR(s.totalDebt)}</span>
-                <span className="text-right mono font-semibold" style={{color:free>=0?'var(--success)':'var(--danger)'}}>{free>=0?'+':''}{fmtINR(free)}</span>
+                <span className="text-right mono font-semibold" style={{color:free>=0?'var(--success)':'var(--danger)'}}>{free>=0?'+':'−'}{fmtINR(free)}</span>
               </div>
             )
           })}

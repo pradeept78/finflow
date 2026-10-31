@@ -52,9 +52,10 @@ export const getEff = (item: {
   missedMonths?: number
 }): { paid: number; pending: number; elapsed: number } => {
   if (item.startDate && item.tenure) {
-    // Best case: auto-calculate from startDate + tenure
+    // Best case: auto-calculate from startDate + tenure. A card EMI counts from its first BILLED due date
+    // (`_firstDue`, see utils/cardCycle withCycleDates) rather than the day it was taken.
     return calcPaidFromDate(
-      item.startDate,
+      (item as any)._firstDue ?? item.startDate,
       item.tenure,
       item.missedMonths ?? 0,
       item.doublePayments ?? 0
@@ -116,7 +117,13 @@ export const FREQ_MONTHS: Record<string, number> = {
 /** Months covered by one payment. Unknown frequencies fall back to Monthly, never to Yearly —
  *  guessing "yearly" silently divides a real commitment by twelve. */
 export const freqMonths = (frequency?: string | null): number =>
-  FREQ_MONTHS[frequency ?? 'Monthly'] ?? 1
+  FREQ_MONTHS[frequency ?? 'Monthly'] ?? FREQ_BY_KEY[freqKey(frequency)] ?? 1
+
+/* Spelling-tolerant lookup. Rows that come from an import, the API or older forms carry "Half-yearly",
+   "half yearly", "QUARTERLY"…; an exact-match miss fell back to Monthly, so a ₹9,800 half-yearly premium
+   was counted as ₹9,800 every month. Case, spaces, hyphens and underscores are ignored. */
+const freqKey = (f?: string | null) => (f ?? '').toLowerCase().replace(/[\s_-]/g, '')
+const FREQ_BY_KEY: Record<string, number> = Object.fromEntries(Object.entries(FREQ_MONTHS).map(([k, v]) => [freqKey(k), v]))
 
 /** Normalise any amount at any frequency to a per-month figure. */
 export const toMonthly = (amount: number | undefined | null, frequency?: string | null): number => {
@@ -127,7 +134,7 @@ export const toMonthly = (amount: number | undefined | null, frequency?: string 
 
 /** True for frequencies that do not recur, so they can be excluded from recurring totals. */
 export const isOneOff = (frequency?: string | null): boolean =>
-  frequency === 'One-time' || frequency === 'Single'
+  ['onetime', 'single'].includes(freqKey(frequency))
 
 /**
  * Monthly-equivalent total for a list of IncomeEntry-shaped rows ({ amount, frequency, active }).
@@ -154,10 +161,7 @@ export const monthlyIncomeTotal = (income: { amount?: number; frequency?: string
  * no explicit due day was dateless on Calendar but dated on Lookup, and every credit card landed on
  * a different day in the two views because one page preferred `dueDay` and the other `billingDay`.
  *
- * PAID STATE. Lookup treats a payment whose day has passed as paid unless explicitly un-marked
- * (auto-paid, XORed with the toggle). Calendar only checked `markedKeys.includes(key)` — so
- * auto-paid never showed there, and a past-due item the user had deliberately un-marked showed as
- * PAID, the exact inverse of what they meant.
+ * PAID STATE. A payment is paid only when the user has ticked it — see isPaidThisMonth.
  */
 
 /** Resolve the day of the month a payment falls on: explicit day, else the start date's day. */
@@ -175,16 +179,15 @@ export const resolveDueDay = (item: any, fallback?: number): number | undefined 
 }
 
 /**
- * Is this payment settled for the current month?
- * A day already past counts as paid unless the user has explicitly toggled it off; a day still to
- * come counts as paid only if they have explicitly ticked it. That XOR is why `dueDay` must be
- * passed — without it every item degrades to "was this manually ticked?".
+ * Is this payment settled for the current month? Only if the user has ticked it.
+ *
+ * It used to assume any payment whose day had passed was paid (a tick then meant "not paid"). For a
+ * debt tracker that hid missed payments — a new account showed most of the month as settled — and a
+ * payment ticked early flipped back to unpaid the day its due date passed. A past, unticked payment
+ * is now overdue instead. `dueDay` is kept in the signature so callers needn't change.
  */
-export const isPaidThisMonth = (key: string, dueDay: number | undefined, markedKeys: string[]): boolean => {
-  const toggled = (markedKeys ?? []).includes(key)
-  const autoPaid = !!dueDay && dueDay > 0 && dueDay < new Date().getDate()
-  return autoPaid ? !toggled : toggled
-}
+export const isPaidThisMonth = (key: string, _dueDay: number | undefined, markedKeys: string[]): boolean =>
+  (markedKeys ?? []).includes(key)
 
 /**
  * Is a non-monthly premium actually due in the given month?
@@ -220,4 +223,10 @@ export const isDueInMonth = (
 export const isDueThisMonth = (startDate?: string, frequency?: string): boolean => {
   const now = new Date()
   return isDueInMonth(startDate, frequency, now.getFullYear(), now.getMonth())
+}
+
+/** 1st, 2nd, 3rd, 4th … 11th, 12th, 13th … 21st — for "due 2nd". */
+export const ordinal = (n: number): string => {
+  const t = n % 100
+  return `${n}${t >= 11 && t <= 13 ? 'th' : ({ 1: 'st', 2: 'nd', 3: 'rd' } as Record<number, string>)[n % 10] ?? 'th'}`
 }

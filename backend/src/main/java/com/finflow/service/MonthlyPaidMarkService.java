@@ -29,15 +29,26 @@ public class MonthlyPaidMarkService {
         return LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
     }
 
-    public List<String> getMarkedItems() {
-        return repository.findByUserIdAndMonthYear(currentUser().getId(), currentMonthYear())
+    /** A "yyyy-MM" the caller asked for, else the current month. Lets a bill due next month (a card statement
+     *  generated this month) be ticked now and still read as paid once that month starts. */
+    private String monthOrCurrent(String monthYear) {
+        return monthYear != null && monthYear.matches("\\d{4}-(0[1-9]|1[0-2])") ? monthYear : currentMonthYear();
+    }
+
+    public List<String> getMarkedItems() { return getMarkedItems(null); }
+
+    public List<String> getMarkedItems(String monthYear) {
+        return repository.findByUserIdAndMonthYear(currentUser().getId(), monthOrCurrent(monthYear))
                 .stream().map(MonthlyPaidMark::getItemKey).collect(Collectors.toList());
     }
 
     @Transactional
-    public boolean toggle(String itemKey) {
+    public boolean toggle(String itemKey) { return toggle(itemKey, null); }
+
+    @Transactional
+    public boolean toggle(String itemKey, String requestedMonth) {
         User user = currentUser();
-        String monthYear = currentMonthYear();
+        String monthYear = monthOrCurrent(requestedMonth);
         if (repository.existsByUserIdAndItemKeyAndMonthYear(user.getId(), itemKey, monthYear)) {
             repository.deleteByUserIdAndItemKeyAndMonthYear(user.getId(), itemKey, monthYear);
             return false;

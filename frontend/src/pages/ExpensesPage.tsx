@@ -1,12 +1,14 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { expensesApi } from '../api'
 import type { Expense } from '../types'
 import FilterMenu from '../components/common/FilterMenu'
 import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner, ErrorState, SortHeader } from '../components/common'
-import { fmtINR, toMonthly, isOneOff, isDueThisMonth } from '../utils/format'
+import { fmtINR, toMonthly, isOneOff, isDueThisMonth, ordinal } from '../utils/format'
 import { Plus, Pencil, Trash2, ChevronDown } from 'lucide-react'
+import { PhoneRow, freqSuffix } from '../components/common/PhoneRow'
 import toast from 'react-hot-toast'
+import { KpiRow } from '../components/common/KpiTile'
 
 const empty: Expense = { label: '', amount: 0, frequency: 'Monthly', dueDay: 1, active: true }
 const CATS = ['Rent','Food','Transport','Utilities','Subscriptions','Healthcare','Education','Family','Other']
@@ -107,7 +109,7 @@ export default function ExpensesPage() {
 
 
       {items.length > 0 && (
-        <div className="grid grid-cols-4 gap-3">
+        <KpiRow className="grid grid-cols-4 gap-3" keep={[0, 1]}>
           {[
             {label:'Monthly Total',  value:fmtINR(total),              sub:`${recurring.length} recurring expenses`, accent:'var(--danger)'},
             {label:'Annual Cost',    value:fmtINR(Math.round(total*12)),sub:'projected',                    accent:'var(--orange)'},
@@ -122,7 +124,7 @@ export default function ExpensesPage() {
               </div>
             </div>
           ))}
-        </div>
+        </KpiRow>
       )}
 
       {items.length === 0 ? <EmptyState icon="🧾" title="No expenses" sub="Track your recurring monthly expenses" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}>+ Add expense</button>} /> : (
@@ -146,7 +148,7 @@ export default function ExpensesPage() {
           )}
 
           {/* Header */}
-          <div className="grid px-4 py-2 text-[12px] font-medium border-b"
+          <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b"
             style={{gridTemplateColumns:'minmax(200px,1.7fr) minmax(85px,1fr) minmax(80px,1fr) minmax(55px,1fr) minmax(50px,1fr) minmax(80px,1fr) minmax(80px,1fr)',borderColor:'color-mix(in srgb, var(--text) 6%, transparent)',background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-faint)'}}>
             <SortHeader label="Expense" col="label" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
             <SortHeader label="Amount" col="amount" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" />
@@ -162,7 +164,16 @@ export default function ExpensesPage() {
             const accent = CAT_COLORS[v.category]||'var(--text-muted)'
             return (
               <div key={v.id}>
-              <div className="grid items-center px-4 py-2.5 transition-colors cursor-pointer"
+              {/* Phone row (tablet and desktop: the table row below) */}
+              <PhoneRow title={v.label} amount={<>{fmtINR(v.amount)}<span className="text-[11px] font-normal">{freqSuffix(v.frequency)}</span></>}
+                left={`${v.category||'Other'}${v.dueDay ? ` · due ${ordinal(v.dueDay)}` : ''}`} right={`${pct}% of total`}
+                expanded={expanded===v.id} onToggle={()=>setExpanded(expanded===v.id?null:v.id)}
+                actions={[
+                  { label: 'Edit', onClick: ()=>setModal({open:true,item:v}) },
+                  { label: 'Pause', onClick: ()=>toggleMut.mutate(v) },
+                  { label: 'Delete', tone: 'danger' as const, onClick: ()=>setConfirmModal({message:`Delete ${v.label}?`,onConfirm:()=>deleteMut.mutate(v.id),label:'Delete'}) },
+                ]} />
+              <div className="hidden md:grid items-center px-4 py-2.5 transition-colors cursor-pointer"
                 style={{gridTemplateColumns:'minmax(200px,1.7fr) minmax(85px,1fr) minmax(80px,1fr) minmax(55px,1fr) minmax(50px,1fr) minmax(80px,1fr) minmax(80px,1fr)',borderTop:idx===0?'none':'1px solid color-mix(in srgb, var(--text) 5%, transparent)',background:idx%2===0?'transparent':'color-mix(in srgb, var(--text) 2%, transparent)'}}
                 onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background='var(--bg-hover)'}
                 onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background='transparent'}
@@ -230,7 +241,7 @@ export default function ExpensesPage() {
           })}
 
           {/* Footer */}
-          <div className="grid px-4 py-3 text-[13px] font-bold border-t"
+          <div className="hidden md:grid px-4 py-3 text-[13px] font-bold border-t"
             style={{gridTemplateColumns:'minmax(200px,1.7fr) minmax(85px,1fr) minmax(80px,1fr) minmax(55px,1fr) minmax(50px,1fr) minmax(80px,1fr) minmax(80px,1fr)',borderColor:'color-mix(in srgb, var(--text) 6%, transparent)',background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-faint)'}}>
             <span>{filtered.length}{filterCat!=='All'?` in ${filterCat}`:' expenses'}</span>
             <span className="text-right mono" style={{color:'var(--danger)'}} title="Monthly-equivalent, one-time items excluded">{fmtINR(filtered.filter((v:any)=>!isOneOff(v.frequency)).reduce((s:number,v:any)=>s+monthlyEq(v),0))}</span>
@@ -246,7 +257,14 @@ export default function ExpensesPage() {
 
           {/* Inactive */}
           {showInactive&&inactive.length>0&&inactive.map((v:any)=>(
-            <div key={v.id} className="grid items-center px-4 py-2 opacity-40"
+            <Fragment key={v.id}>
+            <PhoneRow title={<span className="line-through">{v.label}</span>} amount={fmtINR(v.amount)} left="paused" dim
+              expanded={expanded===v.id} onToggle={()=>setExpanded(expanded===v.id?null:v.id)}
+              actions={[
+                { label: 'Turn on', tone: 'success' as const, onClick: ()=>toggleMut.mutate(v) },
+                { label: 'Delete', tone: 'danger' as const, onClick: ()=>setConfirmModal({message:`Delete ${v.label}?`,onConfirm:()=>deleteMut.mutate(v.id),label:'Delete'}) },
+              ]} />
+            <div className="hidden md:grid items-center px-4 py-2 opacity-40"
               style={{gridTemplateColumns:'minmax(200px,1.7fr) minmax(85px,1fr) minmax(80px,1fr) minmax(55px,1fr) minmax(50px,1fr) minmax(80px,1fr) minmax(80px,1fr)',borderTop:'1px solid color-mix(in srgb, var(--text) 5%, transparent)'}}>
               <span className="text-[13px] line-through" style={{color:'var(--text-faint)'}}>{v.label}</span>
               <span className="text-right mono text-[13px]" style={{color:'var(--text-faint)'}}>{fmtINR(v.amount)}</span>
@@ -256,6 +274,7 @@ export default function ExpensesPage() {
                 <button title="Delete" className="w-7 h-7 rounded flex items-center justify-center hover:bg-red-500/20" style={{color:'var(--danger)'}} onClick={()=>setConfirmModal({message:`Delete ${v.label}?`,onConfirm:()=>deleteMut.mutate(v.id),label:'Delete'})}><Trash2 size={11}/></button>
               </div>
             </div>
+            </Fragment>
           ))}
         </div>
       )}

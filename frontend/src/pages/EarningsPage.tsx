@@ -7,6 +7,7 @@ import { fmtINR } from '../utils/format'
 import api from '../api/axios'
 import { Plus, Pencil, Trash2, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { KpiRow } from '../components/common/KpiTile'
 
 const earningsApi = {
   getAll: () => api.get<{ data: any[] }>('/earnings').then(r => r.data.data),
@@ -125,7 +126,7 @@ export default function EarningsPage() {
       )}
 
       {/* Summary */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+      <KpiRow className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3" keep={[0, 1]}>
         <KpiTile label="Total lifetime earned" accent="var(--success)" value={fmtINR(totalEarned)} sub={`${sorted.length} income periods`} />
         <KpiTile label="Current monthly" accent="var(--info)" value={fmtINR(currentMonthly)} sub="active income" />
         <KpiTile label="Avg monthly (lifetime)" accent="var(--warning)" sub="across all periods" value={(() => {
@@ -134,7 +135,7 @@ export default function EarningsPage() {
           const totalMonths = sorted.reduce((s: number, e: any) => s + monthsBetween(e.fromDate, e.toDate || undefined), 0)
           return fmtINR(totalMonths > 0 ? Math.round(totalEarned / totalMonths) : 0)
         })()} />
-      </div>
+      </KpiRow>
 
       {sorted.length === 0 ? (
         <EmptyState icon="💰" title="No earnings recorded" sub="Add your income periods to track lifetime earnings" action={<button className="btn-primary btn-sm" onClick={() => setModal({ open: true, item: empty() })}>+ Add period</button>} />

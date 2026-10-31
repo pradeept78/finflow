@@ -161,10 +161,24 @@ public class SnapshotService {
 
     @Transactional
     public MonthlySnapshot generateOrUpdate(User user, String monthYear) {
+        return generateOrUpdate(user, monthYear, null);
+    }
+
+    /** Refresh a month's snapshot. Net worth is never computed here (see SnapshotController); a refresh
+     *  without one keeps the value already recorded instead of resetting it to zero. */
+    @Transactional
+    public MonthlySnapshot generateOrUpdate(User user, String monthYear, BigDecimal netWorth) {
+        var existing = snapshotRepository.findByUserIdAndMonthYear(user.getId(), monthYear);
+        BigDecimal keep = netWorth != null ? netWorth : existing.map(MonthlySnapshot::getNetWorth).orElse(null);
         // Delete existing snapshot for this month (allows refresh)
-        snapshotRepository.findByUserIdAndMonthYear(user.getId(), monthYear)
-                .ifPresent(snapshotRepository::delete);
-        return generateSnapshot(user, monthYear);
+        existing.ifPresent(snapshotRepository::delete);
+        snapshotRepository.flush();
+        MonthlySnapshot snap = generateSnapshot(user, monthYear);
+        if (keep != null) {
+            snap.setNetWorth(keep);
+            snap = snapshotRepository.save(snap);
+        }
+        return snap;
     }
 
     public List<MonthlySnapshot> getLast6Months(Long userId) {

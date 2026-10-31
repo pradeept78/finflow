@@ -5,7 +5,9 @@ import { investmentsApi, closedLoansApi } from '../api'
 import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner, ErrorState, SortHeader, FromLink } from '../components/common'
 import { fmtINR, monthsElapsed } from '../utils/format'
 import { Plus, Pencil, Trash2, Archive, ChevronDown } from 'lucide-react'
+import { PhoneRow, freqSuffix } from '../components/common/PhoneRow'
 import toast from 'react-hot-toast'
+import { KpiRow } from '../components/common/KpiTile'
 
 const INV_ICON: Record<string,string> = {
   MF:'📈', SIP:'🔄', FD:'🏦', Gold:'🥇', Stocks:'📊', RD:'💰', PPF:'🏛️', NPS:'🎯', Other:'💼'
@@ -111,7 +113,7 @@ export default function InvestmentsPage() {
       </>} title="Investments" action={<button className="btn-primary btn-sm" onClick={()=>openModal({})}><Plus size={14}/> Add</button>}/>
 
       {items.length > 0 && (
-        <div className="grid grid-cols-4 gap-3">
+        <KpiRow className="grid grid-cols-4 gap-3" keep={[1, 2]}>
           {[
             {label:'Total Invested',   value:fmtINR(totalInvested), sub:`${active.length} investments`,     accent:'var(--info)'},
             {label:'Current Value',    value:fmtINR(totalValue),    sub:'market/maturity value · defaults to invested',  accent:totalValue>=totalInvested?'var(--success)':'var(--danger)'},
@@ -126,7 +128,7 @@ export default function InvestmentsPage() {
               </div>
             </div>
           ))}
-        </div>
+        </KpiRow>
       )}
 
       {/* Smart insight */}
@@ -151,7 +153,7 @@ export default function InvestmentsPage() {
 
       {items.length === 0 ? <EmptyState icon="📈" title="No investments" sub="Track FDs, mutual funds, stocks and more" action={<button className="btn-primary btn-sm" onClick={()=>openModal({})}>+ Add investment</button>} /> : (
         <div className="rounded-2xl overflow-hidden text-[13px]" style={{background:'var(--bg-card)',border:'1px solid var(--border)',overflowX:'auto'}}>
-          <div className="grid px-4 py-2 text-[12px] font-medium border-b"
+          <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b"
             style={{gridTemplateColumns:'minmax(190px,2.4fr) minmax(90px,0.93fr) minmax(120px,1.24fr) minmax(130px,1.34fr) minmax(90px,0.93fr) minmax(80px,0.83fr) minmax(70px,0.72fr)',borderColor:'var(--hairline)',background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-faint)'}}>
             <SortHeader label="Investment" col="name" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
             <span className="text-center">
@@ -195,7 +197,12 @@ export default function InvestmentsPage() {
 
             return (
               <div key={v.id} style={{borderTop:idx===0?'none':'1px solid color-mix(in srgb, var(--text) 5%, transparent)',background:idx%2===0?'transparent':'color-mix(in srgb, var(--text) 2%, transparent)'}}>
-                <div className="grid items-center px-4 py-3 cursor-pointer transition-colors"
+                {/* Phone row (tablet and desktop: the table row below) */}
+                <PhoneRow title={v.name} amount={fmtINR(value)}
+                  left={`${v.investType||'Investment'}${Number(v.monthly??0)>0 ? ` · SIP ${fmtINR(v.monthly)}/mo` : ''}`}
+                  right={pnlPct!==null ? `${pnl>=0?'+':''}${fmtINR(pnl)} (${pnlPct}%)` : ''} rightColor={accent}
+                  expanded={isExp} onToggle={()=>setExpanded(isExp?null:v.id)} />
+                <div className="hidden md:grid items-center px-4 py-3 cursor-pointer transition-colors"
                   style={{gridTemplateColumns:'minmax(190px,2.4fr) minmax(90px,0.93fr) minmax(120px,1.24fr) minmax(130px,1.34fr) minmax(90px,0.93fr) minmax(80px,0.83fr) minmax(70px,0.72fr)',background:isExp?'var(--bg-base)':'transparent'}}
                   onMouseEnter={e=>{if(!isExp)(e.currentTarget as HTMLElement).style.background='var(--bg-hover)'}}
                   onMouseLeave={e=>{if(!isExp)(e.currentTarget as HTMLElement).style.background='transparent'}}
@@ -280,7 +287,7 @@ export default function InvestmentsPage() {
           })
           })()}
 
-          <div className="grid px-4 py-3 text-[13px] font-bold border-t"
+          <div className="hidden md:grid px-4 py-3 text-[13px] font-bold border-t"
             style={{gridTemplateColumns:'minmax(190px,2.4fr) minmax(90px,0.93fr) minmax(120px,1.24fr) minmax(130px,1.34fr) minmax(90px,0.93fr) minmax(80px,0.83fr) minmax(70px,0.72fr)',borderColor:'var(--hairline)',background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-faint)'}}>
             <span>{filteredActive.length} investment{filteredActive.length!==1?'s':''}{filterType!=='All'?` (${filterType})`:''}</span>
             <span></span>

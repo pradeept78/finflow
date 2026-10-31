@@ -1,5 +1,5 @@
 import SegTabs from '../components/common/SegTabs'
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { incomePct } from '../utils/incomePct'
 import { useNavigateFrom } from '../hooks/useNavigateFrom'
 import { useHorizonState } from '../utils/horizonStore'
@@ -8,8 +8,12 @@ import HorizonBar from '../components/common/HorizonBar'
 import IncomeSplitCard from '../components/common/IncomeSplitCard'
 import { useQuery } from '@tanstack/react-query'
 import { loansApi, cardsApi, savingsApi, expensesApi, incomeApi, investmentsApi, insuranceApi } from '../api'
-import { calcOutflow, outflowTierLine } from '../utils/calcOutflow'
-import { fmtINR, getEff, monthlyIncomeTotal, toMonthly, isOneOff } from '../utils/format'
+import { calcOutflow, outflowTierLine, freeFigures } from '../utils/calcOutflow'
+import { fmtINR, getEff, monthlyIncomeTotal, toMonthly, isOneOff, freqMonths } from '../utils/format'
+import { cardCycle, emiStartsLater } from '../utils/cardCycle'
+import { startsAfterThisMonth } from '../utils/nextMonth'
+import { isChitRepaying } from '../utils/kinds'
+import { isLive } from '../utils/ended'
 import { cardLimitUse } from '../utils/cardLimit'
 import { ioweFacts } from '../utils/iowe'
 import { calcLoanSplit } from '../utils/loanCalc'
@@ -37,6 +41,7 @@ export default function BudgetRulesPage() {
     try { const s = localStorage.getItem('finflow-budget-rules2'); return s ? JSON.parse(s) : DEFAULT_RULES } catch { return DEFAULT_RULES }
   })
   const [editing, setEditing] = useState(false)
+  const [openBucket, setOpenBucket] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'overview'|'loans'|'cards'|'iowe'>('overview')
 
   const { data: loansRaw = [], isLoading: l1, isError: e1, refetch: r1 }       = useQuery({ queryKey: ['loans'],        queryFn: loansApi.getAll })
@@ -122,20 +127,34 @@ export default function BudgetRulesPage() {
   const insExp   = (expenses as any[]).filter((v:any)=>v.active!==false&&!isOneOff(v.frequency)&&/insur/i.test(v.label??'')).reduce((s:number,v:any)=>s+toMonthly(v.amount,v.frequency),0)
   const otherExp = (expenses as any[]).filter((v:any)=>v.active!==false&&!isOneOff(v.frequency)&&!/food|grocer|dining|restaurant|swiggy|zomato|insur/i.test(v.label??'')).reduce((s:number,v:any)=>s+toMonthly(v.amount,v.frequency),0)
 
-  const ACTUALS: Record<string,number> = {
-    housing: homeEmi, vehicle: carEmi, debt: otherLoanEmi + ccEmiMonthly,
-    savings: savMo + invMo, food: foodExp, lifestyle: otherExp + ccSpendsCurrent,
-    // Real insurance-table premiums (o.insuranceEmi) plus `insExp` — previously ONLY `insExp` was
-    // used, so a policy tracked properly on the Insurance page (rather than as a manual expense
-    // line) was invisible here even though Total Outflow above already counted it correctly via
-    // the shared calculator. Kept `insExp` too so a legacy manually-tracked "insurance" expense
-    // line doesn't silently disappear from every category (otherExp explicitly excludes it).
-    insurance: o.insuranceEmi + insExp,
-    // Was hardcoded to 0 — always "No data" regardless of actual spend. I Owe EMIs and chit
-    // repayments are real monthly commitments (see calcOutflow's iOweEmi/chitRepay) that don't
-    // belong in any of the other seven buckets, so they land here instead of nowhere.
-    other: iOweMo + withdrewMo,
-  }
+  /* What falls in each block, item by item — the block's figure is exactly the sum of its list (tap a
+     block to see it). Uses the shared rules: not-yet-started items are out (utils/nextMonth), friends'
+     card EMIs are out, card EMIs count once billed and card spends only on this month's bill (cardCycle). */
+  type BucketItem = { label: string; sub: string; amount: number }
+  const ITEMS: Record<string, BucketItem[]> = { housing: [], vehicle: [], debt: [], savings: [], food: [], lifestyle: [], insurance: [], other: [] }
+  const add = (k: string, label: string, sub: string, amount: number) => { if (amount > 0) ITEMS[k].push({ label, sub, amount }) }
+  const nowD = new Date()
+  ;(loans as any[]).filter((l:any) => getEff(l).pending > 0 && !startsAfterThisMonth(l, nowD)).forEach((l:any) => {
+    const t = l.loanType ?? ''
+    add(/home/i.test(t) ? 'housing' : /car|bike|vehicle/i.test(t) ? 'vehicle' : 'debt', l.lender, `${t || 'Loan'} EMI`, Number(l.emi ?? 0))
+  })
+  ;(cards as any[]).forEach((c:any) => {
+    ;(c.emis ?? []).filter((e:any) => getEff(e).pending > 0 && !(e.owedBy && !e.owedSettled) && !emiStartsLater(c, e, nowD))
+      .forEach((e:any) => add('debt', `${e.label}`, `${c.banker} · card EMI`, Number(e.emi ?? 0)))
+    add('lifestyle', `${c.banker} spends`, 'on this month\'s card bill', cardCycle(c, nowD).spendsThisMonth)
+  })
+  ;(savings as any[]).filter((v:any) => getEff(v).pending > 0 && !startsAfterThisMonth(v, nowD)).forEach((v:any) =>
+    isChitRepaying(v) ? add('other', v.name, 'chit repayment', Number(v.monthly ?? 0)) : add('savings', v.name, v.savingType ?? 'Savings', Number(v.monthly ?? 0)))
+  ;(investments as any[]).filter((v:any) => isLive(v) && !startsAfterThisMonth(v, nowD)).forEach((v:any) => add('savings', v.name, `${v.investType ?? 'SIP'} · monthly`, Number(v.monthly ?? 0)))
+  ;(expenses as any[]).filter((v:any) => v.active !== false && !isOneOff(v.frequency)).forEach((v:any) => {
+    const name = v.label ?? '', mo = toMonthly(v.amount, v.frequency), sub = `${v.category ?? 'Bill'}${freqMonths(v.frequency) > 1 ? ` · ${v.frequency}, monthly share` : ''}`
+    add(/insur/i.test(name) ? 'insurance' : /food|grocer|dining|restaurant|swiggy|zomato/i.test(name) ? 'food' : 'lifestyle', name, sub, mo)
+  })
+  ;(insurance as any[]).filter((v:any) => isLive(v) && !isOneOff(v.frequency) && !v.isCardEmi && freqMonths(v.frequency) <= 1)
+    .forEach((v:any) => add('insurance', v.name, `${v.policyType ?? 'Insurance'} · monthly premium`, Number(v.premium ?? 0)))
+  ;(personal as any[]).filter((p:any) => p.active !== false && !startsAfterThisMonth(p, nowD)).forEach((p:any) => add('other', p.person, 'I owe EMI', ioweFacts(p).monthly))
+  Object.values(ITEMS).forEach(list => list.sort((a, b) => b.amount - a.amount))
+  const ACTUALS: Record<string,number> = Object.fromEntries(Object.entries(ITEMS).map(([k, list]) => [k, list.reduce((s, x) => s + x.amount, 0)]))
 
   // Includes the credit-card statement balance: it is money leaving this month, and omitting
   // it made this total disagree with the Calendar and Lookup figures.
@@ -145,7 +164,8 @@ export default function BudgetRulesPage() {
   const lockedMonthly = o.locked
   const cardThisMonth = o.card
   const totalOutflow  = o.total
-  const freeCash     = monthlyIncome - totalOutflow
+  // Free / month = income − committed, same as every page (calcOutflow.freeFigures)
+  const freeCash     = freeFigures(o, monthlyIncome).free
   const totalRules   = rules.reduce((s:number,r:any) => s + r.limit, 0)
 
   const chartData = rules.map((r:any) => {
@@ -194,7 +214,7 @@ export default function BudgetRulesPage() {
             {label:'Total Outflow',  val:fmtINR(totalOutflow),  color:'var(--danger)',
               /* Tier split only — see /lookup for the itemised components. */
               sub:outflowTierLine(o), to:'/lookup'},
-            {label:'Free / Month',   val:(freeCash>=0?'+':'-')+fmtINR(Math.abs(freeCash))+incomePct(freeCash, monthlyIncome), color:freeCash>=0?'var(--purple)':'var(--warning)', sub:(freeCash<0?'🚨 deficit':freeCash<monthlyIncome*0.1?'⚠ low buffer':'✓ healthy')+' · after card bill'},
+            {label:'Free / month',   val:(freeCash>=0?'+':'-')+fmtINR(Math.abs(freeCash))+incomePct(freeCash, monthlyIncome), color:freeCash>=0?'var(--purple)':'var(--warning)', sub:(freeCash<0?'🚨 deficit':freeCash<monthlyIncome*0.1?'⚠ low buffer':'✓ healthy')+' · before card bills'},
             {label:'Budget Score',   val:`${score}/100`, color:score>=70?'var(--success)':score>=40?'var(--warning)':'var(--danger)', sub:score>=70?'On track ✓':score>=40?'Needs work':'Off track 🚨'},
           ].map(m=>(
             /* `to` makes a tile navigable. The Total Outflow tile needs it now that it shows only
@@ -230,15 +250,16 @@ export default function BudgetRulesPage() {
               const used = r.budget > 0 ? Math.round(r.actual / r.budget * 100) : 0
               const barColor = r.over ? 'var(--danger)' : used >= 80 ? 'var(--warning)' : r.color
               return (
-              <div key={r.id} className="grid items-center px-4 py-3 gap-y-2 hover:bg-[var(--bg-hover)] transition-colors grid-cols-2 md:[grid-template-columns:minmax(190px,1.6fr)_minmax(90px,0.8fr)_minmax(100px,0.9fr)_minmax(170px,1.8fr)_minmax(100px,0.9fr)]"
+              <Fragment key={r.id}>
+              <div role="button" tabIndex={0} aria-expanded={openBucket === r.id} title="Show what falls in this block" onClick={() => setOpenBucket(openBucket === r.id ? null : r.id)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenBucket(openBucket === r.id ? null : r.id) } }} className="cursor-pointer grid items-center px-4 py-3 gap-y-2 hover:bg-[var(--bg-hover)] transition-colors grid-cols-2 md:[grid-template-columns:minmax(190px,1.6fr)_minmax(90px,0.8fr)_minmax(100px,0.9fr)_minmax(170px,1.8fr)_minmax(100px,0.9fr)]"
                 style={{columnGap:16,borderTop:idx===0?'none':'1px solid var(--hairline)'}}>
                 <div className="flex items-center gap-2.5 min-w-0 col-span-2 md:col-span-1">
                   <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:`color-mix(in srgb, ${r.color} 14%, transparent)`}}>{r.icon}</span>
                   <div className="min-w-0">
-                    <div className="font-medium text-[13px] truncate">{r.label}</div>
+                    <div className="font-medium text-[13px] truncate">{r.label} <span className="text-[11px]" style={{ color: 'var(--text-faint)' }}>{openBucket === r.id ? '▾' : '▸'} {(ITEMS[r.id] ?? []).length} item{(ITEMS[r.id] ?? []).length === 1 ? '' : 's'}</span></div>
                     {editing ? (
                       <div className="flex items-center gap-1 mt-0.5">
-                        <input type="number" aria-label={`${r.label} limit percent`} className="input w-14 text-[11px] py-0.5 px-1.5" value={r.limit}
+                        <input type="number" onClick={e => e.stopPropagation()} onKeyDown={e => e.stopPropagation()} aria-label={`${r.label} limit percent`} className="input w-14 text-[11px] py-0.5 px-1.5" value={r.limit}
                           onChange={e => saveRules(rules.map((x:any) => x.id===r.id ? {...x,limit:Number(e.target.value)} : x))} />
                         <span className="text-[11px]" style={{color:'var(--text-faint)'}}>% of income</span>
                       </div>
@@ -259,6 +280,22 @@ export default function BudgetRulesPage() {
                   </span>
                 </div>
               </div>
+              {openBucket === r.id && (
+                <div className="px-4 pb-3 -mt-1" style={{ background: 'var(--bg-base)' }}>
+                  {(ITEMS[r.id] ?? []).length === 0
+                    ? <div className="text-[12px] py-2" style={{ color: 'var(--text-faint)' }}>Nothing falls in this block this month.</div>
+                    : <div className="divide-y divide-[color:var(--hairline)]">
+                        {ITEMS[r.id].map((it, k) => (
+                          <div key={k} className="flex items-baseline justify-between gap-3 py-1.5 text-[12px]">
+                            <span className="min-w-0 truncate"><span style={{ color: 'var(--text)' }}>{it.label}</span> <span style={{ color: 'var(--text-faint)' }}>· {it.sub}</span></span>
+                            <span className="mono tabular-nums flex-shrink-0" style={{ color: 'var(--text)' }}>{fmtINR(it.amount)}</span>
+                          </div>
+                        ))}
+                        <div className="flex justify-between pt-1.5 text-[12px] font-semibold"><span>Total</span><span className="mono tabular-nums">{fmtINR(r.actual)}</span></div>
+                      </div>}
+                </div>
+              )}
+              </Fragment>
             )})}
           </div>
 

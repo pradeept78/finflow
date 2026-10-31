@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { loansApi, cardsApi, personalEmiApi, savingsApi, investmentsApi, insuranceApi, expensesApi, incomeApi, paidMarksApi } from '../api'
-import { calcOutflow, outflowTierLine } from '../utils/calcOutflow'
+import { calcOutflow, outflowTierLine, freeFigures } from '../utils/calcOutflow'
+import { cardCycle } from '../utils/cardCycle'
 import { ioweFacts } from '../utils/iowe'
 import { KindStrip } from '../components/common/KindStrip'
 import { calendarKind, isChitRepaying } from '../utils/kinds'
@@ -55,7 +56,10 @@ export default function CalendarPage() {
   // raw amount with no frequency conversion — a Yearly ₹1,20,000 fee counted as ₹1,20,000/mo in
   // every one of the 11 projected months instead of its true ~₹10,000/mo share, so only month 0
   // (which already went through the shared calculator) was ever correct.
-  const baseExpenses = (expenses as any[]).filter(v => v.active !== false && !isOneOff(v.frequency)).reduce((s, v) => s + toMonthly(v.amount, v.frequency), 0)
+  // Monthly bills only. A quarterly / yearly bill lands at its full amount in its renewal month (billsDue in the
+  // loop below), the same rule insurance follows and calcOutflow's dueNow uses for this month — spreading it as a
+  // monthly share here made future months disagree with month 0.
+  const baseExpenses = (expenses as any[]).filter(v => v.active !== false && !isOneOff(v.frequency) && freqMonths(v.frequency) <= 1).reduce((s, v) => s + Number(v.amount ?? 0), 0)
 
   interface DueItem { label: string; type: string; amount: number; dueDay?: number; color: string; isLast?: boolean; isOverdue?: boolean; key?: string }
 
@@ -77,7 +81,7 @@ export default function CalendarPage() {
     const d = new Date(now.getFullYear(), now.getMonth() + i, 1)
     const ym = d.getFullYear() * 12 + d.getMonth()
     const isCurrentMonth = i === 0
-    let loanEmi = 0, ccEmi = 0, ccSpends = 0, ccOutstanding = 0, savEmi = 0, repayEmi = 0, persEmi = 0, lumpSum = 0, oneTime = 0, insEmi = 0, sipEmi = 0
+    let loanEmi = 0, ccEmi = 0, ccSpends = 0, ccOutstanding = 0, savEmi = 0, repayEmi = 0, persEmi = 0, lumpSum = 0, oneTime = 0, insEmi = 0, sipEmi = 0, billsDue = 0
     const dueItems: DueItem[] = []
     const ending: Array<{ label: string; type: string; amount: number }> = []
     const warnings: string[] = []
@@ -106,7 +110,9 @@ export default function CalendarPage() {
         if (!e.startDate || !e.tenure) return
         // Carried for a friend and not yet paid back: not the user's own commitment. Every total
         // (calcOutflow, Master, Hub) already leaves it out; listing it here made the count disagree.
-        const sd = new Date(e.startDate)
+        // Instalments land in the months they're billed: from the first due date (`_firstDue`, statement cycle —
+        // a 6 Oct EMI on a 6th/25th card runs Nov→Oct), not from the start date.
+        const sd = new Date(`${e._firstDue ?? e.startDate}`.slice(0, 10) + 'T12:00:00')
         const sYM = sd.getFullYear() * 12 + sd.getMonth()
         const lYM = sYM + e.tenure - 1
         if (e.owedBy && !e.owedSettled) {
@@ -223,7 +229,7 @@ export default function CalendarPage() {
       // the `ym <= eYM` test and insurance never appeared in the calendar or its totals.
       const NO_END = Number.MAX_SAFE_INTEGER
       // Monthly policies: always include regardless of start date
-      if (v.frequency === 'Monthly') {
+      if (freqMonths(v.frequency) <= 1) {
         const ped = v.paymentEndDate || v.endDate
         const eYM = ped ? new Date(ped).getFullYear() * 12 + new Date(ped).getMonth() : NO_END
         if (ym <= eYM) {
@@ -276,6 +282,7 @@ export default function CalendarPage() {
     // owed — the same class of bug insurance's due-month gating above already fixes. `isDueInMonth`
     // only lets a non-monthly bill land in its actual renewal month, at its real full amount.
     ;(expenses as any[]).filter(v => v.active !== false && !isOneOff(v.frequency) && isDueInMonth(v.startDate, v.frequency, d.getFullYear(), d.getMonth())).forEach((v: any) => {
+      if (freqMonths(v.frequency) > 1) billsDue += Number(v.amount ?? 0)
       dueItems.push({
         label: v.label, type: v.category ? `Bill · ${v.category}` : 'Bill',
         amount: Number(v.amount ?? 0), dueDay: resolveDueDay(v), color: 'bg-sky-500',
@@ -321,11 +328,40 @@ export default function CalendarPage() {
     /* Months 1..11 are projections and keep the per-month loop above. Month 0 is THIS month, and
        it must equal what Dashboard, Budget, Lookup and Hub report to the rupee — so it comes from
        the shared calculator rather than being recomputed here with slightly different rules. */
-    const regularOut = i === 0 ? shared.locked : (loanEmi + ccEmi + savEmi + repayEmi + persEmi + baseExpenses + insEmi + sipEmi)
+    const regularOut = i === 0 ? shared.locked : (loanEmi + ccEmi + savEmi + repayEmi + persEmi + baseExpenses + billsDue + insEmi + sipEmi)
+    // Next month also pays the cards' next bill: spends after this statement date and a statement balance due
+    // next month (cardCycle). EMIs starting on that bill are already projected by the EMI loop above.
+    const cardNextBill = i === 1 ? (cards as any[]).reduce((s, c) => { const cy = cardCycle(c, now); return s + cy.nextBill - cy.nextBillEmis }, 0) : 0
     const totalOut = i === 0
-      ? shared.total + lumpSum + oneTime
-      : regularOut + lumpSum + oneTime + ccOutstanding
+      ? shared.total   // already includes this month's lump sums, one-offs and renewals (calcOutflow dueNow)
+      : regularOut + lumpSum + oneTime + ccOutstanding + cardNextBill
     const free = monthlyIncome - totalOut
+    // What the month's total is made of — always sums to totalOut, so the chips explain the number and the
+    // month-to-month change. This month comes from the shared calculator; later months from the projection.
+    const parts: { label: string; value: number; color: string }[] = (i === 0 ? [
+      { label: 'Loans', value: shared.loanEmi, color: 'var(--info)' },
+      { label: 'CC EMI', value: shared.ccEmi, color: 'var(--purple)' },
+      { label: 'Card bill', value: shared.card, color: 'var(--danger)' },
+      { label: 'Bills', value: shared.expenses, color: 'var(--cyan)' },
+      { label: 'Insurance', value: shared.insuranceEmi, color: 'var(--pink)' },
+      { label: 'Savings', value: shared.savings, color: 'var(--success)' },
+      { label: 'Chit repay', value: shared.chitRepay, color: 'var(--danger)' },
+      { label: 'SIP', value: shared.sipInvest, color: 'var(--cyan)' },
+      { label: 'I Owe', value: shared.iOweEmi, color: 'var(--warning)' },
+      { label: 'Renewals & one-offs', value: shared.dueNow, color: 'var(--orange)' },
+    ] : [
+      { label: 'Loans', value: loanEmi, color: 'var(--info)' },
+      { label: 'CC EMI', value: ccEmi, color: 'var(--purple)' },
+      { label: 'Card bill', value: ccOutstanding + cardNextBill, color: 'var(--danger)' },
+      { label: 'Bills', value: baseExpenses + billsDue, color: 'var(--cyan)' },
+      { label: 'Insurance', value: insEmi, color: 'var(--pink)' },
+      { label: 'Savings', value: savEmi, color: 'var(--success)' },
+      { label: 'Chit repay', value: repayEmi, color: 'var(--danger)' },
+      { label: 'SIP', value: sipEmi, color: 'var(--cyan)' },
+      { label: 'I Owe', value: persEmi, color: 'var(--warning)' },
+      { label: 'Lump sum', value: lumpSum, color: 'var(--orange)' },
+      { label: 'One-time', value: oneTime, color: 'var(--orange)' },
+    ])
     const dropAmt = ending.filter(e => !e.type.includes('Due') && !e.type.includes('Matures')).reduce((s, e) => s + e.amount, 0)
 
     // Tight month warning
@@ -334,20 +370,27 @@ export default function CalendarPage() {
     if (lumpSum > 0) warnings.push(`Lump sum ${fmtINR(lumpSum)} due`)
     if (oneTime > 0) warnings.push(`One-time payment ${fmtINR(oneTime)} due`)
 
+    // Next month: list the card bills already generated for it (statement balance and spends, from cardCycle).
+    // Their amount was already in this month's projection total (cardNextBill); now they have rows too, keyed
+    // like next month's Lookup rows so a tick made early carries over.
+    if (i === 1) (cards as any[]).forEach((c: any) => cardCycle(c, now).parts
+      .filter(pt => pt.kind !== 'emi' && pt.due.getFullYear() === d.getFullYear() && pt.due.getMonth() === d.getMonth())
+      .forEach(pt => dueItems.push({
+        label: pt.kind === 'out' ? `${c.banker} Outstanding` : `${c.banker} Spends`, type: pt.kind === 'out' ? 'CC Outstanding' : 'CC Spends',
+        amount: pt.amount, dueDay: pt.due.getDate(), color: pt.kind === 'out' ? 'bg-red-500' : 'bg-pink-500', key: pt.kind === 'out' ? `card-out-${c.id}` : `spend-${c.id}`,
+      })))
+
     // Sort dueItems by dueDay
     dueItems.sort((a, b) => (a.dueDay ?? 31) - (b.dueDay ?? 31))
     // For current month: mark items as paid if in markedKeys
     if (i === 0) {
       dueItems.forEach(item => {
-        /* Was `markedKeys.includes(item.key)` — explicit ticks only. That meant a payment whose
-           day had already passed never showed as paid here even though Lookup showed it paid, and
-           a past-due item the user had deliberately un-marked showed as PAID, the inverse of what
-           they meant. The shared helper applies the same auto-paid XOR both pages now use. */
+        // Same shared rule as Lookup: paid only when ticked.
         if (item.key && isPaidThisMonth(item.key, (item as any).dueDay, markedKeys as string[])) (item as any).markedPaid = true
       })
     }
 
-    return { label: d.toLocaleString('default', { month: 'short', year: 'numeric' }), ym, loanEmi, ccEmi, ccOutstanding, ccSpends, savEmi, repayEmi, persEmi, lumpSum, oneTime, notCounted, insEmi, sipEmi, baseExpenses, totalOut, regularOut, free, ending, dropAmt, isCurrent: i === 0, dueItems, warnings }
+    return { label: d.toLocaleString('default', { month: 'short', year: 'numeric' }), ym, parts, cardNextBill, loanEmi, ccEmi, ccOutstanding, ccSpends, savEmi, repayEmi, persEmi, lumpSum, oneTime, notCounted, insEmi, sipEmi, baseExpenses, totalOut, regularOut, free, ending, dropAmt, isCurrent: i === 0, dueItems, warnings }
   })
 
   const maxRegular = Math.max(...months.map(m => m.regularOut), 1)
@@ -428,8 +471,12 @@ export default function CalendarPage() {
             </div>
             </div>
             <div className="text-right">
-              <div className="text-[12px] font-medium mb-1" style={{color:'var(--text-muted)'}}>Free this month · after card bill</div>
-              <div className="text-[24px] font-semibold tracking-tight tabular-nums" style={{color:months[0].free>=0?'var(--success)':'var(--danger)'}}>{months[0].free>=0?'+':'-'}{fmtINR(Math.abs(months[0].free))}</div>
+              <div className="text-[12px] font-medium mb-1" style={{color:'var(--text-muted)'}}>Left this month · after card bills</div>
+              <div className="text-[24px] font-semibold tracking-tight tabular-nums" style={{color:months[0].free>=0?'var(--success)':'var(--danger)'}}>{months[0].free>=0?'+':'−'}{fmtINR(Math.abs(months[0].free))}</div>
+              {/* The other shared figure, same name as on Hub / Dashboard / Lookup, so the two can be told apart */}
+              {(() => { const f = freeFigures(shared, monthlyIncome).free; return (
+                <div className="text-[11px] tabular-nums" style={{color:'var(--text-faint)'}}>Free / month {f>=0?'+':'−'}{fmtINR(f)} · before card bills</div>
+              ) })()}
             </div>
           </div>
           {/* Own full-width row under both blocks: inside the left column the wide pill strip forced the
@@ -485,11 +532,8 @@ export default function CalendarPage() {
           // shows its full breakdown; a later month only re-shows it when something actually moved
           // (an EMI starts, one closes, an amount changes) — otherwise it collapses to just the
           // month name and total until the next month where something changes.
-          const unchanged = idx > 0 && !!prev &&
-            mo.loanEmi === prev.loanEmi && mo.ccEmi === prev.ccEmi && mo.ccOutstanding === prev.ccOutstanding &&
-            mo.savEmi === prev.savEmi && (mo as any).repayEmi === (prev as any).repayEmi &&
-            mo.sipEmi === prev.sipEmi && mo.insEmi === prev.insEmi && mo.persEmi === prev.persEmi &&
-            mo.lumpSum === prev.lumpSum && mo.oneTime === prev.oneTime
+          // Same parts, same amounts as the month before (this month and next are never folded: they're built differently)
+          const unchanged = idx > 1 && !!prev && mo.parts.every(pt => Math.round(pt.value) === Math.round(prev.parts.find(x => x.label === pt.label)?.value ?? 0))
 
           // A month identical to the one before it (and not tight on cash) renders as one slim line —
           // label, total, free — instead of a full card with a bar; tap it to open the full detail.
@@ -509,14 +553,16 @@ export default function CalendarPage() {
                       something changed since the one before it (see `unchanged` above). */}
                   {!unchanged && (
                     <div className="flex gap-x-3 gap-y-0.5 flex-wrap text-[11px] order-last basis-full sm:order-none sm:basis-auto sm:flex-1">
-                      {mo.loanEmi > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--info)' }} />Loans {fmtINR(mo.loanEmi)}</span>}
-                      {(mo.ccEmi + mo.ccOutstanding) > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--purple)' }} />CC EMI {fmtINR(mo.ccEmi + mo.ccOutstanding)}</span>}{mo.isCurrent && mo.ccSpends > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--pink)' }} />+Spends {fmtINR(mo.ccSpends)}</span>}
-                      {mo.savEmi > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--success)' }} />Savings {fmtINR(mo.savEmi)}</span>}{(mo as any).repayEmi > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--danger)' }} />Repaying {fmtINR((mo as any).repayEmi)}</span>}
-                      {mo.sipEmi > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--cyan)' }} />SIP {fmtINR(mo.sipEmi)}</span>}
-                      {mo.insEmi > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--pink)' }} />Insurance {fmtINR(mo.insEmi)}</span>}
-                      {mo.persEmi > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--warning)' }} />I Owe {fmtINR(mo.persEmi)}</span>}
-                      {mo.lumpSum > 0 && <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--orange)' }} />+Lump {fmtINR(mo.lumpSum)}</span>}
-                      {mo.oneTime > 0 && <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--pink)' }} />+One-time {fmtINR(mo.oneTime)}</span>}
+                      {mo.parts.filter(pt => Math.round(pt.value) > 0).map(pt => (
+                        <span key={pt.label} className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: pt.color }} />{pt.label} {fmtINR(pt.value)}</span>
+                      ))}
+                      {/* Why this month differs from the one before: the biggest part-by-part changes */}
+                      {prev && (() => {
+                        const ch = mo.parts.map(pt => ({ label: pt.label, d: Math.round(pt.value - (prev.parts.find(x => x.label === pt.label)?.value ?? 0)) }))
+                          .concat(prev.parts.filter(x => !mo.parts.some(pt => pt.label === x.label)).map(x => ({ label: x.label, d: -Math.round(x.value) })))
+                          .filter(c => Math.abs(c.d) >= 1).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 3)
+                        return ch.length > 0 && <span className="basis-full" style={{ color: 'var(--text-faint)' }}>vs {prev.label.split(' ')[0]}: {ch.map(c => `${c.label} ${c.d > 0 ? '+' : '−'}${fmtINR(c.d)}`).join(' · ')}</span>
+                      })()}
                     </div>
                   )}
                   {unchanged && <div className="flex-1" />}
@@ -524,7 +570,7 @@ export default function CalendarPage() {
                   <div className="text-right flex-shrink-0 ml-auto sm:ml-0">
                     <div className="mono font-bold">{fmtINR(mo.totalOut)}</div>
                     {idx > 0 && delta !== 0 && <div className={`text-[11px] ${delta < 0 ? 'text-green-400' : 'text-red-400'}`}>{delta < 0 ? `↓ −${fmtINR(Math.abs(delta))}` : `↑ +${fmtINR(delta)}`}</div>}
-                    {monthlyIncome > 0 && <div className={`text-[11px] font-semibold ${mo.free >= 0 ? 'text-green-400' : 'text-red-400'}`}>{mo.free >= 0 ? '+' : ''}{fmtINR(mo.free)} free</div>}
+                    {monthlyIncome > 0 && <div className={`text-[11px] font-semibold ${mo.free >= 0 ? 'text-green-400' : 'text-red-400'}`}>{mo.free >= 0 ? '+' : '−'}{fmtINR(mo.free)} {mo.free >= 0 ? 'free' : 'short'}</div>}
                   </div>
                 </div>
 

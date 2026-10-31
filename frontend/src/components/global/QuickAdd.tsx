@@ -168,14 +168,17 @@ export default function QuickAdd({ sidebarTrigger = false, hideTrigger = false }
       {/* Floating button — bottom right (it used to sit bottom-left, on top of the sidebar's user/Logout block) */}
       <button
         onClick={() => setOpen(true)}
-        className={`fixed bottom-3 right-3 ${hideTrigger ? 'hidden ' : ''}${sidebarTrigger ? 'md:hidden ' : ''}w-8 h-8 rounded-full bg-orange-500/90 hover:bg-orange-500 text-white shadow-lg flex items-center justify-center transition-all hover:scale-110 z-40 opacity-50 hover:opacity-100 print:hidden`}
-        title="Quick add">
-        <Plus size={16} />
+        // Phones: a full-size thumb button sitting just above the bottom tab bar. Desktop keeps the small corner dot.
+        className={`fixed right-4 bottom-[calc(68px+env(safe-area-inset-bottom))] md:right-3 md:bottom-3 ${hideTrigger ? 'hidden ' : ''}${sidebarTrigger ? 'md:hidden ' : ''}w-12 h-12 md:w-8 md:h-8 rounded-full text-white shadow-lg flex items-center justify-center transition-all hover:scale-110 z-40 md:opacity-50 md:hover:opacity-100 print:hidden`}
+        style={{ background: '#c2410c' }}
+        title="Quick add" aria-label="Quick add">
+        <Plus size={22} className="md:hidden" /><Plus size={16} className="hidden md:block" />
       </button>
 
       {open && (
-        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4" onClick={e => e.target === e.currentTarget && setOpen(false)}>
-          <div className="bg-[var(--bg-card)] border border-[var(--border)] rounded-2xl w-full max-w-md shadow-2xl max-h-[92vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-end md:items-center justify-center z-[100] p-0 md:p-4" onClick={e => e.target === e.currentTarget && setOpen(false)}>
+          {/* Phones: a bottom sheet (same as every other form, see .modal-box in index.css) */}
+          <div className="sheet-up bg-[var(--bg-card)] border border-[var(--border)] rounded-t-2xl md:rounded-2xl w-full max-w-md shadow-2xl max-h-[92vh] overflow-y-auto" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--border)]">
               <div className="font-bold">Quick add</div>
               <button onClick={() => setOpen(false)} className="text-[#aab2c2] hover:text-[#e8eaf0]" aria-label="Close"><X size={18} /></button>
