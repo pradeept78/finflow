@@ -82,6 +82,14 @@ server:
     include-stacktrace: never
     include-exception: false
 
+# API docs (/v3/api-docs, /swagger-ui) are off unless API_DOCS_ENABLED=true: a full map of every
+# endpoint shouldn't be served to anyone who can reach the server.
+springdoc:
+  api-docs:
+    enabled: ${API_DOCS_ENABLED:false}
+  swagger-ui:
+    enabled: ${API_DOCS_ENABLED:false}
+
 management:
   endpoints:
     web:

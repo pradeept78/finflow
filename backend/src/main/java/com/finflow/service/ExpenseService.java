@@ -26,7 +26,7 @@ public class ExpenseService {
                 .orElseThrow(() -> new RuntimeException("Not found"));
     }
 
-    public Expense create(Expense entity) { entity.setUser(currentUser()); return repository.save(entity); }
+    public Expense create(Expense entity) { entity.setId(null); entity.setUser(currentUser()); return repository.save(entity); }
 
     public Expense update(Long id, Expense updated) {
         Expense existing = getById(id);

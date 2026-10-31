@@ -32,6 +32,9 @@ public class LoanService {
     }
 
     public Loan create(Loan loan) {
+        // A create never takes an id from the request: save() with an id merges into that row,
+        // which may belong to another user. Every service's create() clears it the same way.
+        loan.setId(null);
         loan.setUser(currentUser());
         return loanRepository.save(loan);
     }

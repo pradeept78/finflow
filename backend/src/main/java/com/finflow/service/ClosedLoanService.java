@@ -26,7 +26,7 @@ public class ClosedLoanService {
                 .orElseThrow(() -> new RuntimeException("Not found"));
     }
 
-    public ClosedLoan create(ClosedLoan entity) { entity.setUser(currentUser()); return repository.save(entity); }
+    public ClosedLoan create(ClosedLoan entity) { entity.setId(null); entity.setUser(currentUser()); return repository.save(entity); }
 
     public ClosedLoan update(Long id, ClosedLoan updated) {
         ClosedLoan existing = getById(id);

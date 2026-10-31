@@ -26,7 +26,7 @@ public class IncomeEntryService {
                 .orElseThrow(() -> new RuntimeException("Not found"));
     }
 
-    public IncomeEntry create(IncomeEntry entity) { entity.setUser(currentUser()); return repository.save(entity); }
+    public IncomeEntry create(IncomeEntry entity) { entity.setId(null); entity.setUser(currentUser()); return repository.save(entity); }
 
     public IncomeEntry update(Long id, IncomeEntry updated) {
         IncomeEntry existing = getById(id);

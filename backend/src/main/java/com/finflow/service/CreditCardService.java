@@ -30,6 +30,9 @@ public class CreditCardService {
     }
 
     public CreditCard create(CreditCard entity) {
+        entity.setId(null);
+        if (entity.getEmis() != null) entity.getEmis().forEach(e -> { e.setId(null); e.setCard(entity); });
+        if (entity.getSpends() != null) entity.getSpends().forEach(s -> { s.setId(null); s.setCard(entity); });
         entity.setUser(currentUser());
         stampOutstanding(entity, null);
         return repository.save(entity);
@@ -56,9 +59,20 @@ public class CreditCardService {
         updated.setId(existing.getId());
         updated.setUser(existing.getUser());
         stampOutstanding(updated, existing);
-        // Set card reference on all EMIs and spends to prevent null card_id
-        if (updated.getEmis() != null) updated.getEmis().forEach(e -> e.setCard(updated));
-        if (updated.getSpends() != null) updated.getSpends().forEach(s -> s.setCard(updated));
+        // Set card reference on all EMIs and spends to prevent null card_id. An EMI/spend keeps its id
+        // only if it is already on this card: the cascade merges by id, so a foreign id would move
+        // another user's row onto this card. Anything else is saved as new.
+        java.util.Set<Long> emiIds = new java.util.HashSet<>(), spendIds = new java.util.HashSet<>();
+        if (existing.getEmis() != null) existing.getEmis().forEach(e -> emiIds.add(e.getId()));
+        if (existing.getSpends() != null) existing.getSpends().forEach(s -> spendIds.add(s.getId()));
+        if (updated.getEmis() != null) updated.getEmis().forEach(e -> {
+            if (e.getId() != null && !emiIds.contains(e.getId())) e.setId(null);
+            e.setCard(updated);
+        });
+        if (updated.getSpends() != null) updated.getSpends().forEach(s -> {
+            if (s.getId() != null && !spendIds.contains(s.getId())) s.setId(null);
+            s.setCard(updated);
+        });
         return repository.save(updated);
     }
 
@@ -81,6 +95,7 @@ public class CreditCardService {
     @Transactional
     public CreditCard addEmi(Long cardId, CardEmi emi) {
         CreditCard card = getById(cardId);
+        emi.setId(null);
         emi.setCard(card);
         card.getEmis().add(emi);
         return repository.save(card);
@@ -89,6 +104,7 @@ public class CreditCardService {
     @Transactional
     public CreditCard addSpend(Long cardId, CardSpend spend) {
         CreditCard card = getById(cardId);
+        spend.setId(null);
         spend.setCard(card);
         card.getSpends().add(spend);
         return repository.save(card);
