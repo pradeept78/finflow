@@ -25,12 +25,14 @@ const personalEmiApi2 = { getAll: () => axiosApi.get<{data:any[]}>('/personal-em
 const peopleOweApi2   = { getAll: () => axiosApi.get<{data:any[]}>('/people-owes').then(r=>r.data.data) }
 
 const DEFAULT_RULES = [
-  { id: 'housing',   label: 'Home Loan',             limit: 30, color: 'var(--info)', icon: '🏠' },
-  { id: 'vehicle',   label: 'Car / Bike Loan',        limit: 15, color: 'var(--warning)', icon: '🚗' },
+  { id: 'housing',   label: 'Home loan / Rent',      limit: 25, color: 'var(--info)', icon: '🏠' },
+  { id: 'vehicle',   label: 'Car / Bike Loan',        limit: 10, color: 'var(--warning)', icon: '🚗' },
+  { id: 'bills',     label: 'Bills & utilities',      limit: 5,  color: 'var(--cyan)', icon: '💡' },
+  { id: 'family',    label: 'Family support',         limit: 10, color: 'var(--pink)', icon: '👪' },
   { id: 'debt',      label: 'Other Loans + CC EMIs',  limit: 10, color: 'var(--danger-strong)', icon: '🏦' },
   { id: 'savings',   label: 'Savings + Investments',  limit: 20, color: 'var(--success-strong)', icon: '💰' },
   { id: 'food',      label: 'Food / Groceries',       limit: 10, color: 'var(--orange)', icon: '🍱' },
-  { id: 'lifestyle', label: 'Lifestyle + CC Spends',  limit: 10, color: 'var(--purple)', icon: '🛍️' },
+  { id: 'lifestyle', label: 'Lifestyle + CC Spends',  limit: 5,  color: 'var(--purple)', icon: '🛍️' },
   { id: 'insurance', label: 'Insurance',              limit: 3,  color: 'var(--cyan)', icon: '🛡️' },
   { id: 'other',     label: 'Other / Misc',           limit: 2,  color: 'var(--text-muted)', icon: '📦' },
 ]
@@ -38,7 +40,14 @@ const DEFAULT_RULES = [
 export default function BudgetRulesPage() {
   const navigate = useNavigateFrom()
   const [rules, setRules] = useState(() => {
-    try { const s = localStorage.getItem('finflow-budget-rules2'); return s ? JSON.parse(s) : DEFAULT_RULES } catch { return DEFAULT_RULES }
+    // Saved limits are kept; blocks added since (Bills & utilities, Family support) are filled in from the
+    // defaults, and names/colours always come from the defaults.
+    try {
+      const s = localStorage.getItem('finflow-budget-rules2')
+      if (!s) return DEFAULT_RULES
+      const saved: any[] = JSON.parse(s)
+      return DEFAULT_RULES.map(d => { const m = saved.find(x => x.id === d.id); return m ? { ...d, limit: Number(m.limit) } : d })
+    } catch { return DEFAULT_RULES }
   })
   const [editing, setEditing] = useState(false)
   const [openBucket, setOpenBucket] = useState<string | null>(null)
@@ -131,7 +140,7 @@ export default function BudgetRulesPage() {
      block to see it). Uses the shared rules: not-yet-started items are out (utils/nextMonth), friends'
      card EMIs are out, card EMIs count once billed and card spends only on this month's bill (cardCycle). */
   type BucketItem = { label: string; sub: string; amount: number }
-  const ITEMS: Record<string, BucketItem[]> = { housing: [], vehicle: [], debt: [], savings: [], food: [], lifestyle: [], insurance: [], other: [] }
+  const ITEMS: Record<string, BucketItem[]> = { housing: [], vehicle: [], bills: [], family: [], debt: [], savings: [], food: [], lifestyle: [], insurance: [], other: [] }
   const add = (k: string, label: string, sub: string, amount: number) => { if (amount > 0) ITEMS[k].push({ label, sub, amount }) }
   const nowD = new Date()
   ;(loans as any[]).filter((l:any) => getEff(l).pending > 0 && !startsAfterThisMonth(l, nowD)).forEach((l:any) => {
@@ -148,7 +157,18 @@ export default function BudgetRulesPage() {
   ;(investments as any[]).filter((v:any) => isLive(v) && !startsAfterThisMonth(v, nowD)).forEach((v:any) => add('savings', v.name, `${v.investType ?? 'SIP'} · monthly`, Number(v.monthly ?? 0)))
   ;(expenses as any[]).filter((v:any) => v.active !== false && !isOneOff(v.frequency)).forEach((v:any) => {
     const name = v.label ?? '', mo = toMonthly(v.amount, v.frequency), sub = `${v.category ?? 'Bill'}${freqMonths(v.frequency) > 1 ? ` · ${v.frequency}, monthly share` : ''}`
-    add(/insur/i.test(name) ? 'insurance' : /food|grocer|dining|restaurant|swiggy|zomato/i.test(name) ? 'food' : 'lifestyle', name, sub, mo)
+    // By the category picked on the Expenses page (was: keywords in the name, so "Appa · Family" and "Airtel ·
+    // Utilities" both fell into Lifestyle). No category: the old name keywords, else Lifestyle.
+    const cat = String(v.category ?? '').toLowerCase()
+    const byCat = /insur/i.test(name) ? 'insurance'
+      : cat === 'rent' || cat === 'housing' ? 'housing'
+      : cat === 'food' || cat === 'groceries' ? 'food'
+      : ['utilities', 'transport', 'healthcare', 'education', 'bills'].includes(cat) ? 'bills'
+      : cat === 'family' ? 'family'
+      : cat === 'subscriptions' || cat === 'lifestyle' || cat === 'entertainment' || cat === 'shopping' ? 'lifestyle'
+      : cat === 'other' ? 'other'
+      : /food|grocer|dining|restaurant|swiggy|zomato/i.test(name) ? 'food' : 'lifestyle'
+    add(byCat, name, sub, mo)
   })
   ;(insurance as any[]).filter((v:any) => isLive(v) && !isOneOff(v.frequency) && !v.isCardEmi && freqMonths(v.frequency) <= 1)
     .forEach((v:any) => add('insurance', v.name, `${v.policyType ?? 'Insurance'} · monthly premium`, Number(v.premium ?? 0)))
