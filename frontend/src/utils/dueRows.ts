@@ -37,6 +37,9 @@ export interface DueRow {
   pending?: number
   /** Bill category, for bill rows. */
   category?: string
+  /** Upcoming rows only: the actual due date, and the month to tick it paid in (it's due next month). */
+  dueDate?: Date
+  monthYear?: string
 }
 export interface NotCountedRow { key: string; label: string; sub: string; amount: number; dueDay?: number; why: string }
 
@@ -44,14 +47,17 @@ export interface DueData {
   loans?: any[]; cards?: any[]; personal?: any[]; expenses?: any[]; savings?: any[]; investments?: any[]; insurance?: any[]
 }
 
+const monthEndOf = (d: Date) => new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59)
+
 const sameMonth = (iso: string | undefined, now: Date) => {
   const d = iso ? new Date(iso) : null
   return !!d && !isNaN(d.getTime()) && d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
 }
 
-export function buildDueRows(data: DueData, now: Date = new Date()): { rows: DueRow[]; notCounted: NotCountedRow[] } {
+export function buildDueRows(data: DueData, now: Date = new Date()): { rows: DueRow[]; notCounted: NotCountedRow[]; upcoming: DueRow[] } {
   const rows: DueRow[] = []
   const notCounted: NotCountedRow[] = []
+  const upcoming: DueRow[] = []
   const { loans = [], cards = [], personal = [], expenses = [], savings = [], investments = [], insurance = [] } = data
 
   // Loans
@@ -84,8 +90,24 @@ export function buildDueRows(data: DueData, now: Date = new Date()): { rows: Due
     if (cyc.spendsThisMonth > 0) {
       rows.push({ key: `spend-${c.id}`, kind: 'card-spend', label: c.banker, sub: `🛍️ Spends — bill due ${fmtDueDate(cyc.billDue)}`, amount: cyc.spendsThisMonth, dueDay: billDay, ref: c, parent: c })
     }
-    if (cyc.nextBill > 0) {
-      notCounted.push({ key: `card-next-${c.id}`, label: `${c.banker} — next bill`, sub: 'Credit card', amount: cyc.nextBill, dueDay: cyc.nextDue?.getDate(), why: `due ${fmtDueDate(cyc.nextDue)}, next month` })
+    // A card bill already on the card but due NEXT month: if it's due within 30 days it's a real "due soon"
+    // row (same key as next month's row, ticked for that month); anything further out stays a next-bill note.
+    const soonLimit = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 30)
+    const ym = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    let later = 0, laterDue: Date | undefined
+    cyc.parts.forEach(pt => {
+      if (pt.due <= monthEndOf(now)) return
+      if (pt.kind !== 'emi' && pt.due <= soonLimit) {
+        upcoming.push({
+          key: pt.kind === 'out' ? `card-out-${c.id}` : `spend-${c.id}`, kind: pt.kind === 'out' ? 'card-out' : 'card-spend',
+          label: pt.kind === 'out' ? `${c.banker} Outstanding` : c.banker,
+          sub: pt.kind === 'out' ? `CC statement balance · due ${fmtDueDate(pt.due)}` : `🛍️ Spends — bill due ${fmtDueDate(pt.due)}`,
+          amount: pt.amount, dueDay: pt.due.getDate(), dueDate: pt.due, monthYear: ym(pt.due), ref: c, parent: c,
+        })
+      } else { later += pt.amount; if (!laterDue || pt.due < laterDue) laterDue = pt.due }
+    })
+    if (later > 0) {
+      notCounted.push({ key: `card-next-${c.id}`, label: `${c.banker} — next bill`, sub: 'Credit card', amount: later, dueDay: laterDue?.getDate(), why: `due ${fmtDueDate(laterDue)}, next month` })
     }
   })
 
@@ -150,7 +172,8 @@ export function buildDueRows(data: DueData, now: Date = new Date()): { rows: Due
     rows.push({ key: `inv-${v.id}`, kind: 'sip', label: v.name, sub: v.investType ?? 'SIP', amount: Number(v.monthly), dueDay: resolveDueDay(v), ref: v })
   })
 
-  return { rows, notCounted }
+  upcoming.sort((a, b) => a.dueDate!.getTime() - b.dueDate!.getTime())
+  return { rows, notCounted, upcoming }
 }
 
 /**

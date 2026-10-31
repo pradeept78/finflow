@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { cardCycle, statementAfter, dueFor, emiStartsLater, billingPeriods, periodLabel, amountDueOn } from '../cardCycle'
 import { calcOutflow } from '../calcOutflow'
+import { buildDueRows } from '../dueRows'
 
 const D = (y: number, m: number, d: number) => new Date(y, m - 1, d)
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -137,5 +138,23 @@ describe('amount per bill', () => {
     expect(c.dues.map(d => `${iso(d.due)} ${d.amount}`)).toEqual(['2026-11-04 42000', '2026-12-04 18000'])
     expect(amountDueOn(c, D(2026, 12, 4))).toBe(18000)
     expect(amountDueOn(c, D(2026, 11, 4))).toBe(42000)
+  })
+})
+
+describe('card bills due soon (next month, within 30 days)', () => {
+  // 31 Oct: SBI statement 12th / due 2nd — the 12 Oct statement (₹87,000 typed) is due 2 Nov.
+  const sbi = { id: 13, banker: 'SBI SimplyClick', billingDay: 12, dueDay: 2, outstanding: 87000, emis: [],
+    spends: [{ id: 1, amount: 3000, spendDate: '2026-10-20' }] } // 12 Nov statement → due 2 Dec: too far
+  it('the due list keeps this month clean and lists the 2 Nov bill under upcoming, tickable for November', () => {
+    const { rows, upcoming, notCounted } = buildDueRows({ cards: [sbi] }, D(2026, 10, 31))
+    expect(rows.filter(r => r.parent?.id === 13)).toEqual([])
+    expect(upcoming.map(u => [u.key, u.amount, iso(u.dueDate!), u.monthYear])).toEqual([['card-out-13', 87000, '2026-11-02', '2026-11']])
+    // only the 2 Dec spend is left as a next-bill note; the ₹87,000 due 2 Nov is a real row now
+    expect(notCounted.find(n => n.key === 'card-next-13')?.amount).toBe(3000)
+  })
+  it('a bill more than 30 days out is not "due soon" but stays visible as a next bill', () => {
+    const { upcoming, notCounted } = buildDueRows({ cards: [{ ...sbi, outstanding: 0 }] }, D(2026, 10, 31))
+    expect(upcoming).toEqual([])
+    expect(notCounted.find(n => n.key === 'card-next-13')?.amount).toBe(3000)
   })
 })

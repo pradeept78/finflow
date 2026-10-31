@@ -3,7 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { loansApi, cardsApi, personalEmiApi, expensesApi, savingsApi, investmentsApi, insuranceApi, incomeApi, paidMarksApi, closedLoansApi, peopleOweApi } from '../api'
 import { fmtINR, getEff, toMonthly, resolveDueDay, isPaidThisMonth, isDueThisMonth, freqMonths, monthlyIncomeTotal, isOneOff } from '../utils/format'
-import { cardCycle } from '../utils/cardCycle'
+import { cardCycle, fmtDueDate } from '../utils/cardCycle'
 import { calcOutflow, outflowTierLine, outflowRows as outflowRowsOf, outflowSubLine } from '../utils/calcOutflow'
 import { ioweFacts } from '../utils/iowe'
 import { calcLoanSplit } from '../utils/loanCalc'
@@ -54,6 +54,11 @@ export default function QuickLookupPage() {
   // Upcoming = dueDay in future or today
   const isUpcoming = (key: string, dueDay?: number) => !!dueDay && dueDay > 0 && dueDay >= today && !markedKeys.includes(key)
   const toggle = (key: string) => toggleMut.mutate(key)
+  // "Due soon": card bills already generated but due next month. Ticked for the month they're due, so the
+  // tick is still there when that month starts and the bill moves into its normal day.
+  const nextYM = (() => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() + 1); return d.toISOString().slice(0, 7) })()
+  const { data: nextMarks = [] } = useQuery({ queryKey: ['paid-marks', nextYM], queryFn: () => paidMarksApi.getFor(nextYM) })
+  const toggleNextMut = useMutation({ mutationFn: ({ key, month }: { key: string; month: string }) => paidMarksApi.toggleFor(key, month), onSuccess: () => qc.invalidateQueries({ queryKey: ['paid-marks'] }) })
 
   // resolveDueDay and isPaidThisMonth now live in utils/format so Calendar shares them.
   /* ── Calculations ──────────────────────────────────────────────────────────────────────────
@@ -96,7 +101,7 @@ export default function QuickLookupPage() {
   // ── Due items ──
   // Which payments exist this month (and which are "not counted") is decided once, in utils/dueRows —
   // the same list Calendar's current month uses. This page only decides how each row is drawn.
-  const { rows: dueRows, notCounted } = buildDueRows({ loans, cards, personal, expenses, savings, investments, insurance })
+  const { rows: dueRows, notCounted, upcoming } = buildDueRows({ loans, cards, personal, expenses, savings, investments, insurance })
   const ICONS: Record<string, string> = { loan: '🏦', 'card-emi': '💳', 'card-out': '💳', 'card-spend': '💳', iowe: '🤝', 'iowe-lump': '🤝', bill: '🔄', 'one-time': '🔄', savings: '🪙', 'chit-repay': '⚠️', insurance: '🛡️', sip: '📈' }
   const detailOf = (r: DueRow): React.ReactNode => {
     const x = r.ref
@@ -472,6 +477,40 @@ export default function QuickLookupPage() {
             )
           })}
           </>}
+          {upcoming.length > 0 && (() => {
+            const startOfToday = new Date(new Date().toDateString()).getTime()
+            const left = upcoming.filter(u => !(nextMarks as string[]).includes(u.key)).reduce((a, u) => a + u.amount, 0)
+            return (
+              <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--hairline)', borderLeft: '3px solid var(--warning)' }}>
+                <div className="flex items-start justify-between gap-3 px-4 pt-3">
+                  <div>
+                    <div className="text-[14px] font-semibold">Due soon · next month</div>
+                    <div className="text-[11px]" style={{ color: 'var(--text-faint)' }}>Card bills already generated. They count in next month's total, not this month's.</div>
+                  </div>
+                  <span className="mono text-[13px] font-semibold tabular-nums flex-shrink-0" style={{ color: left > 0 ? 'var(--warning)' : 'var(--success)' }}>{left > 0 ? fmtINR(left) : '✓ all paid'}</span>
+                </div>
+                <div className="p-2.5 grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
+                  {upcoming.map(u => {
+                    const paid = (nextMarks as string[]).includes(u.key)
+                    const inDays = Math.round((u.dueDate!.getTime() - startOfToday) / 86400000)
+                    return (
+                      <div key={u.key} className="flex items-center gap-2.5 rounded-xl pl-2.5 pr-3 py-2 min-w-0" style={{ border: `1px solid ${paid ? 'color-mix(in srgb, var(--success) 30%, transparent)' : 'var(--hairline)'}` }}>
+                        <button type="button" role="checkbox" aria-checked={paid} aria-label={`${paid ? 'Unmark' : 'Mark'} ${u.label} as paid`} title={paid ? 'Paid — click to unmark' : 'Mark this bill as paid'}
+                          onClick={() => toggleNextMut.mutate({ key: u.key, month: u.monthYear! })}
+                          className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold"
+                          style={{ border: `1.5px solid ${paid ? 'var(--success)' : 'var(--warning)'}`, background: paid ? 'var(--success)' : 'transparent', color: '#fff', cursor: 'pointer' }}>{paid ? '✓' : ''}</button>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[13px] font-medium truncate" style={{ color: paid ? 'var(--text-muted)' : 'var(--text)', textDecoration: paid ? 'line-through' : 'none' }}><span className="mr-1">{ICONS[u.kind] ?? '💳'}</span>{u.label}</div>
+                          <div className="text-[11px] truncate" style={{ color: inDays <= 3 && !paid ? 'var(--warning)' : 'var(--text-faint)' }}>due {fmtDueDate(u.dueDate)} · {inDays <= 0 ? 'today' : inDays === 1 ? 'tomorrow' : `in ${inDays} days`}</div>
+                        </div>
+                        <span className="mono text-[13px] font-semibold tabular-nums flex-shrink-0" style={{ color: paid ? 'var(--success)' : 'var(--text)' }}>{paid ? 'paid' : fmtINR(u.amount)}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
           {notCounted.length > 0 && (
             <details id="ql-not-counted" className="px-4 py-2 text-[11px]" style={{ color: 'var(--text-faint)' }}>
               <summary className="cursor-pointer select-none">🚫 {notCounted.length} not counted · {fmtINR(Math.round(notCounted.reduce((a, x) => a + x.amount, 0)))}/mo <span style={{color:'var(--text-faint)'}}>— left out of the count and every total</span></summary>

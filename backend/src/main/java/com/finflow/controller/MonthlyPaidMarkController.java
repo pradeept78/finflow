@@ -16,13 +16,14 @@ public class MonthlyPaidMarkController {
     private final MonthlyPaidMarkService service;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<String>>> getMarked() {
-        return ResponseEntity.ok(ApiResponse.ok(service.getMarkedItems()));
+    public ResponseEntity<ApiResponse<List<String>>> getMarked(@RequestParam(required = false) String month) {
+        return ResponseEntity.ok(ApiResponse.ok(service.getMarkedItems(month)));
     }
 
     @PostMapping("/toggle")
     public ResponseEntity<ApiResponse<Boolean>> toggle(@RequestBody Map<String, String> body) {
-        boolean marked = service.toggle(body.get("itemKey"));
+        // Optional "monthYear": tick a bill for the month it is due in (defaults to the current month)
+        boolean marked = service.toggle(body.get("itemKey"), body.get("monthYear"));
         return ResponseEntity.ok(ApiResponse.ok(marked ? "Marked paid" : "Unmarked", marked));
     }
 }

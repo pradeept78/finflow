@@ -9,6 +9,7 @@ import IncomeSplitCard from '../components/common/IncomeSplitCard'
 import { useQuery } from '@tanstack/react-query'
 import { loansApi, cardsApi, personalEmiApi, savingsApi, insuranceApi, investmentsApi, expensesApi, incomeApi, paidMarksApi } from '../api'
 import { masterKeyOf } from '../utils/dueRows'
+import { cardCycle, fmtDueDate } from '../utils/cardCycle'
 import { fmtINR, monthlyIncomeTotal, ordinal } from '../utils/format'
 import { calcOutflow, outflowTierLine } from '../utils/calcOutflow'
 import { PageHeader, LoadingSpinner, ErrorState, SortHeader } from '../components/common'
@@ -517,19 +518,31 @@ export default function MasterTablePage() {
   // (A one-time/"Single" premium needs no such tag: it's never pushed into this due-amount logic as a
   // recurring row in the first place, since it isn't a provision and has no recurring `emi`.)
   const dueAmount = (r: MasterRow) => (r.isCardEmi || r.paidThisCycle) ? 0 : (r.isProvision ? (r.dueThisMonth ? (r.fullAmount ?? 0) : 0) : (r.emi ?? r.totalPending ?? 0))
+  // Card statement balances / spends whose bill falls due NEXT month (statement already generated, see
+  // utils/cardCycle) get their own "Due next month" group (key -1) after this month's days, with the real
+  // date — under "Day 2" they read as 29 days overdue in a month they aren't due in.
+  const NEXT = -1
+  const monthEnd = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0, 23, 59, 59)
+  const nextBillDue = new Map<string, Date>()
+  ;(cards as any[]).forEach((c: any) => cardCycle(c).parts.forEach(pt => {
+    if (pt.kind === 'emi' || pt.due <= monthEnd) return
+    const k = pt.kind === 'out' ? `cc-out-${c.id}` : `cc-spend-${c.id}`
+    if (!nextBillDue.has(k) || pt.due < nextBillDue.get(k)!) nextBillDue.set(k, pt.due)
+  }))
   const dueBuckets = new Map<number, MasterRow[]>()
-  filtered.forEach(r => { const d = r.due ?? 0; if (!dueBuckets.has(d)) dueBuckets.set(d, []); dueBuckets.get(d)!.push(r) })
+  filtered.forEach(r => { const d = !r.charging && nextBillDue.has(r.key) ? NEXT : (r.due ?? 0); if (!dueBuckets.has(d)) dueBuckets.set(d, []); dueBuckets.get(d)!.push(r) })
   const dueDays = [...dueBuckets.keys()].sort((a, b) => {
+    if (a === NEXT) return 1; if (b === NEXT) return -1
     if (a === 0) return 1; if (b === 0) return -1
     return a - b
   })
-  const dueGroupKey = (d: number) => d === 0 ? 'Any day this month' : `Day ${d}`
+  const dueGroupKey = (d: number) => d === NEXT ? 'Due next month' : d === 0 ? 'Any day this month' : `Day ${d}`
   const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()
   const daysAwayFor = (d: number) => d >= today ? d - today : (daysInMonth - today + d)
   const runningByDay = new Map<number, number>()
   ;(() => {
     let running = 0
-    dueDays.filter(d => d !== 0).forEach(d => {
+    dueDays.filter(d => d > 0).forEach(d => {
       running += dueBuckets.get(d)!.filter(r => !isFriendOwed(r)).reduce((a, r) => a + dueAmount(r), 0)
       runningByDay.set(d, running)
     })
@@ -1341,8 +1354,10 @@ export default function MasterTablePage() {
               <div key={g}>
                 <GroupHead
                   title={g} count={groupRows.length} open={!isCollapsed} onToggle={() => toggleGroup(g)}
-                  accent={g === 'Any day this month' ? 'var(--text-faint)' : isTodayGroup ? 'var(--warning)' : isOverdueGroup ? 'var(--danger)' : groupPaid && d < today ? 'var(--success)' : 'var(--info)'}
-                  tag={isTodayGroup
+                  accent={d === NEXT ? 'var(--warning)' : g === 'Any day this month' ? 'var(--text-faint)' : isTodayGroup ? 'var(--warning)' : isOverdueGroup ? 'var(--danger)' : groupPaid && d < today ? 'var(--success)' : 'var(--info)'}
+                  tag={d === NEXT
+                    ? <span className="text-[11px]" style={{ color: 'var(--warning)' }}>card bills · from {fmtDueDate(new Date(Math.min(...groupRows.map(r => nextBillDue.get(r.key)?.getTime() ?? Infinity))))}</span>
+                    : isTodayGroup
                     ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--warning) 16%, transparent)', color: 'var(--warning)' }}>Today</span>
                     : groupPaid && d > 0 && d < today
                       ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--success) 14%, transparent)', color: 'var(--success)' }}>✓ Paid</span>

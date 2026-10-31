@@ -53,6 +53,8 @@ export interface CardCycle {
   nextDue?: Date
   /** Every bill with money on it, by due date (this month's and later ones), earliest first. */
   dues: { due: Date; amount: number }[]
+  /** The same money split by what it is — typed statement balance, logged spends, EMIs starting on a later bill. */
+  parts: { kind: 'out' | 'spend' | 'emi'; amount: number; due: Date }[]
   lastStatement?: Date
   /** False when the card has no statement day, so no cycle can be worked out. */
   hasCycle: boolean
@@ -82,7 +84,7 @@ export function cardCycle(card: any, now: Date = new Date()): CardCycle {
 
   if (!(S >= 1 && S <= 31)) {
     const spends = ownSpends.reduce((a: number, sp: any) => a + num(sp.amount), 0)
-    return { billThisMonth: outstanding + spends, outstandingThisMonth: outstanding, spendsThisMonth: spends, nextBill: 0, nextBillEmis: 0, dues: [], hasCycle: false,
+    return { billThisMonth: outstanding + spends, outstandingThisMonth: outstanding, spendsThisMonth: spends, nextBill: 0, nextBillEmis: 0, dues: [], parts: [], hasCycle: false,
       billDue: Dd > 0 ? onDay(now.getFullYear(), now.getMonth(), Dd) : undefined }
   }
 
@@ -95,9 +97,12 @@ export function cardCycle(card: any, now: Date = new Date()): CardCycle {
   let outstandingThisMonth = 0, spendsThisMonth = 0, nextBill = 0, nextBillEmis = 0
   let billDue: Date | undefined, nextDue: Date | undefined
   const byDue = new Map<number, number>()
+  const parts: CardCycle['parts'] = []
   const book = (amount: number, dueDate: Date, kind: 'out' | 'spend') => {
     if (amount <= 0 || dueDate < monthStart) return               // an older bill — assumed settled
     byDue.set(dueDate.getTime(), (byDue.get(dueDate.getTime()) ?? 0) + amount)
+    const same = parts.find(x => x.kind === kind && x.due.getTime() === dueDate.getTime())
+    if (same) same.amount += amount; else parts.push({ kind, amount, due: dueDate })
     if (dueDate <= monthEnd) {
       if (kind === 'out') outstandingThisMonth += amount; else spendsThisMonth += amount
       if (!billDue || dueDate < billDue) billDue = dueDate
@@ -123,13 +128,14 @@ export function cardCycle(card: any, now: Date = new Date()): CardCycle {
     const first = dueFor(statementAfter(new Date(e.startDate), S), due)
     nextBill += num(e.emi); nextBillEmis += num(e.emi)
     byDue.set(first.getTime(), (byDue.get(first.getTime()) ?? 0) + num(e.emi))
+    parts.push({ kind: 'emi', amount: num(e.emi), due: first })
     if (!nextDue || first < nextDue) nextDue = first
   })
 
   // Nothing on the card yet: still say when the ongoing cycle's bill will be due.
   if (!nextDue) { const ongoingDue = dueFor(statementAfter(today, S), due); if (ongoingDue > monthEnd) nextDue = ongoingDue }
 
-  return { billThisMonth: outstandingThisMonth + spendsThisMonth, outstandingThisMonth, spendsThisMonth, billDue, nextBill, nextBillEmis, nextDue, lastStatement: last, hasCycle: true,
+  return { billThisMonth: outstandingThisMonth + spendsThisMonth, outstandingThisMonth, spendsThisMonth, billDue, nextBill, nextBillEmis, nextDue, lastStatement: last, hasCycle: true, parts,
     dues: [...byDue.entries()].sort((a, b) => a[0] - b[0]).map(([t, amount]) => ({ due: new Date(t), amount })) }
 }
 

@@ -342,6 +342,16 @@ export default function CalendarPage() {
     if (lumpSum > 0) warnings.push(`Lump sum ${fmtINR(lumpSum)} due`)
     if (oneTime > 0) warnings.push(`One-time payment ${fmtINR(oneTime)} due`)
 
+    // Next month: list the card bills already generated for it (statement balance and spends, from cardCycle).
+    // Their amount was already in this month's projection total (cardNextBill); now they have rows too, keyed
+    // like next month's Lookup rows so a tick made early carries over.
+    if (i === 1) (cards as any[]).forEach((c: any) => cardCycle(c, now).parts
+      .filter(pt => pt.kind !== 'emi' && pt.due.getFullYear() === d.getFullYear() && pt.due.getMonth() === d.getMonth())
+      .forEach(pt => dueItems.push({
+        label: pt.kind === 'out' ? `${c.banker} Outstanding` : `${c.banker} Spends`, type: pt.kind === 'out' ? 'CC Outstanding' : 'CC Spends',
+        amount: pt.amount, dueDay: pt.due.getDate(), color: pt.kind === 'out' ? 'bg-red-500' : 'bg-pink-500', key: pt.kind === 'out' ? `card-out-${c.id}` : `spend-${c.id}`,
+      })))
+
     // Sort dueItems by dueDay
     dueItems.sort((a, b) => (a.dueDay ?? 31) - (b.dueDay ?? 31))
     // For current month: mark items as paid if in markedKeys
@@ -352,7 +362,7 @@ export default function CalendarPage() {
       })
     }
 
-    return { label: d.toLocaleString('default', { month: 'short', year: 'numeric' }), ym, loanEmi, ccEmi, ccOutstanding, ccSpends, savEmi, repayEmi, persEmi, lumpSum, oneTime, notCounted, insEmi, sipEmi, baseExpenses, totalOut, regularOut, free, ending, dropAmt, isCurrent: i === 0, dueItems, warnings }
+    return { label: d.toLocaleString('default', { month: 'short', year: 'numeric' }), ym, cardNextBill, loanEmi, ccEmi, ccOutstanding, ccSpends, savEmi, repayEmi, persEmi, lumpSum, oneTime, notCounted, insEmi, sipEmi, baseExpenses, totalOut, regularOut, free, ending, dropAmt, isCurrent: i === 0, dueItems, warnings }
   })
 
   const maxRegular = Math.max(...months.map(m => m.regularOut), 1)
@@ -520,6 +530,7 @@ export default function CalendarPage() {
                       {mo.sipEmi > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--cyan)' }} />SIP {fmtINR(mo.sipEmi)}</span>}
                       {mo.insEmi > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--pink)' }} />Insurance {fmtINR(mo.insEmi)}</span>}
                       {mo.persEmi > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--warning)' }} />I Owe {fmtINR(mo.persEmi)}</span>}
+                      {mo.cardNextBill > 0 && <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--danger)' }} />Card bill {fmtINR(mo.cardNextBill)}</span>}
                       {mo.lumpSum > 0 && <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--orange)' }} />+Lump {fmtINR(mo.lumpSum)}</span>}
                       {mo.oneTime > 0 && <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--pink)' }} />+One-time {fmtINR(mo.oneTime)}</span>}
                     </div>
@@ -529,7 +540,7 @@ export default function CalendarPage() {
                   <div className="text-right flex-shrink-0 ml-auto sm:ml-0">
                     <div className="mono font-bold">{fmtINR(mo.totalOut)}</div>
                     {idx > 0 && delta !== 0 && <div className={`text-[11px] ${delta < 0 ? 'text-green-400' : 'text-red-400'}`}>{delta < 0 ? `↓ −${fmtINR(Math.abs(delta))}` : `↑ +${fmtINR(delta)}`}</div>}
-                    {monthlyIncome > 0 && <div className={`text-[11px] font-semibold ${mo.free >= 0 ? 'text-green-400' : 'text-red-400'}`}>{mo.free >= 0 ? '+' : ''}{fmtINR(mo.free)} free</div>}
+                    {monthlyIncome > 0 && <div className={`text-[11px] font-semibold ${mo.free >= 0 ? 'text-green-400' : 'text-red-400'}`}>{mo.free >= 0 ? '+' : '−'}{fmtINR(mo.free)} {mo.free >= 0 ? 'free' : 'short'}</div>}
                   </div>
                 </div>
 

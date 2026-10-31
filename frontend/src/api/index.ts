@@ -55,4 +55,7 @@ export const snapshotApi = {
 export const paidMarksApi = {
   getAll: () => api.get<{ data: string[] }>('/paid-marks').then(r => r.data.data),
   toggle: (itemKey: string) => api.post<{ data: boolean }>('/paid-marks/toggle', { itemKey }).then(r => r.data.data),
+  // A bill due in another month (a card statement generated now, due next month): read and tick it for that month.
+  getFor: (month: string) => api.get<{ data: string[] }>('/paid-marks', { params: { month } }).then(r => r.data.data),
+  toggleFor: (itemKey: string, monthYear: string) => api.post<{ data: boolean }>('/paid-marks/toggle', { itemKey, monthYear }).then(r => r.data.data),
 }

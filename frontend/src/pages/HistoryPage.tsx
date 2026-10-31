@@ -174,7 +174,7 @@ export default function HistoryPage() {
                 </div>
                 <div className="text-right"><span className="mono font-semibold" style={{color:'var(--danger)'}}>{fmtINR(totalOut)}</span></div>
                 <div className="text-right"><span className="mono text-[13px]" style={{color:'var(--text-faint)'}}>{fmtINR(Number(s.totalDebt??0))}</span></div>
-                <div className="text-right"><span className="mono font-semibold" style={{color:free>=0?'var(--success)':'var(--danger)'}}>{free>=0?'+':''}{fmtINR(free)}</span></div>
+                <div className="text-right"><span className="mono font-semibold" style={{color:free>=0?'var(--success)':'var(--danger)'}}>{free>=0?'+':'−'}{fmtINR(free)}</span></div>
                 <div className="text-right">
                   {idx<sorted.length-1?(()=>{
                     const prev=sorted[sorted.length-2-idx]
@@ -217,7 +217,7 @@ export default function HistoryPage() {
                 <span className="text-right mono" style={{color:'var(--orange)'}}>{fmtINR(s.expenses)}</span>
                 <span className="text-right mono" style={{color:'var(--warning)'}}>{fmtINR(s.personalEmi)}</span>
                 <span className="text-right mono" style={{color:'var(--text-faint)'}}>{fmtINR(s.totalDebt)}</span>
-                <span className="text-right mono font-semibold" style={{color:free>=0?'var(--success)':'var(--danger)'}}>{free>=0?'+':''}{fmtINR(free)}</span>
+                <span className="text-right mono font-semibold" style={{color:free>=0?'var(--success)':'var(--danger)'}}>{free>=0?'+':'−'}{fmtINR(free)}</span>
               </div>
             )
           })}
