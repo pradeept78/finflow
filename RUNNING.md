@@ -93,19 +93,9 @@ Local and Docker are wired to **separate MySQL instances with separate data**. A
 `:3000` will not appear on `:3100`, and vice versa. You'll also be logged in separately on each,
 since browsers scope stored tokens by origin including port.
 
-**This repo has not yet confirmed which one holds your real financial data.** `backup.sh` dumps the
-Docker container (`finflow-mysql`); your local backend currently points at native MySQL on 3306.
-Settle it once with:
-```bash
-mysql -u root -p<password> -N -e "SELECT COUNT(*) FROM finflow.loans;"
-
-docker compose up -d mysql
-set -a && . .env && set +a
-docker compose exec -T mysql mysql -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -N \
-  -e "SELECT COUNT(*) FROM finflow.loans;"
-```
-Whichever returns your real loan count is the one `application-local.yml` should point at, and the
-one your recovery plan needs to actually cover.
+**Real data lives in Docker** (since 31 Oct 2026). The native database on 3306 was copied into
+`finflow-mysql` (row counts matched, schema V25) and Docker is the one to use day to day at `:3100`.
+The native copy on 3306 is now a dev sandbox: anything entered on `:3000` does **not** reach Docker.
 
 ---
 
@@ -194,16 +184,28 @@ And confirm `/admin` loads without a red banner or a 500 — see item 3 at the t
 mechanism. Building an import is real work: id remapping, referential ordering (cards before card
 EMIs), a merge-versus-replace decision.
 
-The reliable backup is a database dump. `backup.sh` now reads its credentials from `.env` instead of
-a hardcoded password — rotating `MYSQL_PASSWORD` used to silently break the nightly dump with no
-error until the day you needed to restore one:
+The reliable backup is a database dump. `backup.sh` reads its credentials from `.env` and keeps the
+last 7 dumps in `~/finflow-backups/`:
 ```bash
-./backup.sh                          # dumps Docker's finflow-mysql; add to cron for a schedule
+./backup.sh                          # dumps Docker's finflow-mysql
 ```
-It only covers the **Docker** database. If your real data is in native MySQL instead (see "Two
-databases" above), back that up separately:
+
+**Nightly schedule.** `scripts/com.finflow.backup.plist` runs it every day at 21:30 via launchd (not
+cron: a run missed while the Mac sleeps happens on wake). Docker must be running. Install once:
 ```bash
-mysqldump -u root -p finflow --single-transaction > finflow_native_$(date +%F).sql
+cp scripts/com.finflow.backup.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.finflow.backup.plist
+launchctl kickstart gui/$(id -u)/com.finflow.backup     # run now; check ~/finflow-backups/backup.log
+```
+If the log shows `Operation not permitted`, macOS is blocking access to `~/Downloads`: give `/bin/bash`
+Full Disk Access, or move the repo out of Downloads and fix the path in the plist.
+
+**Restore** (tested 31 Oct 2026 into a scratch database: every table count matched):
+```bash
+docker stop finflow-backend
+docker exec finflow-mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot -e "DROP DATABASE finflow; CREATE DATABASE finflow;"'
+docker exec -i finflow-mysql sh -c 'MYSQL_PWD="$MYSQL_ROOT_PASSWORD" mysql -uroot finflow' < ~/finflow-backups/finflow_YYYYMMDD_HHMMSS.sql
+docker start finflow-backend
 ```
 
 ---
