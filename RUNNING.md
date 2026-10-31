@@ -115,6 +115,14 @@ The Mac must be awake, with Docker and Tailscale running. On this Mac `accept-dn
 fetch the certificate. The side effect is that the Mac itself doesn't resolve `*.ts.net` names; use
 `http://localhost:3100` there. Tailscale renews the certificate itself.
 
+The API only accepts browser requests from listed origins, so the phone address must be in
+`CORS_ALLOWED_ORIGINS` in `.env` (compose passes it to the backend), or the page opens but sign-in fails
+with `Invalid CORS request`:
+```
+CORS_ALLOWED_ORIGINS='http://localhost:[*],http://127.0.0.1:[*],https://admins-macbook-pro-5.tail372646.ts.net'
+```
+Then `docker compose up -d backend`.
+
 ---
 
 ## Secrets
