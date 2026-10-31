@@ -714,10 +714,10 @@ export default function AdminPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: 'rgba(0,0,0,0.7)' }}>
           <div className="rounded-2xl p-6 w-80" style={{ background: 'var(--bg-card)', border: '1px solid color-mix(in srgb, var(--text) 13%, transparent)' }}>
             <div className="font-semibold mb-3 text-[13px]">Reset password for {resetModal.email}</div>
-            <input className="input w-full mb-3" type="password" placeholder="New password (min 6 chars)" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
+            <input className="input w-full mb-3" type="password" placeholder="New password (min 10 chars)" value={newPassword} onChange={e => setNewPassword(e.target.value)} />
             <div className="flex gap-2 justify-end">
               <button className="btn-secondary btn-sm" onClick={() => { setResetModal(null); setNewPassword('') }}>Cancel</button>
-              <button className="btn-primary btn-sm" disabled={newPassword.length < 6} style={{ opacity: newPassword.length < 6 ? 0.5 : 1 }} onClick={() => resetMut.mutate({ id: resetModal.userId, pw: newPassword })}>Reset</button>
+              <button className="btn-primary btn-sm" disabled={newPassword.length < 10} style={{ opacity: newPassword.length < 10 ? 0.5 : 1 }} onClick={() => resetMut.mutate({ id: resetModal.userId, pw: newPassword })}>Reset</button>
             </div>
           </div>
         </div>

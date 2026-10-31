@@ -97,7 +97,7 @@ export function PasswordInput({ value, onChange, placeholder, autoComplete, minL
 // Rule checklist for the register screen — mirrors the check done on submit.
 export function PasswordRules({ password }: { password: string }) {
   const rules = [
-    { ok: password.length >= 8, label: '8+ characters' },
+    { ok: password.length >= 10, label: '10+ characters' },
     { ok: /[A-Za-z]/.test(password), label: 'A letter' },
     { ok: /[0-9]/.test(password), label: 'A number' },
   ]

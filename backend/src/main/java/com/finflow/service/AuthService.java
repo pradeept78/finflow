@@ -6,8 +6,10 @@ import com.finflow.dto.response.AuthResponse;
 import com.finflow.entity.User;
 import com.finflow.repository.UserRepository;
 import com.finflow.security.JwtService;
+import com.finflow.security.LoginAttemptService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -20,6 +22,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final LoginAttemptService loginAttempts;
 
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -48,8 +51,16 @@ public class AuthService {
     }
 
     public AuthResponse login(LoginRequest request) {
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+        // Checked before the password, so a locked email is refused even with the right one.
+        loginAttempts.checkAllowed(request.getEmail());
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword()));
+        } catch (AuthenticationException e) {
+            loginAttempts.recordFailure(request.getEmail());
+            throw e;
+        }
+        loginAttempts.recordSuccess(request.getEmail());
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
         // Same getRoleOrDefault() reasoning as register() above: a role=NULL row that predates the
