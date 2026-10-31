@@ -12,6 +12,7 @@ import { cardCycle, emiStartsLater, fmtDueDate, billingPeriods, periodLabel, amo
 import { cardLimitUse } from '../utils/cardLimit'
 import { AmountInput } from '../components/common/AmountInput'
 import { Plus, Pencil, Trash2, CheckCircle, Archive, ChevronDown, Shield } from 'lucide-react'
+import NextMonthHeadsUp from '../components/common/NextMonthHeadsUp'
 import { MoreFields } from '../components/common/MoreFields'
 import { PhoneRow } from '../components/common/PhoneRow'
 import toast from 'react-hot-toast'
@@ -248,6 +249,7 @@ export default function CreditCardsPage() {
           </div>
         </div>
 
+        <NextMonthHeadsUp cards={cards as any[]} />
         {/* ── TABLE ── */}
         <WhatIfBar count={pickedEmis.length} need={pickNeed} free={pickFree} billNow={totEmi} income={monthlyIncomeTotal(incomeRows as any[])} onClear={wi.clear} />
         {cardsView === 'cards' && (<>

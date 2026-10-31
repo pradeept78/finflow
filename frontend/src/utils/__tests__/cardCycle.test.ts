@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { getEff } from '../format'
-import { cardCycle, statementAfter, dueFor, emiStartsLater, billingPeriods, periodLabel, amountDueOn, emiFirstDue, withCycleDates } from '../cardCycle'
+import { cardCycle, statementAfter, dueFor, emiStartsLater, billingPeriods, periodLabel, amountDueOn, emiFirstDue, withCycleDates, nextMonthHeadsUp } from '../cardCycle'
 import { calcOutflow } from '../calcOutflow'
 import { buildDueRows } from '../dueRows'
 
@@ -203,5 +203,27 @@ describe('card EMI instalments count from the first due date', () => {
   })
   it('the start date you entered is kept', () => {
     expect(withCycleDates(card).emis[0].startDate).toBe('2026-10-06')
+  })
+})
+
+describe('nextMonthHeadsUp: what lands on next month\'s card bills', () => {
+  // 31 Oct. Axis 6th/25th: Laptop EMI from 6 Oct (first due 25 Nov) + a 20 Oct spend (6 Nov statement, due 25 Nov).
+  // HDFC 28th/18th: a 30 Oct spend (28 Nov statement → due 18 Dec — the month after next, not in November).
+  const axis = { id: 7, banker: 'Axis', billingDay: 6, dueDay: 25, outstanding: 0,
+    emis: [{ id: 70, label: 'Laptop', emi: 5000, tenure: 12, startDate: '2026-10-06' },
+           { id: 71, label: 'Phone (Ravi)', emi: 2000, tenure: 6, startDate: '2026-10-08', owedBy: 'Ravi' }],
+    spends: [{ id: 1, purpose: 'Flights', amount: 18000, spendDate: '2026-10-20' }] }
+  const hdfc = { id: 15, banker: 'HDFC', billingDay: 28, dueDay: 18, outstanding: 0, emis: [], spends: [{ id: 2, amount: 4000, spendDate: '2026-10-30' }] }
+  it('new EMIs starting next month and spends already on next month\'s bills', () => {
+    const h = nextMonthHeadsUp([axis, hdfc], D(2026, 10, 31))
+    expect(h.month).toBe('Nov')
+    expect(h.newEmis.map(e => [e.card, e.label, e.emi, iso(e.firstDue)])).toEqual([['Axis', 'Laptop', 5000, '2026-11-25']])
+    expect(h.friendEmis.map(e => e.label)).toEqual(['Phone (Ravi)'])
+    expect(h.spends.map(s => [s.card, s.amount, iso(s.due)])).toEqual([['Axis', 18000, '2026-11-25']])
+    expect(h.newEmiTotal).toBe(5000)
+    expect(h.spendTotal).toBe(18000)
+  })
+  it('nothing new: empty', () => {
+    expect(nextMonthHeadsUp([hdfc], D(2026, 10, 31)).newEmis).toEqual([])
   })
 })

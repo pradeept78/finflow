@@ -200,3 +200,40 @@ export const periodLabel = (p: BillingPeriod) => `${fmtDueDate(p.from)} – ${fm
 /** Money on the card's bill due on a given date (0 when none). */
 export const amountDueOn = (c: CardCycle, due: Date) =>
   c.dues.find(d => d.due.getFullYear() === due.getFullYear() && d.due.getMonth() === due.getMonth() && d.due.getDate() === due.getDate())?.amount ?? 0
+
+export interface HeadsUp {
+  /** Short name of next month, e.g. "Nov" */
+  month: string
+  /** EMIs whose first instalment is billed next month (yours) */
+  newEmis: { card: string; label: string; emi: number; firstDue: Date }[]
+  /** Same, but carried for a friend — shown for information, not added to your totals */
+  friendEmis: { card: string; label: string; emi: number; firstDue: Date; owedBy: string }[]
+  /** Spends already logged that land on next month's bills (after this cycle's statement date) */
+  spends: { card: string; amount: number; due: Date }[]
+  newEmiTotal: number
+  spendTotal: number
+}
+
+/**
+ * "What's new on next month's card bills" — for a heads-up in the current month: EMIs that start being
+ * billed next month (taken after the statement date) and spends already logged that fall on next month's
+ * bill. Same rules as cardCycle / emiFirstDue, so the heads-up and next month's totals agree.
+ */
+export function nextMonthHeadsUp(cards: any[], now: Date = new Date()): HeadsUp {
+  const from = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+  const to = new Date(now.getFullYear(), now.getMonth() + 2, 0, 23, 59, 59)
+  const inNext = (d: Date | null | undefined) => !!d && d >= from && d <= to
+  const out: HeadsUp = { month: from.toLocaleDateString('en-IN', { month: 'short' }), newEmis: [], friendEmis: [], spends: [], newEmiTotal: 0, spendTotal: 0 }
+  ;(cards ?? []).forEach(c => {
+    ;(c.emis ?? []).forEach((e: any) => {
+      const first = emiFirstDue(c, e)
+      if (!first || !inNext(first)) return
+      if (isFriends(e)) out.friendEmis.push({ card: c.banker, label: e.label, emi: num(e.emi), firstDue: first, owedBy: e.owedBy })
+      else { out.newEmis.push({ card: c.banker, label: e.label, emi: num(e.emi), firstDue: first }); out.newEmiTotal += num(e.emi) }
+    })
+    cardCycle(c, now).parts.filter(pt => pt.kind === 'spend' && inNext(pt.due)).forEach(pt => {
+      out.spends.push({ card: c.banker, amount: pt.amount, due: pt.due }); out.spendTotal += pt.amount
+    })
+  })
+  return out
+}

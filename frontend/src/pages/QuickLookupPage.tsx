@@ -13,6 +13,7 @@ import { buildDueRows, type DueRow } from '../utils/dueRows'
 import { cardLimitUse } from '../utils/cardLimit'
 import { useState } from 'react'
 import { CheckCircle2, ChevronDown, ChevronRight } from 'lucide-react'
+import NextMonthHeadsUp from '../components/common/NextMonthHeadsUp'
 
 export default function QuickLookupPage() {
   const navigate = useNavigateFrom()
@@ -477,6 +478,7 @@ export default function QuickLookupPage() {
             )
           })}
           </>}
+          <NextMonthHeadsUp cards={cards as any[]} />
           {upcoming.length > 0 && (() => {
             const startOfToday = new Date(new Date().toDateString()).getTime()
             const left = upcoming.filter(u => !(nextMarks as string[]).includes(u.key)).reduce((a, u) => a + u.amount, 0)
