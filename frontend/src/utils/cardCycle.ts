@@ -70,13 +70,33 @@ const isFriends = (x: any) => !!x?.owedBy && !x?.owedSettled
  * first due date is after this month, so the EMI belongs on the next bill, not this month's.
  */
 export function emiStartsLater(card: any, emi: any, now: Date = new Date()): boolean {
+  const firstDue = emiFirstDue(card, emi)
+  return !!firstDue && firstDue > new Date(now.getFullYear(), now.getMonth() + 1, 0)
+}
+
+/** When a card EMI's first instalment is due: the due date of the statement after its start date
+ *  (statement 6th / due 25th, start 6 Oct → 6 Nov statement → 25 Nov). Null without a statement day. */
+export function emiFirstDue(card: any, emi: any): Date | null {
   const S = num(card?.billingDay)
-  if (!(S >= 1 && S <= 31) || !emi?.startDate) return false
+  if (!(S >= 1 && S <= 31) || !emi?.startDate) return null
   const start = new Date(emi.startDate)
-  if (isNaN(start.getTime())) return false
+  if (isNaN(start.getTime())) return null
   const Dd = num(card?.dueDay)
-  const firstDue = dueFor(statementAfter(start, S), Dd >= 1 && Dd <= 31 ? Dd : S)
-  return firstDue > new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  return dueFor(statementAfter(start, S), Dd >= 1 && Dd <= 31 ? Dd : S)
+}
+
+/**
+ * Tag each card EMI with `_firstDue` (its first instalment's due date, 'YYYY-MM-DD') so getEff counts
+ * instalments from when they're actually billed, not from the start date: an EMI started 6 Oct on a
+ * 6th/25th card is 0 paid until 25 Nov, not "1/12 paid" in October. The start date itself is untouched.
+ * Applied once when cards are loaded (api/index.ts), so every page counts the same way.
+ */
+export function withCycleDates<T extends { emis?: any[] }>(card: T): T {
+  if (!card?.emis?.length) return card
+  return { ...card, emis: card.emis.map(e => {
+    const d = emiFirstDue(card, e)
+    return d ? { ...e, _firstDue: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` } : e
+  }) }
 }
 
 export function cardCycle(card: any, now: Date = new Date()): CardCycle {

@@ -110,7 +110,9 @@ export default function CalendarPage() {
         if (!e.startDate || !e.tenure) return
         // Carried for a friend and not yet paid back: not the user's own commitment. Every total
         // (calcOutflow, Master, Hub) already leaves it out; listing it here made the count disagree.
-        const sd = new Date(e.startDate)
+        // Instalments land in the months they're billed: from the first due date (`_firstDue`, statement cycle —
+        // a 6 Oct EMI on a 6th/25th card runs Nov→Oct), not from the start date.
+        const sd = new Date(`${e._firstDue ?? e.startDate}`.slice(0, 10) + 'T12:00:00')
         const sYM = sd.getFullYear() * 12 + sd.getMonth()
         const lYM = sYM + e.tenure - 1
         if (e.owedBy && !e.owedSettled) {

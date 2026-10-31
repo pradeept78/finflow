@@ -52,9 +52,10 @@ export const getEff = (item: {
   missedMonths?: number
 }): { paid: number; pending: number; elapsed: number } => {
   if (item.startDate && item.tenure) {
-    // Best case: auto-calculate from startDate + tenure
+    // Best case: auto-calculate from startDate + tenure. A card EMI counts from its first BILLED due date
+    // (`_firstDue`, see utils/cardCycle withCycleDates) rather than the day it was taken.
     return calcPaidFromDate(
-      item.startDate,
+      (item as any)._firstDue ?? item.startDate,
       item.tenure,
       item.missedMonths ?? 0,
       item.doublePayments ?? 0

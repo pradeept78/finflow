@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest'
-import { cardCycle, statementAfter, dueFor, emiStartsLater, billingPeriods, periodLabel, amountDueOn } from '../cardCycle'
+import { describe, it, expect, vi } from 'vitest'
+import { getEff } from '../format'
+import { cardCycle, statementAfter, dueFor, emiStartsLater, billingPeriods, periodLabel, amountDueOn, emiFirstDue, withCycleDates } from '../cardCycle'
 import { calcOutflow } from '../calcOutflow'
 import { buildDueRows } from '../dueRows'
 
@@ -183,5 +184,24 @@ describe('Outstanding belongs to the statement it was entered for', () => {
   it('no date recorded: old behaviour (latest statement)', () => {
     const { outstandingAsOf, ...noDate } = hdfc28
     expect(cardCycle(noDate, D(2026, 10, 31)).outstandingThisMonth).toBe(0)
+  })
+})
+
+describe('card EMI instalments count from the first due date', () => {
+  // Statement 6th, due 25th (cycle 6th–5th). EMI from 6 Oct → 6 Nov statement → first instalment due 25 Nov.
+  const card = { id: 7, billingDay: 6, dueDay: 25, outstanding: 0, spends: [], emis: [{ id: 70, emi: 5000, tenure: 12, startDate: '2026-10-06' }] }
+  it('first due date', () => {
+    expect(iso(emiFirstDue(card, card.emis[0])!)).toBe('2026-11-25')
+  })
+  it('on 31 Oct nothing is paid yet: 0/12, ₹60,000 pending (was 1/12)', () => {
+    vi.useFakeTimers(); vi.setSystemTime(new Date(2026, 9, 31, 12))
+    const [e] = withCycleDates(card).emis
+    expect(getEff(e)).toMatchObject({ paid: 0, pending: 12 })
+    vi.setSystemTime(new Date(2026, 10, 25, 12))
+    expect(getEff(e)).toMatchObject({ paid: 1, pending: 11 })
+    vi.useRealTimers()
+  })
+  it('the start date you entered is kept', () => {
+    expect(withCycleDates(card).emis[0].startDate).toBe('2026-10-06')
   })
 })

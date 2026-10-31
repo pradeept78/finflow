@@ -1,4 +1,5 @@
 import api from './axios'
+import { withCycleDates } from '../utils/cardCycle'
 import type { LoginRequest, RegisterRequest } from '../types'
 import type { Loan, CreditCard, PersonalEmi, Saving, Investment, InsurancePolicy, IncomeEntry, Expense, PeopleOwe, ClosedLoan } from '../types'
 
@@ -22,7 +23,14 @@ export const loansApi = {
   markPaid: (id: number) => api.patch<{ data: Loan }>(`/loans/${id}/mark-paid`).then(r => r.data.data),
 }
 
-export const cardsApi       = crud<CreditCard>('credit-cards')
+// Card EMIs are tagged with their first billed due date on load (utils/cardCycle withCycleDates), so every
+// page counts instalments paid from the statement cycle, not the day the EMI was taken.
+const cardsCrud = crud<CreditCard>('credit-cards')
+export const cardsApi = {
+  ...cardsCrud,
+  getAll: () => cardsCrud.getAll().then(cs => (cs ?? []).map(withCycleDates)),
+  getById: (id: number) => cardsCrud.getById(id).then(withCycleDates),
+}
 export const personalEmiApi = crud<PersonalEmi>('personal-emis')
 export const savingsApi     = crud<Saving>('savings')
 export const investmentsApi = crud<Investment>('investments')
