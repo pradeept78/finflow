@@ -400,7 +400,7 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-4 text-[13px]">
-      <PageHeader title="Payment Calendar" action={
+      <PageHeader title="Payment calendar" action={
         <button className="btn-secondary btn-sm flex items-center gap-2"
           onClick={async () => {
             if (!('Notification' in window)) { toast.error('Notifications not supported'); return }
@@ -508,7 +508,7 @@ export default function CalendarPage() {
       {/* Overdue alerts */}
       {months[0].dueItems.filter(d => d.isOverdue && !(d as any).markedPaid).length > 0 && (
         <div className="rounded-2xl p-4 mb-4" style={{background:"linear-gradient(180deg, color-mix(in srgb, var(--danger) 5%, var(--bg-card)) 0%, var(--bg-card) 75%)",border:"1px solid var(--hairline)"}}>
-          <div className="font-bold mb-2 flex items-center gap-2" style={{color:"var(--danger)"}}>🚨 Overdue This Month</div>
+          <div className="font-bold mb-2 flex items-center gap-2" style={{color:"var(--danger)"}}>🚨 Overdue this month</div>
           {months[0].dueItems.filter(d => d.isOverdue && !(d as any).markedPaid).map((item, i) => (
             <div key={i} className="flex justify-between text-[13px]">
               <span className="text-red-400">{item.label} ({item.type})</span>
@@ -692,7 +692,7 @@ export default function CalendarPage() {
                   {/* Ending details */}
                   {mo.ending.length > 0 && (
                     <div className="mt-3 pt-3 border-t" style={{ borderColor:'var(--hairline)' }}>
-                      <div className="text-[12px] font-medium text-green-400 mb-2">🎉 Closing This Month</div>
+                      <div className="text-[12px] font-medium text-green-400 mb-2">🎉 Closing this month</div>
                       {mo.ending.map((e, i) => (
                         <div key={i} className="flex justify-between text-[11px] py-1">
                           <span className="text-green-400 font-semibold">{e.label} <span className="text-[11px]" style={{ color: 'var(--text-muted)' }}>({e.type})</span></span>

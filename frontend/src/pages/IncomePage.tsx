@@ -65,13 +65,13 @@ export default function IncomePage() {
       {items.length > 0 && (
   <KpiRow className="grid grid-cols-4 gap-3" keep={[0, 1]}>
           {[
-            {label:'Monthly Income',  value:fmtINR(Math.round(monthly)), sub:`${active.length} active sources`,   accent:'var(--success)'},
-            {label:'Annual Income',   value:fmtINR(Math.round(monthly*12)), sub:'projected annual',              accent:'var(--cyan)'},
+            {label:'Monthly income',  value:fmtINR(Math.round(monthly)), sub:`${active.length} active sources`,   accent:'var(--success)'},
+            {label:'Annual income',   value:fmtINR(Math.round(monthly*12)), sub:'projected annual',              accent:'var(--cyan)'},
             {label:'Sources',         value:String(active.length),        sub:inactive.length>0?`${inactive.length} inactive`:'all active', accent:'var(--purple)', isCurrency:false},
             // This read `.source`, but the table renders `v.label` and the form writes `label` —
             // nothing ever populates `source`, so the largest source's name always showed '—'.
             // Also sorting a copy now rather than in place.
-            {label:'Largest Source',  value:fmtINR(active.length>0?Math.max(...active.map((v:any)=>Number(v.amount??0))):0), sub:[...active].sort((a:any,b:any)=>Number(b.amount??0)-Number(a.amount??0))[0]?.label||'—', accent:'var(--warning)'},
+            {label:'Largest source',  value:fmtINR(active.length>0?Math.max(...active.map((v:any)=>Number(v.amount??0))):0), sub:[...active].sort((a:any,b:any)=>Number(b.amount??0)-Number(a.amount??0))[0]?.label||'—', accent:'var(--warning)'},
           ].map(m=>(
             <div key={m.label} className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{background:`linear-gradient(180deg, color-mix(in srgb, ${m.accent} 5%, var(--bg-card)) 0%, var(--bg-card) 70%)`,border:`1px solid var(--hairline)`}}>
               <div className="relative">

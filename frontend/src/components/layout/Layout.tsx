@@ -39,14 +39,14 @@ const hubNav = [
   },
   {
     hub: '/hub/savings',
-    label: 'Savings & Income',
+    label: 'Savings & income',
     icon: PiggyBank,
     accent: '#34d399',
     pages: ['/savings','/investments','/income','/earnings','/insurance','/people-owe'],
   },
   {
     hub: '/hub/history',
-    label: 'History & Tools',
+    label: 'History & tools',
     icon: History,
     accent: '#a78bfa',
     pages: ['/closed-loans','/payoff','/history','/break-savings','/export','/admin'],
@@ -61,10 +61,10 @@ const hubNav = [
 ]
 
 const PAGE_LINK_LABELS: Record<string,string> = {
-  '/closed-loans':'Closed Assets','/earnings':'Earnings','/payoff':'Payoff','/history':'History','/break-savings':'Break Savings','/export':'Export','/admin':'Admin','/account':'Your account',
+  '/closed-loans':'Closed assets','/earnings':'Earnings','/payoff':'Payoff','/history':'History','/break-savings':'Break savings','/export':'Export','/admin':'Admin','/account':'Your account',
   '/statements/overview':'Overview','/statements/spending':'Spending','/statements/people':'People & Merchants',
   '/statements/accounts':'Accounts & Cards','/statements/transactions':'Transactions','/statements/ledger':'Lending & Loans',
-  '/statements/data':'Data & Imports','/statements/debt-match':'Debt Matching',
+  '/statements/data':'Data & Imports','/statements/debt-match':'Debt matching',
 }
 const TABBED_HUBS = ['/hub/overview','/hub/debt','/hub/savings','/hub/history','/statements/overview']
 
@@ -222,17 +222,17 @@ export default function Layout() {
                   <div className="ml-4 mt-1 space-y-0.5 pl-3 border-l" style={{borderColor:`${section.accent}30`}}>
                     {section.pages.map(p => {
                       const labels: Record<string,string> = {
-                        '/dashboard':'Dashboard','/budget':'Budget Rules',
-                        '/lookup':'Quick Lookup','/master':'All Commitments','/calendar':'Calendar',
-                        '/loans':'Loans','/cards':'Credit Cards','/personal':'I Owe','/expenses':'Expenses',
+                        '/dashboard':'Dashboard','/budget':'Budget rules',
+                        '/lookup':'Quick lookup','/master':'All commitments','/calendar':'Calendar',
+                        '/loans':'Loans','/cards':'Credit cards','/personal':'I Owe','/expenses':'Expenses',
                         '/savings':'Savings / Chit','/investments':'Investments','/income':'Income',
-                        '/insurance':'Insurance','/people-owe':'People Owe Me',
-                        '/closed-loans':'Closed Assets','/closed-assets':'Closed Assets','/earnings':'Earnings','/payoff':'Payoff',
-                        '/history':'History','/break-savings':'Break Savings','/export':'Export','/admin':'Admin','/account':'Your account',
+                        '/insurance':'Insurance','/people-owe':'People owe me',
+                        '/closed-loans':'Closed assets','/closed-assets':'Closed assets','/earnings':'Earnings','/payoff':'Payoff',
+                        '/history':'History','/break-savings':'Break savings','/export':'Export','/admin':'Admin','/account':'Your account',
                         '/statements/overview':'Overview','/statements/spending':'Spending','/statements/people':'People & Merchants',
                         '/statements/accounts':'Accounts & Cards','/statements/transactions':'Transactions',
                         '/statements/ledger':'Lending & Loans','/statements/data':'Data & Imports',
-                        '/statements/debt-match':'Debt Matching',
+                        '/statements/debt-match':'Debt matching',
                       }
                       if (!labels[p]) return null
                       // admin link always shown - AdminRoute handles access control
@@ -420,6 +420,8 @@ export default function Layout() {
         const tabs = [
           { key: 'home',    label: 'Home',    icon: Home,           accent: '#38bdf8', active: sec === '/hub/overview' && p !== '/lookup', go: () => navigate('/hub/overview') },
           { key: 'due',     label: 'Due',     icon: CheckCircle2,   accent: '#fb923c', active: p === '/lookup',                          go: () => navigate('/lookup') },
+          // The add button sits in the middle of the bar (it used to float over the content, covering amounts).
+          { key: 'add',     label: 'Add',     icon: Plus,           accent: '#fb923c', active: false,                                    go: () => window.dispatchEvent(new Event('ff:quick-add')) },
           { key: 'debt',    label: 'Debt',    icon: Landmark,       accent: '#f87171', active: sec === '/hub/debt',                      go: () => goSection(hubNav[1]) },
           { key: 'savings', label: 'Savings', icon: PiggyBank,      accent: '#34d399', active: sec === '/hub/savings',                   go: () => goSection(hubNav[2]) },
           { key: 'more',    label: 'More',    icon: MoreHorizontal, accent: '#a78bfa', active: mobileOpen || sec === '/hub/history' || sec === '/statements/overview', go: () => setMobileOpen(o => !o) },
@@ -429,6 +431,14 @@ export default function Layout() {
             style={{ background: '#0c0e14', borderColor: '#252836', paddingBottom: 'env(safe-area-inset-bottom)' }}>
             {tabs.map(t => {
               const Icon = t.icon
+              if (t.key === 'add') return (
+                <button key="add" onClick={() => { setMobileOpen(false); t.go() }} aria-label="Quick add"
+                  className="flex-1 flex flex-col items-center justify-center gap-0.5 h-14 text-[11px] font-medium" style={{ color: '#aab2c2' }}>
+                  <span className="w-10 h-10 -mt-1 rounded-full flex items-center justify-center text-white shadow-lg" style={{ background: '#c2410c' }}>
+                    <Icon size={22} strokeWidth={2.4} />
+                  </span>
+                </button>
+              )
               return (
                 <button key={t.key} onClick={() => { if (t.key !== 'more') setMobileOpen(false); t.go() }}
                   aria-current={t.active && t.key !== 'more' ? 'page' : undefined} aria-expanded={t.key === 'more' ? mobileOpen : undefined}

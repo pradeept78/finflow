@@ -41,7 +41,7 @@ const getDueBadge = (dueDay: number | undefined | null, isPaid: boolean) => {
     diff = (daysInMonth - today) + dueDay
   }
 
-  if (diff === 0)             return { label: '🔴 Due Today',      color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
+  if (diff === 0)             return { label: '🔴 Due today',      color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
   if (diff < 0 && diff >= -7) return { label: `⚠ ${Math.abs(diff)}d overdue`, color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
   if (diff > 0 && diff <= 3)  return { label: `🔴 Due in ${diff}d`, color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
   if (diff > 3 && diff <= 7)  return { label: `⚡ Due in ${diff}d`, color: 'var(--warning)', bg: 'color-mix(in srgb, var(--warning) 15%, transparent)' }
@@ -177,9 +177,9 @@ export default function CreditCardsPage() {
 
   return (
     <div className="space-y-4 text-[13px]">
-      <PageHeader title="Credit Cards" action={
+      <PageHeader title="Credit cards" action={
         <button className="btn-primary btn-sm" onClick={() => { setCardForm({ banker: '', cardLimit: 0, outstanding: 0 }); setFormErrors({}); setModalType('card') }}>
-          <Plus size={14} /> Add Card
+          <Plus size={14} /> Add card
         </button>
       } />
 
@@ -188,12 +188,12 @@ export default function CreditCardsPage() {
         {/* ── SUMMARY ROW ── */}
         <KpiRow className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 [&>*]:min-w-0" keep={[2, 4]}>
           {[
-            { label: 'Total Limit',     value: fmtINR(totLimit),   sub: `${cards.length} cards`,       accent: 'var(--cyan)' },
-            { label: 'Total Liability', value: fmtINR(totalLiab),  sub: `${util}% utilization`,        accent: totalLiab > 0 ? 'var(--danger)' : 'var(--success)' },
+            { label: 'Total limit',     value: fmtINR(totLimit),   sub: `${cards.length} cards`,       accent: 'var(--cyan)' },
+            { label: 'Total liability', value: fmtINR(totalLiab),  sub: `${util}% utilization`,        accent: totalLiab > 0 ? 'var(--danger)' : 'var(--success)' },
             { label: 'EMI / month',     value: fmtINR(totEmiAll),  sub: `${fmtINR(totEmiPend)} pending · ${totEmiCount} EMI${totEmiCount !== 1 ? 's' : ''}${totEmiFriends > 0 ? ` · ${fmtINR(totEmi)} yours + ${fmtINR(totEmiFriends)} friends'` : ''}`, accent: 'var(--warning)' },
             { label: 'Spends',          value: fmtINR(totSpends),  sub: totSpends === 0 ? 'none logged' : spendsDueNow > 0 ? `${fmtINR(spendsDueNow)} due this month · rest on next bill` : 'all on the next bill', accent: 'var(--pink)' },
             { label: 'Outstanding',     value: fmtINR(totOut),     sub: totOut === 0 ? '✓ all clear' : outDueNow >= totOut ? 'due this month' : outDueNow > 0 ? `${fmtINR(outDueNow)} due this month · rest next month` : 'due next month', accent: totOut > 0 ? 'var(--danger)' : 'var(--success)' },
-            { label: 'Friends Owe You', value: fmtINR(totOwedToMe), sub: owedCount > 0 ? `${owedCount} item${owedCount>1?'s':''}` : '✓ none pending', accent: totOwedToMe > 0 ? 'var(--info)' : 'var(--success)' },
+            { label: 'Friends owe you', value: fmtINR(totOwedToMe), sub: owedCount > 0 ? `${owedCount} item${owedCount>1?'s':''}` : '✓ none pending', accent: totOwedToMe > 0 ? 'var(--info)' : 'var(--success)' },
           ].map(m => (
             <div key={m.label} className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${m.accent} 5%, var(--bg-card)) 0%, var(--bg-card) 70%)`, border: `1px solid var(--hairline)` }}>
               <div className="relative">
@@ -247,7 +247,7 @@ export default function CreditCardsPage() {
                 </select>
               </label>
             )}
-            <FromLink to="/lookup" className="text-[11px] font-semibold px-2.5 py-1 rounded-lg" style={{background:'rgba(244,114,182,0.12)',color:'var(--pink)',border:'1px solid rgba(244,114,182,0.2)'}}>📋 Payment Schedule →</FromLink>
+            <FromLink to="/lookup" className="text-[11px] font-semibold px-2.5 py-1 rounded-lg" style={{background:'rgba(244,114,182,0.12)',color:'var(--pink)',border:'1px solid rgba(244,114,182,0.2)'}}>📋 Payment schedule →</FromLink>
             <FromLink to="/budget" className="text-[11px] font-semibold px-2.5 py-1 rounded-lg" style={{background:'color-mix(in srgb, var(--warning) 12%, transparent)',color:'var(--warning)',border:'1px solid color-mix(in srgb, var(--warning) 20%, transparent)'}}>📊 Budget vs Spends →</FromLink>
           </div>
         </div>
@@ -443,14 +443,14 @@ export default function CreditCardsPage() {
 
                   {/* Action */}
                   <div className="flex items-center justify-center gap-2" onClick={e => e.stopPropagation()}>
-                    <button title="Edit Card" className="w-7 h-7 rounded flex items-center justify-center hover:bg-white/10" style={{color:'var(--text-faint)'}} onClick={(e)=>{e.stopPropagation();setCardForm(c);setFormErrors({});setModalType('card')}}><Pencil size={11}/></button>
+                    <button title="Edit card" className="w-7 h-7 rounded flex items-center justify-center hover:bg-white/10" style={{color:'var(--text-faint)'}} onClick={(e)=>{e.stopPropagation();setCardForm(c);setFormErrors({});setModalType('card')}}><Pencil size={11}/></button>
                     {hasData && (
-                      <button title="Mark Paid"
+                      <button title="Mark paid"
                         className="w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-bold transition-all"
                         style={{background:'color-mix(in srgb, var(--success) 15%, transparent)',color:'var(--success)',border:'1px solid color-mix(in srgb, var(--success) 30%, transparent)'}}
                         onClick={() => markMut.mutate(paidKey)}>✓</button>
                     )}
-                    <button title="Delete Card" className="w-7 h-7 rounded flex items-center justify-center hover:bg-red-500/20" style={{color:'var(--danger)'}} onClick={(e)=>{e.stopPropagation();setConfirmModal({message:`Delete ${c.banker||c.cardName}?`,onConfirm:()=>deleteMut.mutate(c),label:'Delete'})}}><Trash2 size={11}/></button>
+                    <button title="Delete card" className="w-7 h-7 rounded flex items-center justify-center hover:bg-red-500/20" style={{color:'var(--danger)'}} onClick={(e)=>{e.stopPropagation();setConfirmModal({message:`Delete ${c.banker||c.cardName}?`,onConfirm:()=>deleteMut.mutate(c),label:'Delete'})}}><Trash2 size={11}/></button>
                   </div>
                   
                 </div>
@@ -495,7 +495,7 @@ export default function CreditCardsPage() {
                         </button>
                       )}
                       <div className="ml-auto flex items-center gap-1.5 py-1.5">
-                        {Number(c.outstanding ?? 0) > 0 && <button className="text-[11px] px-2.5 py-1 rounded font-medium" style={{ background: 'color-mix(in srgb, var(--success) 10%, transparent)', color: 'var(--success)', border: '1px solid color-mix(in srgb, var(--success) 20%, transparent)' }} onClick={() => setConfirmModal({ message: `Clear ${fmtINR(c.outstanding)}?`, onConfirm: () => payOutMut.mutate(c), label: 'Clear' })}>Clear Due</button>}
+                        {Number(c.outstanding ?? 0) > 0 && <button className="text-[11px] px-2.5 py-1 rounded font-medium" style={{ background: 'color-mix(in srgb, var(--success) 10%, transparent)', color: 'var(--success)', border: '1px solid color-mix(in srgb, var(--success) 20%, transparent)' }} onClick={() => setConfirmModal({ message: `Clear ${fmtINR(c.outstanding)}?`, onConfirm: () => payOutMut.mutate(c), label: 'Clear' })}>Clear due</button>}
                         <button className="text-[11px] px-2.5 py-1 rounded font-medium" style={{ background: 'color-mix(in srgb, var(--text) 8%, transparent)', color: 'var(--text-faint)', border: '1px solid color-mix(in srgb, var(--text) 10%, transparent)' }} onClick={() => { setActiveCard(c); setEmiForm({}); setFormErrors({}); setModalType('emi') }}>+ EMI</button>
                         <button className="text-[11px] px-2.5 py-1 rounded font-medium" style={{ background: 'color-mix(in srgb, var(--text) 8%, transparent)', color: 'var(--text-faint)', border: '1px solid color-mix(in srgb, var(--text) 10%, transparent)' }} onClick={() => { setActiveCard(c); setSpendForm({ spendDate: new Date().toISOString().slice(0, 10) }); setFormErrors({}); setModalType('spend') }}>+ Spend</button>
                         <button className="text-[11px] px-2 py-1 rounded" style={{ color: 'var(--text-faint)' }} onClick={() => { setCardForm(c); setFormErrors({}); setModalType('card') }}><Pencil size={12} /></button>
@@ -735,7 +735,7 @@ export default function CreditCardsPage() {
             <div className="rounded-2xl overflow-hidden text-[13px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', overflowX: 'auto' }}>
               <div className="md:min-w-[1090px]">
                 <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b" style={{ gridTemplateColumns: COLS, borderColor: 'var(--hairline)', background: 'color-mix(in srgb, var(--text) 5%, transparent)', color: 'var(--text-faint)' }}>
-                  <SortHeader label="EMI / Card" col="name" sortCol={emiSortCol} sortDir={emiSortDir} onSort={onEmiSort} />
+                  <SortHeader label="EMI / card" col="name" sortCol={emiSortCol} sortDir={emiSortDir} onSort={onEmiSort} />
                   <SortHeader label="Borrowed" col="borrowed" sortCol={emiSortCol} sortDir={emiSortDir} onSort={onEmiSort} align="right" />
                   <SortHeader label="Rate" col="rate" sortCol={emiSortCol} sortDir={emiSortDir} onSort={onEmiSort} align="right" />
                   <SortHeader label="Extra payable" col="extra" sortCol={emiSortCol} sortDir={emiSortDir} onSort={onEmiSort} align="right" />
@@ -980,7 +980,7 @@ export default function CreditCardsPage() {
                       <div className="text-right mono" style={{ color: util > 70 ? 'var(--danger)' : util > 40 ? 'var(--warning)' : 'var(--success)' }} title={`Outstanding ${fmtINR(use.outstanding)} + spends ${fmtINR(use.spends)} + EMIs still to pay ${fmtINR(use.emiLeft)} = ${fmtINR(use.used)} of ${fmtINR(limit)} (friends' items use your limit too)`}>{limit > 0 ? <span className="whitespace-nowrap">{fmtINR(use.used)} <span className="text-[11px] opacity-80">({util}%)</span></span> : '—'}</div>
                       <div className="text-center text-[11px]" style={{ color: 'var(--text-faint)' }}>{due ? `day ${due}` : '—'}</div>
                       <div className="flex justify-center">
-                        {out > 0 && <button className="text-[11px] px-2.5 py-1 rounded font-medium" style={{ background: 'color-mix(in srgb, var(--success) 10%, transparent)', color: 'var(--success)', border: '1px solid color-mix(in srgb, var(--success) 20%, transparent)' }} onClick={() => setConfirmModal({ message: `Clear ${fmtINR(out)} on ${c.banker}?`, onConfirm: () => payOutMut.mutate(c), label: 'Clear' })}>Clear Due</button>}
+                        {out > 0 && <button className="text-[11px] px-2.5 py-1 rounded font-medium" style={{ background: 'color-mix(in srgb, var(--success) 10%, transparent)', color: 'var(--success)', border: '1px solid color-mix(in srgb, var(--success) 20%, transparent)' }} onClick={() => setConfirmModal({ message: `Clear ${fmtINR(out)} on ${c.banker}?`, onConfirm: () => payOutMut.mutate(c), label: 'Clear' })}>Clear due</button>}
                       </div>
                     </div>
                     </Fragment>
@@ -1009,8 +1009,8 @@ export default function CreditCardsPage() {
             <FormField label="Bank Name *" className="form-full"><input className={"input" + (formErrors.banker ? ' border-red-500' : '')} value={cardForm.banker} onChange={e => { setCardForm((f: any) => ({ ...f, banker: e.target.value })); setFormErrors(er => ({ ...er, banker: '' })) }} />{formErrors.banker && <p className="text-[11px] text-red-400 mt-1">{formErrors.banker}</p>}</FormField>
             <FormField label="Credit Limit (₹)"><AmountInput placeholder="e.g. 200000" className={"input" + (formErrors.cardLimit ? ' border-red-500' : '')} value={cardForm.cardLimit} onValue={n => { setCardForm((f: any) => ({ ...f, cardLimit: n ?? 0 })); setFormErrors(er => ({ ...er, cardLimit: '', outstanding: '' })) }} />{formErrors.cardLimit && <p className="text-[11px] text-red-400 mt-1">{formErrors.cardLimit}</p>}</FormField>
             <FormField label="Outstanding (₹)"><AmountInput placeholder="0" className={"input" + (formErrors.outstanding ? ' border-red-500' : '')} value={cardForm.outstanding} onValue={n => { setCardForm((f: any) => ({ ...f, outstanding: n ?? 0 })); setFormErrors(er => ({ ...er, outstanding: '' })) }} />{formErrors.outstanding && <p className="text-[11px] text-red-400 mt-1">{formErrors.outstanding}</p>}</FormField>
-            <FormField label="Due Day"><input className={"input" + (formErrors.dueDay ? ' border-red-500' : '')} type="number" min={1} max={31} placeholder="1–31" value={cardForm.dueDay || ''} onChange={e => { setCardForm((f: any) => ({ ...f, dueDay: +e.target.value })); setFormErrors(er => ({ ...er, dueDay: '' })) }} />{formErrors.dueDay && <p className="text-[11px] text-red-400 mt-1">{formErrors.dueDay}</p>}</FormField>
-            <FormField label="Statement Day"><input className={"input" + (formErrors.billingDay ? ' border-red-500' : '')} type="number" min={1} max={31} placeholder="1–31" value={cardForm.billingDay || ''} onChange={e => { setCardForm((f: any) => ({ ...f, billingDay: +e.target.value })); setFormErrors(er => ({ ...er, billingDay: '' })) }} />{formErrors.billingDay && <p className="text-[11px] text-red-400 mt-1">{formErrors.billingDay}</p>}</FormField>
+            <FormField label="Due day"><input className={"input" + (formErrors.dueDay ? ' border-red-500' : '')} type="number" min={1} max={31} placeholder="1–31" value={cardForm.dueDay || ''} onChange={e => { setCardForm((f: any) => ({ ...f, dueDay: +e.target.value })); setFormErrors(er => ({ ...er, dueDay: '' })) }} />{formErrors.dueDay && <p className="text-[11px] text-red-400 mt-1">{formErrors.dueDay}</p>}</FormField>
+            <FormField label="Statement day"><input className={"input" + (formErrors.billingDay ? ' border-red-500' : '')} type="number" min={1} max={31} placeholder="1–31" value={cardForm.billingDay || ''} onChange={e => { setCardForm((f: any) => ({ ...f, billingDay: +e.target.value })); setFormErrors(er => ({ ...er, billingDay: '' })) }} />{formErrors.billingDay && <p className="text-[11px] text-red-400 mt-1">{formErrors.billingDay}</p>}</FormField>
             {(() => {
               const bp = billingPeriods({ billingDay: cardForm.billingDay, dueDay: cardForm.dueDay })
               return bp ? (
@@ -1057,7 +1057,7 @@ export default function CreditCardsPage() {
             </FormField>
             <FormField label="EMI/month (₹)"><AmountInput className={"input" + (formErrors.emi ? ' border-red-500' : '')} value={emiForm.emi} onValue={n => { setEmiForm((f: any) => ({ ...f, emi: n ?? 0 })); setFormErrors(er => ({ ...er, emi: '' })) }} />{formErrors.emi && <p className="text-[11px] text-red-400 mt-1">{formErrors.emi}</p>}</FormField>
             <FormField label="Tenure (months)"><input className={"input" + (formErrors.tenure ? ' border-red-500' : '')} type="number" value={emiForm.tenure || ''} onChange={e => { setEmiForm((f: any) => ({ ...f, tenure: +e.target.value })); setFormErrors(er => ({ ...er, tenure: '' })) }} />{formErrors.tenure && <p className="text-[11px] text-red-400 mt-1">{formErrors.tenure}</p>}</FormField>
-            <FormField label="Start Date"><input className={"input" + (formErrors.startDate ? ' border-red-500' : '')} type="date" value={emiForm.startDate || ''} onChange={e => { setEmiForm((f: any) => ({ ...f, startDate: e.target.value })); setFormErrors(er => ({ ...er, startDate: '' })) }} />{formErrors.startDate && <p className="text-[11px] text-red-400 mt-1">{formErrors.startDate}</p>}</FormField>
+            <FormField label="Start date"><input className={"input" + (formErrors.startDate ? ' border-red-500' : '')} type="date" value={emiForm.startDate || ''} onChange={e => { setEmiForm((f: any) => ({ ...f, startDate: e.target.value })); setFormErrors(er => ({ ...er, startDate: '' })) }} />{formErrors.startDate && <p className="text-[11px] text-red-400 mt-1">{formErrors.startDate}</p>}</FormField>
             <MoreFields>
             <FormField label="For / Owed by (optional)"><input className="input" placeholder="e.g. Rahul" value={emiForm.owedBy || ''} onChange={e => setEmiForm((f: any) => ({ ...f, owedBy: e.target.value }))} /></FormField>
             <FormField label="Category"><select className="select" value={emiForm.category || 'Other'} onChange={e => setEmiForm((f: any) => ({ ...f, category: e.target.value }))}>

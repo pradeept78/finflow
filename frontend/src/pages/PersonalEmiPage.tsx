@@ -29,7 +29,7 @@ const getDueBadge = (dueDay: number | undefined | null, isPaid: boolean) => {
     diff = (daysInMonth - today) + dueDay
   }
 
-  if (diff === 0)             return { label: '🔴 Due Today',      color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
+  if (diff === 0)             return { label: '🔴 Due today',      color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
   if (diff < 0 && diff >= -7) return { label: `⚠ ${Math.abs(diff)}d overdue`, color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
   if (diff > 0 && diff <= 3)  return { label: `🔴 Due in ${diff}d`, color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
   if (diff > 3 && diff <= 7)  return { label: `⚡ Due in ${diff}d`, color: 'var(--warning)', bg: 'color-mix(in srgb, var(--warning) 15%, transparent)' }
@@ -137,7 +137,7 @@ export default function PersonalEmiPage() {
 
   return (
     <div className="space-y-4 text-[13px]">
-      <PageHeader title="I Owe" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty,mode:'emi'})}><Plus size={14}/> Add Entry</button>}/>
+      <PageHeader title="I Owe" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty,mode:'emi'})}><Plus size={14}/> Add entry</button>}/>
 
       {intOnly.length > 0 && (
         <div className="rounded-2xl px-4 py-3 flex items-start gap-3" style={{background:'color-mix(in srgb, var(--orange) 7%, transparent)',border:'1px solid color-mix(in srgb, var(--orange) 21%, transparent)'}}>
@@ -157,7 +157,7 @@ export default function PersonalEmiPage() {
       {items.length > 0 && (
         <KpiRow className="grid grid-cols-4 gap-3" keep={[0, 1]}>
           {[
-            {label:'Total Owed',    value:fmtINR(totalOwed),  sub:`${items.length} entries`,         accent:'var(--warning)'},
+            {label:'Total owed',    value:fmtINR(totalOwed),  sub:`${items.length} entries`,         accent:'var(--warning)'},
             {label:'Monthly EMI',   value:fmtINR(totalEmi),   sub:'combined monthly payments',       accent:'var(--danger)'},
             /* "Cleared By" only means something for amortising entries. An interest-only entry is
                never cleared by its monthly payment, so projecting a date from `maxPending` told the
@@ -165,7 +165,7 @@ export default function PersonalEmiPage() {
                their payback date instead, or flagged when they have none. */
             intOnly.length > 0
               ? {label:'Interest Only', value:fmtINR(Math.round(intOnlyPrincipal)), sub:`${intOnly.length} entr${intOnly.length>1?'ies':'y'} · principal not reducing`, accent:'var(--orange)'}
-              : {label:'Cleared By',    value:maxPending>0?(()=>{const d=new Date();d.setMonth(d.getMonth()+maxPending);return d.toLocaleDateString('en-IN',{month:'short',year:'numeric'})})():'—', sub:`${maxPending} months`, accent:'var(--purple)'},
+              : {label:'Cleared by',    value:maxPending>0?(()=>{const d=new Date();d.setMonth(d.getMonth()+maxPending);return d.toLocaleDateString('en-IN',{month:'short',year:'numeric'})})():'—', sub:`${maxPending} months`, accent:'var(--purple)'},
             {label:'Entries',       value:String(items.length), sub:`${items.filter((p:any)=>getEff(p).pending>0).length} active`, accent:'var(--cyan)', isCurrency:false},
           ].map(m=>(
             <div key={m.label} className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{background:`linear-gradient(180deg, color-mix(in srgb, ${m.accent} 5%, var(--bg-card)) 0%, var(--bg-card) 70%)`,border:`1px solid var(--hairline)`}}>
@@ -208,8 +208,8 @@ export default function PersonalEmiPage() {
             <SortHeader label="Amount" col="amount" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" />
             <SortHeader label="EMI/mo" col="emi" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" />
             <SortHeader label="%" col="pct" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="center" />
-            <SortHeader label="Due Day" col="dueDay" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="center" />
-            <SortHeader label="End Date" col="endDate" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="center" />
+            <SortHeader label="Due day" col="dueDay" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="center" />
+            <SortHeader label="End date" col="endDate" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="center" />
             <span className="text-center">Action</span>
           </div>
 
@@ -295,7 +295,7 @@ export default function PersonalEmiPage() {
                   <div className="flex items-center justify-center gap-1.5" onClick={e=>e.stopPropagation()}>
                     <button title="Edit" className="w-7 h-7 rounded flex items-center justify-center hover:bg-white/10" style={{color:'var(--text-faint)'}} onClick={(e)=>{e.stopPropagation();setModal({open:true,item:p,mode:isLump?'lump':'emi'})}}><Pencil size={11}/></button>
                     {!isLump&&!done&&(
-                      <button title="Mark Paid"
+                      <button title="Mark paid"
                       className="w-7 h-7 rounded-full flex items-center justify-center text-[13px] font-bold transition-all"
                       style={{background:'color-mix(in srgb, var(--success) 15%, transparent)',color:'var(--success)',border:'1px solid color-mix(in srgb, var(--success) 30%, transparent)'}}
                       onClick={()=>markMut.mutate(paidKey)}>✓</button>
@@ -344,10 +344,10 @@ export default function PersonalEmiPage() {
               <FormField label="EMI/month (₹)"><input className="input" type="number" value={modal.item.emi||''} onChange={e=>setModal(m=>({...m,item:{...m.item,emi:+e.target.value}}))}/></FormField>
               <FormField label="Tenure (months)"><input className="input" type="number" placeholder="e.g. 12" value={modal.item.tenure||''} onChange={e=>setModal(m=>({...m,item:{...m.item,tenure:+e.target.value}}))}/></FormField>
               <FormField label="Interest Rate % p.a."><input className="input" type="number" step="0.1" value={modal.item.interestRate||''} onChange={e=>setModal(m=>({...m,item:{...m.item,interestRate:+e.target.value}}))}/></FormField>
-              <FormField label="Due Day"><input className="input" type="number" min={1} max={31} placeholder="1–31" value={modal.item.dueDay||''} onChange={e=>setModal(m=>({...m,item:{...m.item,dueDay:+e.target.value}}))}/></FormField>
-              <FormField label="Start Date"><input className="input" type="date" value={modal.item.startDate||''} onChange={e=>setModal(m=>({...m,item:{...m.item,startDate:e.target.value}}))}/></FormField>
+              <FormField label="Due day"><input className="input" type="number" min={1} max={31} placeholder="1–31" value={modal.item.dueDay||''} onChange={e=>setModal(m=>({...m,item:{...m.item,dueDay:+e.target.value}}))}/></FormField>
+              <FormField label="Start date"><input className="input" type="date" value={modal.item.startDate||''} onChange={e=>setModal(m=>({...m,item:{...m.item,startDate:e.target.value}}))}/></FormField>
             </>:<>
-              <FormField label="Payback Date"><input className="input" type="date" value={modal.item.paybackDate||''} onChange={e=>setModal(m=>({...m,item:{...m.item,paybackDate:e.target.value}}))}/></FormField>
+              <FormField label="Payback date"><input className="input" type="date" value={modal.item.paybackDate||''} onChange={e=>setModal(m=>({...m,item:{...m.item,paybackDate:e.target.value}}))}/></FormField>
             </>}
             <FormField label="Notes" className="form-full"><textarea className="input" rows={2} value={modal.item.notes||''} onChange={e=>setModal(m=>({...m,item:{...m.item,notes:e.target.value}}))}/></FormField>
           </div>

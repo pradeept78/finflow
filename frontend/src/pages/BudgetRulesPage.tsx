@@ -212,12 +212,12 @@ export default function BudgetRulesPage() {
     { id: 'overview', label: '📊 Overview' },
     { id: 'loans',    label: '🏦 Loans' },
     { id: 'cards',    label: '💳 Cards' },
-    { id: 'iowe',     label: '🤝 I Owe / Owed' },
+    { id: 'iowe',     label: '🤝 I Owe / owed' },
   ]
 
   return (
     <div className="space-y-4 text-[13px]">
-      <PageHeader title="Budget & Spending"
+      <PageHeader title="Budget & spending"
         action={<button className="text-[11px] font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap" style={{background: editing ? '#c2410c' : 'var(--bg-hover)', border:'1px solid var(--hairline)', color: editing ? '#fff' : 'var(--text-muted)', cursor:'pointer'}} onClick={() => setEditing(!editing)}>{editing ? '✓ Done editing' : '✏ Edit limits'}</button>}
       />
 
@@ -228,14 +228,14 @@ export default function BudgetRulesPage() {
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            {label:'Monthly Income', val:fmtINR(monthlyIncome), color:'var(--success)', sub:'total income'},
+            {label:'Monthly income', val:fmtINR(monthlyIncome), color:'var(--success)', sub:'total income'},
             /* Shared line. This page folded chit repayment into "EMIs" and then omitted chit from
                its own list, so ₹25,000 was counted under a label that did not mention it. */
-            {label:'Total Outflow',  val:fmtINR(totalOutflow),  color:'var(--danger)',
+            {label:'Total outflow',  val:fmtINR(totalOutflow),  color:'var(--danger)',
               /* Tier split only — see /lookup for the itemised components. */
               sub:outflowTierLine(o), to:'/lookup'},
             {label:'Free / month',   val:(freeCash>=0?'+':'-')+fmtINR(Math.abs(freeCash))+incomePct(freeCash, monthlyIncome), color:freeCash>=0?'var(--purple)':'var(--warning)', sub:(freeCash<0?'🚨 deficit':freeCash<monthlyIncome*0.1?'⚠ low buffer':'✓ healthy')+' · before card bills'},
-            {label:'Budget Score',   val:`${score}/100`, color:score>=70?'var(--success)':score>=40?'var(--warning)':'var(--danger)', sub:score>=70?'On track ✓':score>=40?'Needs work':'Off track 🚨'},
+            {label:'Budget score',   val:`${score}/100`, color:score>=70?'var(--success)':score>=40?'var(--warning)':'var(--danger)', sub:score>=70?'On track ✓':score>=40?'Needs work':'Off track 🚨'},
           ].map(m=>(
             /* `to` makes a tile navigable. The Total Outflow tile needs it now that it shows only
                the tier split — the itemised components live on /lookup. */
@@ -340,8 +340,8 @@ export default function BudgetRulesPage() {
           <div className="grid grid-cols-3 gap-3">
             {[
               { label: 'Total EMI/mo', val: fmtINR(totalLoanEmi), sub: `${activeLoans.length} active loans`, color: 'text-red-400' },
-              { label: 'Principal Left', val: fmtINR(totalLoanPrincipal), sub: 'outstanding balance', color: 'text-[var(--text)]' },
-              { label: 'Interest Left', val: fmtINR(totalLoanIntLeft), sub: 'future cost of debt', color: 'text-orange-400' },
+              { label: 'Principal left', val: fmtINR(totalLoanPrincipal), sub: 'outstanding balance', color: 'text-[var(--text)]' },
+              { label: 'Interest left', val: fmtINR(totalLoanIntLeft), sub: 'future cost of debt', color: 'text-orange-400' },
             ].map(m => (
               <div key={m.label} className="rounded-2xl p-3" style={{background:'var(--bg-card)',border:'1px solid var(--hairline)'}}>
                 <div className="text-[12px] mb-1" style={{color:'var(--text-muted)'}}>{m.label}</div>
@@ -355,7 +355,7 @@ export default function BudgetRulesPage() {
           <div className="rounded-2xl overflow-hidden text-[13px]" style={{background:'var(--bg-card)',border:'1px solid var(--hairline)'}}>
             <div className="px-4 py-2 text-[13px] font-semibold" style={{background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-muted)'}}>By Loan Type vs Budget Limit</div>
             {[
-              { label: '🏠 Home Loan', emi: homeEmi,      pct: Math.round(homeEmi/Math.max(1,monthlyIncome)*100),      limit: rules.find((r:any)=>r.id==='housing')?.limit??30, color: '#3b82f6' },
+              { label: '🏠 Home loan', emi: homeEmi,      pct: Math.round(homeEmi/Math.max(1,monthlyIncome)*100),      limit: rules.find((r:any)=>r.id==='housing')?.limit??30, color: '#3b82f6' },
               { label: '🚗 Car/Bike',  emi: carEmi,       pct: Math.round(carEmi/Math.max(1,monthlyIncome)*100),       limit: rules.find((r:any)=>r.id==='vehicle')?.limit??15, color: '#f59e0b' },
               { label: '🏦 Other',     emi: otherLoanEmi, pct: Math.round(otherLoanEmi/Math.max(1,monthlyIncome)*100), limit: rules.find((r:any)=>r.id==='debt')?.limit??10,    color: 'var(--danger-strong)' },
             ].filter(r => r.emi > 0).map(r => (
@@ -375,7 +375,7 @@ export default function BudgetRulesPage() {
 
           {/* Per loan */}
           <div className="rounded-2xl overflow-hidden text-[13px]" style={{background:'var(--bg-card)',border:'1px solid var(--hairline)'}}>
-            <div className="px-4 py-2 text-[13px] font-semibold" style={{background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-muted)'}}>All Active Loans</div>
+            <div className="px-4 py-2 text-[13px] font-semibold" style={{background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-muted)'}}>All active loans</div>
             {activeLoans.map((l:any) => {
               const e=getEff(l), t=l.tenure??(e.paid+e.pending), sp=calcLoanSplit(l.amount??0,l.emi??0,t,e.paid,l.principalPaid??undefined)
               const pct = Math.round(e.paid/Math.max(1,e.paid+e.pending)*100)
@@ -407,10 +407,10 @@ export default function BudgetRulesPage() {
           {/* Summary */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {[
-              { label: 'CC Utilization', val: `${ccUtilization}%`, sub: `${ccOutstanding+ccSpendsCurrent+ccEmiPending} used of ${fmtINR(totalCCLimit)}`, color: ccUtilization>70?'text-red-400':ccUtilization>40?'text-yellow-400':'text-green-400' },
+              { label: 'CC utilization', val: `${ccUtilization}%`, sub: `${ccOutstanding+ccSpendsCurrent+ccEmiPending} used of ${fmtINR(totalCCLimit)}`, color: ccUtilization>70?'text-red-400':ccUtilization>40?'text-yellow-400':'text-green-400' },
               { label: 'Outstanding',    val: fmtINR(ccOutstanding),    sub: 'pay this cycle',    color: 'text-red-400' },
               { label: 'CC EMI/mo',      val: fmtINR(ccEmiMonthly),     sub: `${fmtINR(ccEmiPending)} total pending`, color: 'text-yellow-400' },
-              { label: 'This Mo Spends', val: fmtINR(ccSpendsCurrent),  sub: 'current month',    color: 'text-orange-400' },
+              { label: 'This mo spends', val: fmtINR(ccSpendsCurrent),  sub: 'current month',    color: 'text-orange-400' },
             ].map(m => (
               <div key={m.label} className="rounded-2xl p-3" style={{background:'var(--bg-card)',border:'1px solid var(--hairline)'}}>
                 <div className="text-[12px] mb-1" style={{color:'var(--text-muted)'}}>{m.label}</div>
@@ -422,7 +422,7 @@ export default function BudgetRulesPage() {
 
           {/* Per card */}
           <div className="rounded-2xl overflow-hidden text-[13px]" style={{background:'var(--bg-card)',border:'1px solid var(--hairline)'}}>
-            <div className="px-4 py-2 text-[13px] font-semibold" style={{background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-muted)'}}>Per Card Breakdown</div>
+            <div className="px-4 py-2 text-[13px] font-semibold" style={{background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-muted)'}}>Per card breakdown</div>
             {(cards as any[]).map((c:any) => {
               const emi = (c.emis??[]).filter((e:any)=>getEff(e).pending>0).reduce((a:number,e:any)=>a+Number(e.emi??0),0)
               const emiPending = (c.emis??[]).filter((e:any)=>getEff(e).pending>0).reduce((a:number,e:any)=>a+getEff(e).pending*Number(e.emi??0),0)
@@ -468,7 +468,7 @@ export default function BudgetRulesPage() {
               ))}
             </div>
             <div className="rounded-2xl p-4" style={{background:'var(--bg-card)',border:'1px solid color-mix(in srgb, var(--success-strong) 25%, transparent)'}}>
-              <div className="text-[12px] mb-1 text-green-400">People Owe Me</div>
+              <div className="text-[12px] mb-1 text-green-400">People owe me</div>
               <div className="mono font-bold text-2xl text-green-400">{fmtINR(peopleOwePending)}</div>
               <div className="text-[11px] mt-1" style={{color:'var(--text-faint)'}}>{(peopleOwe as any[]).filter((p:any)=>p.status!=='Paid').length} pending</div>
               {(peopleOwe as any[]).filter((p:any)=>p.status!=='Paid').map((p:any) => {
@@ -489,7 +489,7 @@ export default function BudgetRulesPage() {
 
           {/* Net position */}
           <div className="rounded-2xl p-4" style={{background:'var(--bg-card)',border:'1px solid var(--hairline)'}}>
-            <div className="text-[12px] mb-2" style={{color:'var(--text-muted)'}}>Net Personal Finance Position</div>
+            <div className="text-[12px] mb-2" style={{color:'var(--text-muted)'}}>Net personal finance position</div>
             <div className="flex items-center justify-between">
               <div className="text-[11px]" style={{color:'var(--text-muted)'}}>People owe you <span className="mono font-bold text-green-400">{fmtINR(peopleOwePending)}</span></div>
               <div className="text-[11px]" style={{color:'var(--text-muted)'}}>You owe <span className="mono font-bold text-red-400">{fmtINR(iOwePending)}</span></div>

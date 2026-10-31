@@ -141,10 +141,10 @@ export default function InsurancePage() {
       {items.length > 0 && (
         <KpiRow className="grid grid-cols-2 lg:grid-cols-4 gap-3" keep={[0, 1]}>
           {[
-            {label:'Monthly Premiums', value:fmtINR(Math.round(emiMo)),     sub:(()=>{const n=active.filter(isMonthlyPlan).length;return n>0?`${n} billed monthly · not a bank EMI`:'none billed monthly — see Annual Cost'})(), accent:'var(--cyan)'},
-            {label:'Annual Cost',   value:fmtINR(Math.round(annualCost)),   sub:`${active.filter(isLumpPlan).length} lump-sum policies`, accent:'var(--warning)'},
-            {label:'Total Coverage',value:fmtINR(totalCover),               sub:'sum assured across all policies', accent:'var(--success)'},
-            {label:'Renewing Soon', value:String(upcoming.length),          sub:'policies renewing within 30 days', accent:upcoming.length>0?'var(--danger)':'var(--purple)', noFormat:true},
+            {label:'Monthly premiums', value:fmtINR(Math.round(emiMo)),     sub:(()=>{const n=active.filter(isMonthlyPlan).length;return n>0?`${n} billed monthly · not a bank EMI`:'none billed monthly — see Annual Cost'})(), accent:'var(--cyan)'},
+            {label:'Annual cost',   value:fmtINR(Math.round(annualCost)),   sub:`${active.filter(isLumpPlan).length} lump-sum policies`, accent:'var(--warning)'},
+            {label:'Total coverage',value:fmtINR(totalCover),               sub:'sum assured across all policies', accent:'var(--success)'},
+            {label:'Renewing soon', value:String(upcoming.length),          sub:'policies renewing within 30 days', accent:upcoming.length>0?'var(--danger)':'var(--purple)', noFormat:true},
           ].map(m=>(
             <div key={m.label} className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{background:`linear-gradient(180deg, color-mix(in srgb, ${m.accent} 5%, var(--bg-card)) 0%, var(--bg-card) 70%)`,border:`1px solid var(--hairline)`}}>
               <div className="relative">
@@ -315,11 +315,11 @@ export default function InsurancePage() {
               {formErrors.name && <p className="text-[11px] text-red-400 mt-1">{formErrors.name}</p>}
             </FormField>
 
-            <FormField label="Insurer / Provider">
+            <FormField label="Insurer / provider">
               <input className="input" placeholder="e.g. LIC, HDFC Ergo" value={modal.item.insurer||''} onChange={e=>setModal(m=>({...m,item:{...m.item,insurer:e.target.value}}))}/>
             </FormField>
 
-            <FormField label="Policy Type" className="form-full">
+            <FormField label="Policy type" className="form-full">
               <div className="flex flex-wrap gap-1.5">
                 {TYPE_LIST.map(t => {
                   const on = (modal.item.policyType || 'Life') === t
@@ -341,7 +341,7 @@ export default function InsurancePage() {
               {formErrors.premium && <p className="text-[11px] text-red-400 mt-1">{formErrors.premium}</p>}
             </FormField>
 
-            <FormField label="Payment Frequency">
+            <FormField label="Payment frequency">
               <select className="select" value={modal.item.frequency||'Yearly'} onChange={e=>setModal(m=>({...m,item:{...m.item,frequency:e.target.value}}))}>
                 <option value="Monthly">Monthly</option>
                 <option value="Quarterly">Quarterly (every 3mo)</option>
@@ -372,7 +372,7 @@ export default function InsurancePage() {
                 Cards page. Coverage (sum assured) still counts it — the policy stays active, only its
                 premium bookkeeping moved. Switching back to "Card — paid in full" undoes this. */}
             {modal.item.paidByCardId && (
-              <FormField label="Payment Mode" className="form-full">
+              <FormField label="Payment mode" className="form-full">
                 <select className="select" value={modal.item.isCardEmi?'emi':'card'}
                   onChange={e=>{
                     const emi = e.target.value==='emi'
@@ -413,7 +413,7 @@ export default function InsurancePage() {
             })()}
             </MoreFields>
 
-            <FormField label="Policy Start Date">
+            <FormField label="Policy start date">
               <input className="input" type="date" value={modal.item.startDate||''} onChange={e=>setModal(m=>({...m,item:{...m.item,startDate:e.target.value}}))}/>
             </FormField>
 
@@ -421,7 +421,7 @@ export default function InsurancePage() {
                 field this whole section exists for. Labelled the same for every policy type (used to
                 say "Policy End Date" except for Vehicle) since it's always the renewal reminder date,
                 not just for Vehicle policies. */}
-            <FormField label="Renewal / End Date">
+            <FormField label="Renewal / end date">
               <input className="input" type="date" value={modal.item.endDate||''} onChange={e=>setModal(m=>({...m,item:{...m.item,endDate:e.target.value}}))}/>
             </FormField>
 

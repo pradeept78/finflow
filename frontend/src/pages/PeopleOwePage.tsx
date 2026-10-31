@@ -34,7 +34,7 @@ export default function PeopleOwePage() {
   // left this mutation's awaited Promise pending forever, so settleMut.isPending stuck `true`
   // and the "Collect" button never recovered. onClose now rejects the promise (with a sentinel
   // "CANCELLED" error the onError below swallows silently, so no error toast on a plain dismiss).
-  const settleMut = useMutation({ mutationFn: async (v: any) => { const recovered = await new Promise<string>((resolve, reject) => setInputModal({title:'Mark Collected',message:`${v.person} — ${fmtINR(v.amount)}\nAmount actually collected:`,placeholder:String(v.amount),defaultValue:String(v.amount),onConfirm:(x:string)=>{setInputModal(null);resolve(x)},onClose:()=>{setInputModal(null);reject(new Error('CANCELLED'))}})); await closedLoansApi.create({lender:v.person,purpose:'People Owe Me',assetType:'Other',amount:Number(v.amount??0),totalPaid:Number(v.amount??0),recoveredAmount:+recovered||Number(v.amount??0),closedDate:new Date().toISOString().slice(0,10)}); return peopleOweApi.delete(v.id) }, onSuccess:()=>{qc.invalidateQueries({queryKey:['people-owes']});qc.invalidateQueries({queryKey:['closed-loans']});toast.success('Collected!')}, onError:(e:any)=>{ if (e?.message !== 'CANCELLED') toast.error('Failed to mark collected') } })
+  const settleMut = useMutation({ mutationFn: async (v: any) => { const recovered = await new Promise<string>((resolve, reject) => setInputModal({title:'Mark collected',message:`${v.person} — ${fmtINR(v.amount)}\nAmount actually collected:`,placeholder:String(v.amount),defaultValue:String(v.amount),onConfirm:(x:string)=>{setInputModal(null);resolve(x)},onClose:()=>{setInputModal(null);reject(new Error('CANCELLED'))}})); await closedLoansApi.create({lender:v.person,purpose:'People Owe Me',assetType:'Other',amount:Number(v.amount??0),totalPaid:Number(v.amount??0),recoveredAmount:+recovered||Number(v.amount??0),closedDate:new Date().toISOString().slice(0,10)}); return peopleOweApi.delete(v.id) }, onSuccess:()=>{qc.invalidateQueries({queryKey:['people-owes']});qc.invalidateQueries({queryKey:['closed-loans']});toast.success('Collected!')}, onError:(e:any)=>{ if (e?.message !== 'CANCELLED') toast.error('Failed to mark collected') } })
   const partialMut = useMutation({ mutationFn: ({id,paid,total}:any)=>peopleOweApi.update(id,{paidAmount:paid,status:paid>=total?'Paid':'Partial'}), onSuccess:()=>{qc.invalidateQueries({queryKey:['people-owes']});toast.success('Updated')} })
 
   const pending  = (items as any[]).filter(v=>v.status!=='Paid'&&v.status!=='Settled')
@@ -48,20 +48,20 @@ export default function PeopleOwePage() {
 
   return (
     <div className="space-y-4 text-[13px]">
-      <PageHeader title="People Owe Me" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}><Plus size={14}/> Add</button>}/>
+      <PageHeader title="People owe me" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}><Plus size={14}/> Add</button>}/>
 
       {items.length > 0 && (
         <KpiRow className="grid grid-cols-4 gap-3" keep={[0, 2]}>
           {[
-            {label:'Pending Recovery', value:fmtINR(totalPending), sub:`${pending.length} pending`,        accent:'var(--success)'},
-            {label:'Collected So Far', value:fmtINR(totalPaid),    sub:`${paid.length} settled`,           accent:'var(--cyan)'},
+            {label:'Pending recovery', value:fmtINR(totalPending), sub:`${pending.length} pending`,        accent:'var(--success)'},
+            {label:'Collected so far', value:fmtINR(totalPaid),    sub:`${paid.length} settled`,           accent:'var(--cyan)'},
             // Must be a literal color value (a hex or a var(--token) reference — not a bare
             // Tailwind class). The card below builds its gradient, border and label colour
             // by color-mixing this value, and `var(--text-faint)20` is not a
             // colour — so whenever nothing was overdue (the normal, healthy case) this entire
             // card rendered with no background, no border and unreadable label text.
             {label:'Overdue',          value:String(overdue.length),sub:'past expected date',              accent:overdue.length>0?'var(--danger)':'#94a3b8', isCurrency:false},
-            {label:'Total Lent',       value:fmtINR((items as any[]).reduce((s:number,v:any)=>s+Number(v.amount??0),0)), sub:`${items.length} total entries`, accent:'var(--warning)'},
+            {label:'Total lent',       value:fmtINR((items as any[]).reduce((s:number,v:any)=>s+Number(v.amount??0),0)), sub:`${items.length} total entries`, accent:'var(--warning)'},
           ].map(m=>(
             <div key={m.label} className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{background:`linear-gradient(180deg, color-mix(in srgb, ${m.accent} 5%, var(--bg-card)) 0%, var(--bg-card) 70%)`,border:`1px solid var(--hairline)`}}>
               <div className="relative">
@@ -164,7 +164,7 @@ export default function PeopleOwePage() {
                     {!isDone&&pending2>0&&<span className="text-[11px]" style={{color:'var(--text-faint)'}}>Pending: <span className="mono font-bold" style={{color:'var(--success)'}}>{fmtINR(pending2)}</span></span>}
                     {!isDone&&<button className="text-[11px] px-2.5 py-1 rounded font-medium" style={{background:'color-mix(in srgb, var(--info) 10%, transparent)',color:'var(--info)',border:'1px solid color-mix(in srgb, var(--info) 20%, transparent)'}}
                       onClick={()=>setInputModal({title:`Partial — ${v.person}`,message:`Amount collected so far:`,placeholder:String(v.paidAmount||0),defaultValue:v.paidAmount?String(v.paidAmount):undefined,onConfirm:(x:string)=>{const paid=+x; if(isNaN(paid)||paid<=0){toast.error('Enter a valid amount greater than 0');return}; partialMut.mutate({id:v.id,paid,total:Number(v.amount??0)});setInputModal(null)}})}>
-                      Record Partial
+                      Record partial
                     </button>}
                     <button className="btn-secondary btn-xs" onClick={(e)=>{e.stopPropagation();setModal({open:true,item:v})}}><Pencil size={11}/> Edit</button>
                     <button className="btn-danger btn-xs" onClick={()=>setConfirmModal({message:'Delete?',onConfirm:()=>deleteMut.mutate(v),label:'Delete'})}><Trash2 size={11}/></button>
@@ -191,7 +191,7 @@ export default function PeopleOwePage() {
           <div className="form-grid">
             <FormField label="Person *" className="form-full"><input className="input" value={modal.item.person||''} onChange={e=>setModal(m=>({...m,item:{...m.item,person:e.target.value}}))}/></FormField>
             <FormField label="Amount (₹)"><input className="input" type="number" value={modal.item.amount||''} onChange={e=>setModal(m=>({...m,item:{...m.item,amount:+e.target.value}}))}/></FormField>
-            <FormField label="Expected Date"><input className="input" type="date" value={modal.item.expectedDate||''} onChange={e=>setModal(m=>({...m,item:{...m.item,expectedDate:e.target.value}}))}/></FormField>
+            <FormField label="Expected date"><input className="input" type="date" value={modal.item.expectedDate||''} onChange={e=>setModal(m=>({...m,item:{...m.item,expectedDate:e.target.value}}))}/></FormField>
             {/* The Purpose field was removed: the PeopleOwe entity has no `purpose` column, so
                 anything typed here was silently discarded on save while the toast said "Saved".
                 Use Notes instead, or add a `purpose` column to the entity to bring it back. */}

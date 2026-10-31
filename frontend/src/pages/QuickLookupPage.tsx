@@ -114,7 +114,7 @@ export default function QuickLookupPage() {
         return (
           <div className="space-y-2 mt-2">
             <div className="grid grid-cols-3 gap-2 text-[11px]">
-              <div><div className="">Principal Left</div><div className="mono text-red-400 font-semibold">{fmtINR(sp.princLeft)}</div></div>
+              <div><div className="">Principal left</div><div className="mono text-red-400 font-semibold">{fmtINR(sp.princLeft)}</div></div>
               <div><div className="">EMIs Left</div><div className="font-semibold">{eff.pending}</div></div>
               <div><div className="">Progress</div><div className="font-semibold">{pct}%</div></div>
             </div>
@@ -158,7 +158,7 @@ export default function QuickLookupPage() {
         const isOpen = ioweFacts(x).mode !== 'amortising'
         return (
           <div className="text-[11px] mt-2">
-            <div className="flex justify-between"><span className="">Total Owed</span><span className="mono text-yellow-400">{fmtINR(ioweFacts(x).principalLeft)}</span></div>
+            <div className="flex justify-between"><span className="">Total owed</span><span className="mono text-yellow-400">{fmtINR(ioweFacts(x).principalLeft)}</span></div>
             {isOpen && <div className=" mt-1">Open-ended interest only</div>}
           </div>
         )
@@ -235,7 +235,7 @@ export default function QuickLookupPage() {
   return (
     <div className="space-y-4 text-[13px]">
 
-      <PageHeader title="Quick Lookup"/>
+      <PageHeader title="Quick lookup"/>
 
       {totalMonthly > 0 && (
         /* Compact header: the old one was 5rem of padding and a 4xl figure that pushed the due list

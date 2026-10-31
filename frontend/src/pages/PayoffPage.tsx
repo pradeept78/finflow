@@ -2,11 +2,12 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recha
 import { useState, useMemo } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { loansApi, cardsApi, personalEmiApi, incomeApi, savingsApi, expensesApi, insuranceApi, investmentsApi } from '../api'
-import { fmtINR, getEff, toMonthly, isOneOff, monthlyIncomeTotal, freqMonths } from '../utils/format'
+import { fmtINR, getEff, monthlyIncomeTotal } from '../utils/format'
 import { calcLoanSplit } from '../utils/loanCalc'
 import { LoadingSpinner, PageHeader, ErrorState, FromLink } from '../components/common'
 import { runSnowball, type SimDebt } from '../utils/snowball'
 import { calcDebt } from '../utils/calcDebt'
+import { calcOutflow, freeFigures } from '../utils/calcOutflow'
 import { ioweFacts } from '../utils/iowe'
 import { debtFreeMonths as sharedDebtFreeMonths } from '../utils/debtFree'
 
@@ -151,30 +152,15 @@ export default function PayoffPage() {
   const totalEmi = emiDebts.reduce((s, d) => s + d.emi, 0)
   const totalIntLeft = emiDebts.reduce((s, d) => s + d.intLeft, 0)
   const totalOutstanding = lumpSumDebts.reduce((s, d) => s + d.princLeft, 0)
-  // Was summing every active expense's raw amount regardless of frequency — unlike totalInsurance
-  // right below, which already special-cases Monthly/Single/renewal-window correctly. A Yearly
-  // ₹1,20,000 school fee added the full ₹1,20,000 to this month's "fixed costs" instead of its true
-  // ~₹10,000/mo share, directly corrupting freeMoney and every payoff/extra-payment recommendation
-  // derived from it. toMonthly + isOneOff gives the true monthly-equivalent, one-time items excluded.
-  const totalExpenses = (expenses as any[]).filter(e => e.active !== false && !isOneOff(e.frequency)).reduce((s, e) => s + toMonthly(e.amount, e.frequency), 0)
-  // Was a special-cased "only count a non-monthly premium if its renewal falls within the next 30
-  // days" rule — inconsistent with `totalExpenses` right above (and with `calcOutflow`, the shared
-  // calculator every other page uses), which instead spreads a non-monthly amount into a steady
-  // monthly-equivalent set-aside. The old rule made this page's "fixed costs" spike to the full
-  // premium in the renewal month and silently drop it to zero every other month, which is exactly
-  // the kind of month-to-month disagreement `calcOutflow` exists to prevent.
-  const totalInsurance = (insurance as any[]).filter((v:any)=>v.active!==false && !isOneOff(v.frequency)).reduce((s:number,v:any)=>s+toMonthly(v.premium, v.frequency),0)
-  // Real cash only (Monthly-frequency premiums) — same freqMonths(...)<=1 split calcOutflow.ts uses
-  // everywhere else. `totalInsurance` just above smooths non-monthly premiums into the same figure,
-  // which is fine for a "fixed costs" total but wrong for a payment SCHEDULE: a Yearly premium's
-  // smoothed share isn't a real monthly charge that can "close" the way an EMI does, so it has no
-  // business sitting in paymentSchedule below alongside things that actually drop off over time.
-  const realInsuranceMo = (insurance as any[]).filter((v:any)=>v.active!==false && !isOneOff(v.frequency) && freqMonths(v.frequency)<=1).reduce((s:number,v:any)=>s+Number(v.premium??0),0)
-  const totalSavingsMonthly = (savings as any[]).filter(s => getEff(s).pending > 0 && !s.prizeTaken && s.mode !== 'withdrew').reduce((s, sv) => s + Number(sv.monthly ?? 0), 0)
-  const totalInvestments = (investments as any[]).filter(i => getEff(i).pending > 0).reduce((s, i) => s + Number(i.monthly ?? 0), 0)
-  const totalCCSpends = (cards as any[]).reduce((s:number,card:any)=>(card.spends??[]).reduce((a:number,sp:any)=>a+Number(sp.amount??0),0)+s,0)
-  const totalFixed = totalEmi + totalCCSpends + totalExpenses + totalInsurance + totalSavingsMonthly + totalInvestments
-  const freeMoney = currentIncome - totalFixed
+  // Monthly money comes from the shared calculator (utils/calcOutflow), like Home, Calendar and Budget.
+  // This page used to add up its own: every card spend ever recorded instead of the current bill,
+  // smoothed premiums, savings by a different rule — and showed −₹91k free where every other page
+  // said −₹38k. `free` is income − committed (before card bills), the same "Free / month" as elsewhere.
+  const o = calcOutflow(loans as any[], cards as any[], personal as any[], savings as any[], investments as any[], expenses as any[], insurance as any[])
+  const freeMoney = freeFigures(o, currentIncome).free
+  // Monthly-frequency premiums only: a real charge for the payment schedule below (non-monthly
+  // premiums are a set-aside, not a payment that steps down when debts close).
+  const realInsuranceMo = o.insuranceEmi
   const maxMonths = currentPaceMonths || 1
   const monthsSaved = Math.max(0, currentPaceMonths - withExtra.months)
 
@@ -192,7 +178,6 @@ export default function PayoffPage() {
      Headline now comes from the shared calculator so Payoff agrees with Hub and Dashboard. */
   const dShared = calcDebt(loans as any[], cards as any[], personal as any[], savings as any[])
   const totalDebt = dShared.total
-  const totalEmiAll = allDebts.reduce((s:number,d:any)=>s+(d.emi??0),0)
   /* Was `d.months??0` — SimDebt items only ever carry `monthsLeft` (see `allDebts` above); `months`
      only exists on the *result* of runSnowball(). This always evaluated to 0, so the hero and this
      stat card showed "0 months away" / the current month even with a nonzero Total Debt right next
@@ -248,7 +233,7 @@ export default function PayoffPage() {
 
   return (
     <div className="space-y-4 text-[13px]">
-      <PageHeader title="Payoff Simulator"/>
+      <PageHeader title="Payoff simulator"/>
       {allDebts.length > 0 && (
         <div className="rounded-2xl px-5 py-4 relative overflow-hidden" style={{background:'linear-gradient(180deg, color-mix(in srgb, var(--purple) 6%, var(--bg-card)) 0%, var(--bg-card) 75%)',border:'1px solid var(--hairline)'}}>
           <div className="relative flex items-center justify-between flex-wrap gap-4">
@@ -259,8 +244,8 @@ export default function PayoffPage() {
             </div>
             <div className="flex gap-4 flex-wrap">
               {[
-                {label:'Monthly payments', val:fmtINR(totalEmiAll), color:'var(--danger)'},
-                {label:'Steady free/mo', val:`${freeMoney>=0?'+':'-'}${fmtINR(Math.abs(freeMoney))}`, color:freeMoney>=0?'var(--success)':'var(--warning)'},
+                {label:'Committed / month', val:fmtINR(Math.round(o.locked)), color:'var(--danger)'},
+                {label:'Free / month', val:`${freeMoney>=0?'+':'−'}${fmtINR(Math.abs(Math.round(freeMoney)))}`, color:freeMoney>=0?'var(--success)':'var(--danger)'},
               ].map(m=>(
                 <div key={m.label} className="text-right pl-4" style={{borderLeft:'1px solid var(--hairline)'}}>
                   <div className="text-[12px] font-medium mb-0.5" style={{color:'var(--text-muted)'}}>{m.label}</div>
@@ -277,18 +262,18 @@ export default function PayoffPage() {
           <div className="flex flex-wrap gap-3 text-[13px] items-center">
             <span>Income: <span className="mono text-green-400 font-bold">{fmtINR(currentIncome)}/mo</span></span>
             <span style={{color:'var(--text-muted)'}}>−</span>
-            <span>EMIs: <span className="mono text-red-400">{fmtINR(totalEmi)}</span></span>
+            <span>EMIs: <span className="mono text-red-400">{fmtINR(Math.round(o.loanEmi + o.ccEmi + o.iOweEmi + o.chitRepay))}</span></span>
             <span style={{color:'var(--text-muted)'}}>−</span>
-            <span>Expenses+Insurance: <span className="mono text-orange-400">{fmtINR(totalExpenses + totalInsurance)}</span></span>
-            {(totalSavingsMonthly + totalInvestments) > 0 && <>
+            <span>Bills & insurance: <span className="mono text-orange-400">{fmtINR(Math.round(o.expenses + o.insuranceEmi))}</span></span>
+            {(o.savings + o.sipInvest) > 0 && <>
               <span style={{color:'var(--text-muted)'}}>−</span>
-              <span>Savings+SIP: <span className="mono text-blue-400">{fmtINR(totalSavingsMonthly + totalInvestments)}</span></span>
+              <span>Savings & SIP: <span className="mono text-blue-400">{fmtINR(Math.round(o.savings + o.sipInvest))}</span></span>
             </>}
             <span style={{color:'var(--text-muted)'}}>=</span>
             <span className={`font-bold text-[13px] ${freeMoney < 0 ? 'text-red-400' : 'text-green-400'}`}>
-              {freeMoney < 0 ? `🚨 Short ${fmtINR(Math.abs(freeMoney))}/mo` : `✅ Free: ${fmtINR(freeMoney)}/mo`}
+              {freeMoney < 0 ? `🚨 Short ${fmtINR(Math.abs(Math.round(freeMoney)))}/mo` : `✅ Free: ${fmtINR(Math.round(freeMoney))}/mo`} <span className="font-normal text-[12px]" style={{color:'var(--text-muted)'}}>before card bills</span>
             </span>
-            <FromLink to="/break-savings" className="btn btn-xs bg-blue-500/20 text-blue-400 ml-auto">Full Cash Flow →</FromLink>
+            <FromLink to="/break-savings" className="btn btn-xs bg-blue-500/20 text-blue-400 ml-auto">Full cash flow →</FromLink>
           </div>
         </div>
       )}
@@ -296,7 +281,7 @@ export default function PayoffPage() {
       {/* Scenario cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="rounded-2xl p-4 border-red-500/20" style={{background:"var(--bg-card)"}}>
-          <div className="text-[14px] font-semibold mb-2" style={{color:'var(--text-muted)'}}>Current Pace</div>
+          <div className="text-[14px] font-semibold mb-2" style={{color:'var(--text-muted)'}}>Current pace</div>
           <div className="text-3xl font-bold mono text-red-400">{currentPaceMonths} <span className="text-lg">mo</span></div>
           <div className="font-semibold mt-1">{addMonths(currentPaceMonths)}</div>
           <div className="text-[11px] mt-2" style={{color:'var(--text-faint)'}}>Pay minimums, no snowball</div>
@@ -419,7 +404,7 @@ export default function PayoffPage() {
       {/* Variable monthly */}
       {showVariable && (
         <div className="rounded-2xl p-4 mb-4" style={{background:"var(--bg-card)",border:"1px solid var(--hairline)"}}>
-          <div className="flex justify-between items-center mb-2 cursor-pointer select-none" onClick={() => toggleSection("variable")}><span className="text-[14px] font-semibold" style={{color:'var(--text-muted)'}}>📅 Variable Monthly Budget</span><span className="text-[11px] ">{openSections.has("variable") ? "▲" : "▼"}</span></div>
+          <div className="flex justify-between items-center mb-2 cursor-pointer select-none" onClick={() => toggleSection("variable")}><span className="text-[14px] font-semibold" style={{color:'var(--text-muted)'}}>📅 Variable monthly budget</span><span className="text-[11px] ">{openSections.has("variable") ? "▲" : "▼"}</span></div>
           <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
             {Array.from({ length: 12 }, (_, i) => {
               const m = i + 1
@@ -442,7 +427,7 @@ export default function PayoffPage() {
       {/* Visual bars */}
       <div className="rounded-2xl p-5 mb-6" style={{background:"var(--bg-card)",border:"1px solid var(--hairline)"}}>
         <div className="text-[14px] font-semibold mb-4" style={{color:'var(--text-muted)'}}>
-          Visual Payoff Timeline
+          Visual payoff timeline
         </div>
         <div className="space-y-3">
           {[...allDebts.filter(d => !d.isLumpSum)].sort((a, b) => a.monthsLeft - b.monthsLeft).map(item => {
@@ -482,7 +467,7 @@ export default function PayoffPage() {
       <div className="rounded-2xl p-5 mb-6" style={{background:"var(--bg-card)",border:"1px solid var(--hairline)"}}>
         <div className="flex justify-between items-center mb-4 cursor-pointer select-none" onClick={() => toggleSection("schedule")}>
           <div>
-            <div className="text-[14px] font-semibold" style={{color:'var(--text-muted)'}}>📉 Monthly Payment Schedule</div>
+            <div className="text-[14px] font-semibold" style={{color:'var(--text-muted)'}}>📉 Monthly payment schedule</div>
             <div className="text-[12px] mt-0.5" style={{color:'var(--text-faint)'}}>Combined Loans + CC EMIs + Chit Repayment + I Owe + Insurance · minimum payments, not snowballed</div>
           </div>
           <span className="text-[11px]">{openSections.has("schedule") ? "▲" : "▼"}</span>
@@ -542,7 +527,7 @@ export default function PayoffPage() {
 
       {/* Snowball cascade */}
       <div className="rounded-2xl p-5 mb-6" style={{background:"var(--bg-card)",border:"1px solid var(--hairline)"}}>
-        <div className="flex justify-between items-center mb-4 cursor-pointer select-none" onClick={() => toggleSection("snowball")}><div><div className="text-[14px] font-semibold" style={{color:'var(--text-muted)'}}>❄️ Snowball Cascade</div><div className="text-[12px] mt-0.5" style={{color:'var(--text-faint)'}}>How freed EMIs roll into next debt · order of payoff</div></div><span className="text-[11px] ">{openSections.has("snowball") ? "▲" : "▼"}</span></div>
+        <div className="flex justify-between items-center mb-4 cursor-pointer select-none" onClick={() => toggleSection("snowball")}><div><div className="text-[14px] font-semibold" style={{color:'var(--text-muted)'}}>❄️ Snowball cascade</div><div className="text-[12px] mt-0.5" style={{color:'var(--text-faint)'}}>How freed EMIs roll into next debt · order of payoff</div></div><span className="text-[11px] ">{openSections.has("snowball") ? "▲" : "▼"}</span></div>
         {openSections.has("snowball") && (<>
         <div className="space-y-3">
           {(() => {
@@ -615,7 +600,7 @@ export default function PayoffPage() {
       {/* Timeline events */}
       {(extraPerMonth > 0 ? withExtra : snowballOnly).timeline.filter(t => t.closedDebts.length > 0).length > 0 && (
         <div className="rounded-2xl p-5" style={{background:"var(--bg-card)",border:"1px solid var(--hairline)"}}>
-          <div className="flex justify-between items-center mb-2 cursor-pointer select-none" onClick={() => toggleSection("events")}><div><div className="text-[14px] font-semibold" style={{color:'var(--text-muted)'}}>⚡ Snowball Events</div><div className="text-[12px] mt-0.5" style={{color:'var(--text-faint)'}}>Timeline of debt closures · which month each loan gets paid off</div></div><span className="text-[11px] ">{openSections.has("events") ? "▲" : "▼"}</span></div>
+          <div className="flex justify-between items-center mb-2 cursor-pointer select-none" onClick={() => toggleSection("events")}><div><div className="text-[14px] font-semibold" style={{color:'var(--text-muted)'}}>⚡ Snowball events</div><div className="text-[12px] mt-0.5" style={{color:'var(--text-faint)'}}>Timeline of debt closures · which month each loan gets paid off</div></div><span className="text-[11px] ">{openSections.has("events") ? "▲" : "▼"}</span></div>
           <div className={openSections.has("events") ? "" : "hidden"}>
           {(extraPerMonth > 0 ? withExtra : snowballOnly).timeline.filter(t => t.closedDebts.length > 0).length > 0 && (
             <div className="mb-3">

@@ -316,7 +316,9 @@ export default function HubPage({ section = 'overview' }: Props) {
         <span className="inline-block w-1.5 h-1.5 rounded-full" style={{background:color}} />{label}
       </div>
       <div className="text-[19px] min-[420px]:text-[22px] sm:text-[28px] leading-tight font-semibold tracking-tight flex flex-wrap items-baseline" style={{color, fontVariantNumeric:'tabular-nums'}} title={String(value) + (suffix ?? '')}>{value}{suffix && <span className="text-[13px] font-medium ml-1.5" style={{opacity:0.7}}>{suffix.trim()}</span>}</div>
-      {sub && <div className="text-[11px] leading-snug mt-2.5 line-clamp-2 break-words" title={String(sub)} style={{color:'var(--text-faint)'}}>{sub}</div>}
+      {/* Wraps instead of clipping at two lines: on a phone the tiles are half-width and the end of a
+          breakdown ("… + renewals & one-offs ₹85,096") was cut off. Subs are kept short instead. */}
+      {sub && <div className="text-[11px] leading-snug mt-2.5 break-words" title={String(sub)} style={{color:'var(--text-faint)'}}>{sub}</div>}
     </div>
   )
 
@@ -447,14 +449,14 @@ export default function HubPage({ section = 'overview' }: Props) {
     <div className="space-y-4 text-[13px]">
       {horizonBar}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 [&>*]:min-w-0">
-        <Card color="var(--danger)" label="Total Debt"      value={fmtINR(totalDebt)}              sub={horizon && dToday ? `${deltaTxt(dToday.total, totalDebt)} · ${debtSub}` : debtSub} to="/loans"/>
+        <Card color="var(--danger)" label="Total debt"      value={fmtINR(totalDebt)}              sub={horizon && dToday ? `${deltaTxt(dToday.total, totalDebt)} · ${debtSub}` : debtSub} to="/loans"/>
         {/* Says which basis it uses, so "Net Worth −₹X" sitting under "Total Debt ₹Y" where
             Y > the debt implied by X reads as deliberate rather than as a discrepancy. */}
-        <Card color={netWorth>=0?'var(--success)':'var(--danger)'} label="Net Worth"       value={(netWorth>=0?'+':'−')+fmtINR(Math.abs(netWorth))} sub={`${horizon && netWorthToday != null ? deltaTxt(netWorthToday, netWorth) + ' · ' : ''}${fmtINR(totalAssetsValue)} assets − ${fmtINR(d.totalPrincipal)} owed ${horizon ? 'then' : 'today'} (excl. future interest)`} to="/dashboard"/>
+        <Card color={netWorth>=0?'var(--success)':'var(--danger)'} label="Net worth"       value={(netWorth>=0?'+':'−')+fmtINR(Math.abs(netWorth))} sub={`${horizon && netWorthToday != null ? deltaTxt(netWorthToday, netWorth) + ' · ' : ''}assets ${fmtINR(totalAssetsValue)} · owed ${fmtINR(d.totalPrincipal)}`} title={`Net worth = assets ${fmtINR(totalAssetsValue)} − owed ${fmtINR(d.totalPrincipal)} ${horizon ? 'then' : 'today'} (principal only, excluding future interest)`} to="/dashboard"/>
         {/* The breakdown must cover every component of totalOutflow. It previously listed only
             EMIs and CC spends, leaving out expenses, insurance, savings, chit and SIP — so the
             parts shown added up to far less than the headline figure. */}
-        <Card color="var(--warning)" label="Monthly Outflow" value={fmtINR(totalOutflow)}
+        <Card color="var(--warning)" label="Monthly outflow" value={fmtINR(totalOutflow)}
           /* The tier split and the itemisation both come from the shared calculator, so this line
              is character-for-character the same on Dashboard, Budget, Calendar and Lookup. Each
              page used to build its own and the groupings had drifted: this page's "EMIs" excluded
@@ -493,15 +495,15 @@ export default function HubPage({ section = 'overview' }: Props) {
         {/* Retitled: recurring bills belong in the monthly picture but are not debt, and their
             absence here made the page look like it was ignoring ₹{totalExpenses} of outflow.
             The monthly badge now includes them so it reconciles with the rows listed. */}
-        <SectionCard title="💳 Debt & Monthly Commitments" total={fmtINR(totalDebt)} monthly={fmtINR(debtSideMonthly)+"/mo incl. card bill"} color="var(--danger)" delta={change(totalDebt, dToday?.total, false)}>
-          <Row icon="🏦" label="Active Loans"    value={fmtINR(d.loanTotal)} delta={change(d.loanTotal, dToday?.loanTotal, false)}
+        <SectionCard title="💳 Debt & monthly commitments" total={fmtINR(totalDebt)} monthly={fmtINR(debtSideMonthly)+"/mo incl. card bill"} color="var(--danger)" delta={change(totalDebt, dToday?.total, false)}>
+          <Row icon="🏦" label="Active loans"    value={fmtINR(d.loanTotal)} delta={change(d.loanTotal, dToday?.loanTotal, false)}
                sub={`${fmtINR(totalLoanEmi)}/mo · ${activeLoanList.length} loans · ${fmtINR(d.loanPrincipal)} principal + ${fmtINR(d.interestLeft)} interest`}
                color="var(--danger)" to="/loans"/>
           {/* This row used to read "₹47,378/mo" — the EMI added to the current cycle's spends. That
               mixes a recurring commitment with a one-month balance, and it never showed the
               statement outstanding at all. Now: the total owed on cards is the figure, the EMI is
               the recurring part, and outstanding + spends is called out as this month's balance. */}
-          <Row icon="💳" label="Credit Cards"
+          <Row icon="💳" label="Credit cards"
                value={fmtINR(d.ccEmiPrincipal + d.ccOutstanding + d.ccSpends)}
                delta={change(d.ccEmiPrincipal + d.ccOutstanding + d.ccSpends, dToday && dToday.ccEmiPrincipal + dToday.ccOutstanding + dToday.ccSpends, false)}
                sub={`${fmtINR(totalCCEmi)}/mo${activeCCEmiCount>0?` · ${activeCCEmiCount} EMI${activeCCEmiCount===1?'':'s'}`:''} · ${fmtINR(d.ccOutstanding + d.ccSpends)} due this month (${fmtINR(d.ccOutstanding)} outstanding + ${fmtINR(d.ccSpends)} spends)`}
@@ -509,21 +511,21 @@ export default function HubPage({ section = 'overview' }: Props) {
           <Row icon="🤝" label="I Owe"           value={fmtINR(d.iOwePrincipal)} delta={change(d.iOwePrincipal, dToday?.iOwePrincipal, false)}
                sub={`${fmtINR(iOweEmi)}/mo${(personal as any[]).some((x:any)=>ioweFacts(x).mode==='interest-only') ? ' · interest only — principal not reducing' : ' principal'}`}
                color="var(--orange)" to="/personal"/>
-          <Row icon="🔄" label="Chit Repayment"  value={fmtINR(d.chitRepayLeft)} delta={change(d.chitRepayLeft, dToday?.chitRepayLeft, false)}
+          <Row icon="🔄" label="Chit repayment"  value={fmtINR(d.chitRepayLeft)} delta={change(d.chitRepayLeft, dToday?.chitRepayLeft, false)}
                sub={`${fmtINR(chitRepayEmi)}/mo${chitRepayCount>0?` · ${chitRepayCount} chit${chitRepayCount===1?'':'s'}`:''} · payout already taken`} color="var(--purple)" to="/savings"/>
-          <Row icon="📊" label="Bills / Expenses" value={fmtINR(totalExpenses)+'/mo'} delta={change(totalExpenses, oToday?.expenses, false)} sub="recurring, not debt" color="var(--info)" to="/expenses"/>
+          <Row icon="📊" label="Bills / expenses" value={fmtINR(totalExpenses)+'/mo'} delta={change(totalExpenses, oToday?.expenses, false)} sub="recurring, not debt" color="var(--info)" to="/expenses"/>
           <div className="pt-3 flex flex-wrap items-center gap-x-2 gap-y-2 text-[11px]" style={{color:'var(--text-faint)'}}>
             <span>DTI {dti}%</span>
             <HeadsUp issues={health} owed={owedToYou} asOfThen={horizon > 0} onGo={navigate} />
             <span onClick={nav('/payoff')} className="cursor-pointer ml-auto" style={{color:'var(--purple)'}}>Payoff plan →</span>
           </div>
         </SectionCard>
-        <SectionCard title="💰 Assets & Income" total={fmtINR(savingsCorpus+currentVal)} monthly={fmtINR(assetSideMonthly)+"/mo committed"} color="var(--success)" delta={change(savingsCorpus+currentVal, corpusToday != null && investToday ? corpusToday + investToday.value : null, true)} note="Total = savings + investments. Owned assets and People Owe Me are shown for reference only.">
+        <SectionCard title="💰 Assets & income" total={fmtINR(savingsCorpus+currentVal)} monthly={fmtINR(assetSideMonthly)+"/mo committed"} color="var(--success)" delta={change(savingsCorpus+currentVal, corpusToday != null && investToday ? corpusToday + investToday.value : null, true)} note="Total = savings + investments. Owned assets and People Owe Me are shown for reference only.">
           <Row icon="🏦" label="Savings / Chit"  value={fmtINR(savingsCorpus)} delta={change(savingsCorpus, corpusToday, true)} sub={fmtINR(savingsEmi)+'/mo'+(chitNote ? ' · '+chitNote : '')} color="var(--success)" to="/savings"/>
           <Row icon="📈" label="Investments"     value={fmtINR(currentVal)} delta={change(currentVal, investToday?.value, true)} sub={`${fmtINR(investedAmt)} invested · P&L ${fmtINR(currentVal-investedAmt)}`} color="var(--info)" to="/investments"/>
-          <Row icon="💰" label="Monthly Income"  value={fmtINR(monthlyIncome)} sub="active sources" color="var(--purple)" to="/income"/>
+          <Row icon="💰" label="Monthly income"  value={fmtINR(monthlyIncome)} sub="active sources" color="var(--purple)" to="/income"/>
           <Row icon="🛡️" label="Insurance"       value={fmtINR(insMo)+'/mo'} delta={change(insMo, oToday?.insuranceEmi, false)} sub={`${fmtINR(insAnnual)} annual lump-sum`} color="var(--pink)" to="/insurance"/>
-          <Row icon="🤲" label="People Owe Me"   value={fmtINR(peopleOweMeTotal)} sub={`${peopleOweMeCount} pending · what people owe you${horizon ? ' — assumed unchanged' : ''}`} color="var(--success)" to="/people-owe"/>
+          <Row icon="🤲" label="People owe me"   value={fmtINR(peopleOweMeTotal)} sub={`${peopleOweMeCount} pending · what people owe you${horizon ? ' — assumed unchanged' : ''}`} color="var(--success)" to="/people-owe"/>
         </SectionCard>
       </div>
       {/* Quick links: icon beside the label with a one-line description, matching the
@@ -533,7 +535,7 @@ export default function HubPage({ section = 'overview' }: Props) {
         <div className="text-[12px] font-medium mb-2.5" style={{color:'var(--text-muted)'}}>More tools</div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 [&>*]:min-w-0">
           {[
-            {icon:'🎯',label:'Payoff Plan',    sub:'Snowball simulator',       to:'/payoff',        color:'var(--purple)'},
+            {icon:'🎯',label:'Payoff plan',    sub:'Snowball simulator',       to:'/payoff',        color:'var(--purple)'},
             {icon:'📈',label:'History',        sub:'Track debt over time',     to:'/history',       color:'var(--purple)'},
             {icon:'💡',label:'Break Savings?', sub:'Worth cashing out?',       to:'/break-savings', color:'var(--purple)'},
           ].map(q=>(
@@ -563,11 +565,11 @@ export default function HubPage({ section = 'overview' }: Props) {
             principal PLUS all remaining interest — so inside a principal-only total the breakdown
             overshot by exactly the interest: ₹14,08,051 listed for loans where the total was built
             from ₹11,76,756. The parts now sum to the total exactly. */}
-        <Card color="var(--danger)" label="Total Debt"     value={fmtINR(totalDebt)}
-              sub={`loans ${fmtINR(d.loanTotal)} (${fmtINR(d.loanPrincipal)} + ${fmtINR(d.interestLeft)} int) · CC ${fmtINR(d.ccTotal)} · I Owe ${fmtINR(d.iOwePrincipal)}${d.chitRepayLeft>0?` · chit ${fmtINR(d.chitRepayLeft)}`:''}`} to="/loans"/>
-        <Card color="var(--warning)" label="Monthly EMIs"   value={fmtINR(totalLoanEmi+totalCCEmi+iOweEmi+chitRepayEmi)} sub={`loans ${fmtINR(totalLoanEmi)} · CC ${fmtINR(totalCCEmi)} · I Owe ${fmtINR(iOweEmi)}${chitRepayEmi>0?` · chit ${fmtINR(chitRepayEmi)}`:''} — excl. spends`} to="/lookup"/>
+        <Card color="var(--danger)" label="Total debt"     value={fmtINR(totalDebt)}
+              sub={[`loans ${fmtINR(d.loanTotal)}${d.interestLeft>0?` incl. ${fmtINR(d.interestLeft)} interest`:''}`, d.ccTotal>0?`cards ${fmtINR(d.ccTotal)}`:null, d.iOwePrincipal>0?`I Owe ${fmtINR(d.iOwePrincipal)}`:null, d.chitRepayLeft>0?`chit ${fmtINR(d.chitRepayLeft)}`:null].filter(Boolean).join(' · ')} to="/loans"/>
+        <Card color="var(--warning)" label="Monthly EMIs"   value={fmtINR(totalLoanEmi+totalCCEmi+iOweEmi+chitRepayEmi)} sub={[`loans ${fmtINR(totalLoanEmi)}`, totalCCEmi>0?`cards ${fmtINR(totalCCEmi)}`:null, iOweEmi>0?`I Owe ${fmtINR(iOweEmi)}`:null, chitRepayEmi>0?`chit ${fmtINR(chitRepayEmi)}`:null].filter(Boolean).join(' · ')} title="EMIs only: card spends and bills are not included" to="/lookup"/>
         <Card color="var(--pink)" label="CC Spends"      value={fmtINR(totalCCSpends)}        sub="clear before billing date"  to="/cards"/>
-        <Card color="var(--purple)" label="Debt Free"      value={maxPending>0?debtFreeDate:'Debt free!'} sub={maxPending>0?`${maxPending} months away`:'no active loans'} to="/payoff"/>
+        <Card color="var(--purple)" label="Debt free"      value={maxPending>0?debtFreeDate:'Debt free!'} sub={maxPending>0?`${maxPending} months away`:'no active loans'} to="/payoff"/>
       </div>
       {/* Defaults to 4-across, matching the metric-tile row above. Each card below holds a small
           list of real rows (lender names, "₹47,378 to clear · 8 left · 12.5% p.a." style sub-text)
@@ -611,7 +613,7 @@ export default function HubPage({ section = 'overview' }: Props) {
             behind that ₹ figure without leaving the page. A chit here means one whose payout has
             already been taken (mode='withdrew' or prizeTaken) and still has instalments left — the
             same filter chitRepayLeft/chitRepayEmi use, so this card can't drift from the tiles above. */}
-        <SectionCard dense title="🔄 Chit Repayment" total={fmtINR(d.chitRepayLeft)} monthly={fmtINR(chitRepayEmi)+"/mo"} color="var(--purple)">
+        <SectionCard dense title="🔄 Chit repayment" total={fmtINR(d.chitRepayLeft)} monthly={fmtINR(chitRepayEmi)+"/mo"} color="var(--purple)">
           {(savings as any[]).filter((v:any)=>(v.mode==='withdrew'||v.prizeTaken)&&getEff(v).pending>0).map((v:any)=>{
             const eff = getEff(v)
             return <Row key={v.id} label={v.name} value={fmtINR(v.monthly)+'/mo'}
@@ -637,14 +639,14 @@ export default function HubPage({ section = 'overview' }: Props) {
     <div className="space-y-4">
       {horizonBar}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 [&>*]:min-w-0">
-        <Card color="var(--success)" label="Savings Corpus"   value={fmtINR(savingsCorpus)}    sub={fmtINR(savingsEmi)+'/mo building'}  to="/savings"/>
+        <Card color="var(--success)" label="Savings corpus"   value={fmtINR(savingsCorpus)}    sub={fmtINR(savingsEmi)+'/mo building'}  to="/savings"/>
         <Card color="var(--info)" label="Investments"      value={fmtINR(currentVal)}       sub={`P&L ${fmtINR(currentVal-investedAmt)}`} to="/investments"/>
-        <Card color="var(--purple)" label="Monthly Income"   value={fmtINR(monthlyIncome)}    sub="active income sources"               to="/income"/>
-        <Card color="var(--success)" label="People Owe Me"    value={fmtINR(peopleOweMeTotal)} sub={`${peopleOweMeCount} pending`}       to="/people-owe"/>
+        <Card color="var(--purple)" label="Monthly income"   value={fmtINR(monthlyIncome)}    sub="active income sources"               to="/income"/>
+        <Card color="var(--success)" label="People owe me"    value={fmtINR(peopleOweMeTotal)} sub={`${peopleOweMeCount} pending`}       to="/people-owe"/>
       </div>
       <DebtLayoutToggle wide={debtWide} setWide={setDebtWide} />
       <div className={`grid ${debtWide ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-4'} gap-3 items-start`}>
-        <SectionCard dense title="🏦 Savings / Chit Funds" total={fmtINR(savingsCorpus)} monthly={fmtINR(savingsEmi)+"/mo"} color="var(--success)" note="corpus estimated from monthly contribution × months paid when not tracked directly">
+        <SectionCard dense title="🏦 Savings / chit funds" total={fmtINR(savingsCorpus)} monthly={fmtINR(savingsEmi)+"/mo"} color="var(--success)" note="corpus estimated from monthly contribution × months paid when not tracked directly">
           {(savings as any[]).slice(0,5).map((v:any)=>{
             // Same NaN hole as above: `v.monthly*paid` is NaN when monthly is unset, and the
             // trailing `?? 0` cannot catch NaN.
@@ -717,22 +719,22 @@ export default function HubPage({ section = 'overview' }: Props) {
     return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 [&>*]:min-w-0">
-        <Card color="var(--success)" label="Lifetime Earnings" value={fmtINR(lifetimeEarnings)} sub={`${(earnings as any[]).length} salary periods`} to="/earnings"/>
-        <Card color="var(--warning)" label="Closed Assets"     value={fmtINR(closedValue)} sub={`${closedCount} entries · P&L ${closedPnL>=0?'+':'−'}${fmtINR(Math.abs(closedPnL))}`} to="/closed-assets"/>
-        <Card color="var(--purple)" label="Debt Free In"      value={maxPending>0?`${maxPending} months`:'Debt free!'} sub={maxPending>0?`${debtFreeDate} at current pace`:'no active debt'} to="/payoff"/>
+        <Card color="var(--success)" label="Lifetime earnings" value={fmtINR(lifetimeEarnings)} sub={`${(earnings as any[]).length} salary periods`} to="/earnings"/>
+        <Card color="var(--warning)" label="Closed assets"     value={fmtINR(closedValue)} sub={`${closedCount} entries · P&L ${closedPnL>=0?'+':'−'}${fmtINR(Math.abs(closedPnL))}`} to="/closed-assets"/>
+        <Card color="var(--purple)" label="Debt free in"      value={maxPending>0?`${maxPending} months`:'Debt free!'} sub={maxPending>0?`${debtFreeDate} at current pace`:'no active debt'} to="/payoff"/>
         <Card color="var(--pink)" label="Break Savings?"    value={`${breakWorthy} worthy`} sub={breakWorthy>0?'could save interest':'none worth breaking'} to="/break-savings"/>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          {icon:'📅',label:'Monthly History',    sub:'Track debt month-by-month',      color:'var(--cyan)',  to:'/history'},
-          {icon:'🎯',label:'Payoff Simulator',   sub:maxPending>0?`${maxPending}mo to debt freedom`:'No active debt', color:'var(--purple)',  to:'/payoff'},
-          {icon:'💰',label:'Earnings History',   sub:`${fmtINR(lifetimeEarnings)} lifetime`, color:'var(--success)',  to:'/earnings'},
-          {icon:'📦',label:'Closed Assets',      sub:`${closedCount} entries · full P&L`, color:'var(--warning)',  to:'/closed-assets'},
+          {icon:'📅',label:'Monthly history',    sub:'Track debt month-by-month',      color:'var(--cyan)',  to:'/history'},
+          {icon:'🎯',label:'Payoff simulator',   sub:maxPending>0?`${maxPending}mo to debt freedom`:'No active debt', color:'var(--purple)',  to:'/payoff'},
+          {icon:'💰',label:'Earnings history',   sub:`${fmtINR(lifetimeEarnings)} lifetime`, color:'var(--success)',  to:'/earnings'},
+          {icon:'📦',label:'Closed assets',      sub:`${closedCount} entries · full P&L`, color:'var(--warning)',  to:'/closed-assets'},
           {icon:'💡',label:'Break Savings?',     sub:breakWorthy>0?`${breakWorthy} saving${breakWorthy>1?'s':''} worth breaking`:'None worth breaking', color:'var(--pink)',  to:'/break-savings'},
-          {icon:'📊',label:'Export Data',        sub:'Download CSV',                   color:'var(--info)',  to:'/export'},
-          {icon:'🛡️',label:'Admin Panel',        sub:'User comparison',                color:'var(--danger)',  to:'/admin'},
-          {icon:'📋',label:'Quick Lookup',       sub:'All payments this month',        color:'var(--warning)',  to:'/lookup'},
-          {icon:'📅',label:'Payment Calendar',   sub:'Month-by-month forecast',        color:'var(--cyan)',  to:'/calendar'},
+          {icon:'📊',label:'Export data',        sub:'Download CSV',                   color:'var(--info)',  to:'/export'},
+          {icon:'🛡️',label:'Admin panel',        sub:'User comparison',                color:'var(--danger)',  to:'/admin'},
+          {icon:'📋',label:'Quick lookup',       sub:'All payments this month',        color:'var(--warning)',  to:'/lookup'},
+          {icon:'📅',label:'Payment calendar',   sub:'Month-by-month forecast',        color:'var(--cyan)',  to:'/calendar'},
         ].map(q=>(
           <div key={q.label} onClick={nav(q.to)} className="rounded-xl p-3.5 cursor-pointer hover:opacity-90 transition-all flex items-center gap-3"
             style={{background:`color-mix(in srgb, ${q.color} 6%, transparent)`,border:`1px solid color-mix(in srgb, ${q.color} 13%, transparent)`}}>

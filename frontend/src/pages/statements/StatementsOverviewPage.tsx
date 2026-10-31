@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { analyticsApi, statementAccountsApi, dataManagementApi } from '../../api/statements'
 import { useStatementFilterStore } from '../../store/statementFilterStore'
-import { PageHeader, LoadingSpinner, ErrorState, EmptyState } from '../../components/common'
+import { LoadingSpinner, ErrorState, EmptyState } from '../../components/common'
 import { Kpi, CardHead, SectionCard, RankList, CategoryList, FilterBar, compact, money } from '../../components/statements/shared'
 
 export default function StatementsOverviewPage() {
@@ -45,7 +45,8 @@ export default function StatementsOverviewPage() {
 
   return (
     <div className="space-y-4 text-[13px]">
-      <PageHeader title="Statements — Your financial picture" />
+      {/* No big title: the top bar already says Statements and the tab says Overview — a second heading
+          plus the filters used to fill half a phone screen before the first number. */}
       <FilterBar years={yearsQ.data || []} accounts={accountsQ.data || []} />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">

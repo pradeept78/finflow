@@ -5,14 +5,13 @@ import { useNavigate } from 'react-router-dom'
 import { useHorizonState } from '../utils/horizonStore'
 import { advanceAll } from '../utils/projection'
 import HorizonBar from '../components/common/HorizonBar'
-import IncomeSplitCard from '../components/common/IncomeSplitCard'
 import { useQuery } from '@tanstack/react-query'
 import { loansApi, cardsApi, personalEmiApi, savingsApi, insuranceApi, investmentsApi, expensesApi, incomeApi, paidMarksApi } from '../api'
 import { masterKeyOf } from '../utils/dueRows'
 import { cardCycle, fmtDueDate } from '../utils/cardCycle'
 import { fmtINR, monthlyIncomeTotal, ordinal } from '../utils/format'
 import { calcOutflow, outflowTierLine, freeFigures } from '../utils/calcOutflow'
-import { PageHeader, LoadingSpinner, ErrorState, SortHeader } from '../components/common'
+import { PageHeader, LoadingSpinner, ErrorState, SortHeader, FromLink } from '../components/common'
 import { Download } from 'lucide-react'
 import { PhoneRow } from '../components/common/PhoneRow'
 import { rateColor } from '../utils/emiFacts'
@@ -708,7 +707,7 @@ export default function MasterTablePage() {
       {/* Print-only heading — the on-screen header/toggles below are print:hidden since a printed
           page can't be clicked. */}
       <div className="hidden print:block mb-2">
-        <div className="text-xl font-bold">All Commitments</div>
+        <div className="text-xl font-bold">All commitments</div>
         <div className="text-[11px]" style={{ color: 'var(--text-faint)' }}>
           {viewMode === 'list' ? 'Full ledger' : viewMode === 'due' ? 'Grouped by due date' : viewMode === 'type' ? 'Grouped by type' : 'Grouped by card'} · exported {new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
         </div>
@@ -798,12 +797,13 @@ export default function MasterTablePage() {
             <div className="text-[18px] font-semibold tracking-tight tabular-nums break-words">
               <span style={{ color: m.accent }}>{m.value}</span>
             </div>
-            <div className="text-[11px] leading-snug line-clamp-2" title={String(m.sub)} style={{ color: 'var(--text-faint)' }}>{m.sub}</div>
+            <div className="text-[11px] leading-snug break-words" title={String(m.sub)} style={{ color: 'var(--text-faint)' }}>{m.sub}</div>
           </div>
         ))}
       </KpiRow>
       )}
-      {!tilesCollapsed && <div className="print:hidden"><IncomeSplitCard o={shared} income={monthlyIncome} /></div>}
+      {/* "Where your income goes" lives on Overview and Budget, not repeated on every page. */}
+      {!tilesCollapsed && <div className="print:hidden"><FromLink to="/budget" className="inline-block text-[12px] font-medium" style={{ color: 'var(--orange)' }}>Where your income goes →</FromLink></div>}
       </>
       )}
 

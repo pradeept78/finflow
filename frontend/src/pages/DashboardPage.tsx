@@ -1,4 +1,4 @@
-import { PageHeader, LoadingSpinner, ErrorState } from '../components/common'
+import { PageHeader, LoadingSpinner, ErrorState, FromLink } from '../components/common'
 import { incomePct } from '../utils/incomePct'
 import { useState, useEffect, useRef } from 'react'
 import { useNavigateFrom } from '../hooks/useNavigateFrom'
@@ -7,7 +7,6 @@ import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContai
 import { useHorizonState } from '../utils/horizonStore'
 import { advanceAll } from '../utils/projection'
 import HorizonBar from '../components/common/HorizonBar'
-import IncomeSplitCard from '../components/common/IncomeSplitCard'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import axiosApi from '../api/axios'
@@ -295,7 +294,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex-shrink-0 w-44">
             <div className="text-[12px] font-medium mb-1" style={{color:'var(--text-muted)'}}>
-              {trendData.length>=2?'Net Worth Trend':'Net Worth Trend'}
+              Net worth trend
             </div>
             {trendData.length>=2 ? (
               <ResponsiveContainer width="100%" height={44}>
@@ -330,7 +329,7 @@ export default function DashboardPage() {
                Hub, Budget, Calendar and Lookup. The hand-built version here grouped chit repayment
                into "EMIs" and — because `persEmi` was a zero placeholder (now fixed above) — left
                I Owe out of the line entirely, while the total above it included both. */
-            {label:'Monthly Outflow', value:fmtINR(recurringOutflow),
+            {label:'Monthly outflow', value:fmtINR(recurringOutflow),
               /* Tier split only. This card already links through to /lookup, which itemises every
                  component — repeating all ten here made the card unreadable. */
               sub:outflowTierLine(o), accent:'var(--cyan)', to:'/lookup'},
@@ -346,7 +345,7 @@ export default function DashboardPage() {
                   {(m as any).delta>0?'↑':'↓'} {fmtINR(Math.abs((m as any).delta))}
                 </div>
               )}
-              <div className="text-[11px] mt-0.5 truncate" style={{color: 'var(--text-faint)'}}>{m.sub}</div>
+              <div className="text-[11px] mt-0.5 leading-snug break-words" style={{color: 'var(--text-faint)'}}>{m.sub}</div>
               </div>
             </div>
           ))}
@@ -388,7 +387,9 @@ export default function DashboardPage() {
         )
       })()}
 
-      <IncomeSplitCard o={o} income={monthlyIncome} />
+      {/* "Where your income goes" lives on Overview and Budget; repeating it here was one more screen of
+          the same bar on a phone. */}
+      <FromLink to="/hub/overview" className="inline-block text-[12px] font-medium" style={{ color: 'var(--orange)' }}>Where your income goes →</FromLink>
 
       {/* 3-COL GRID */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
@@ -396,7 +397,7 @@ export default function DashboardPage() {
         {/* DEBT BREAKDOWN */}
         <div className="rounded-2xl overflow-hidden" style={{background:'var(--bg-card)'}}>
           <div className="px-4 py-2.5 flex items-center justify-between" style={{background:'transparent'}}>
-            <span className="text-[13px] font-semibold" style={{color:'var(--text)'}}>Debt Breakdown</span>
+            <span className="text-[13px] font-semibold" style={{color:'var(--text)'}}>Debt breakdown</span>
             <span className="mono font-bold text-[13px]" style={{color:'var(--danger)'}}>{fmtINR(totalDebt)}</span>
           </div>
           {totalDebt > 0 && (
@@ -410,13 +411,13 @@ export default function DashboardPage() {
           )}
           <div>
             {[
-              {label:'Principal Remaining',val:totalLoans,sub:`${loans.filter((l:any)=>getEff(l).pending>0).length} loans · ${fmtINR(loanEmi)}/mo`,color:'text-red-400',to:'/loans'},
-              {label:'Interest Remaining',val:totalLoanIntLeft,sub:'future cost of borrowing',color:'text-red-400',to:'/loans'},
+              {label:'Principal remaining',val:totalLoans,sub:`${loans.filter((l:any)=>getEff(l).pending>0).length} loans · ${fmtINR(loanEmi)}/mo`,color:'text-red-400',to:'/loans'},
+              {label:'Interest remaining',val:totalLoanIntLeft,sub:'future cost of borrowing',color:'text-red-400',to:'/loans'},
               totalCC>0&&{label:'CC Outstanding',val:totalCC,sub:'pay this cycle',color:'text-red-400',to:'/cards'},
-              totalCCEmiPending>0&&{label:'CC EMI Pending',val:totalCCEmiPending,sub:`${fmtINR(ccEmi)}/mo`,color:'text-yellow-400',to:'/cards'},
+              totalCCEmiPending>0&&{label:'CC EMI pending',val:totalCCEmiPending,sub:`${fmtINR(ccEmi)}/mo`,color:'text-yellow-400',to:'/cards'},
               ccSpends>0&&{label:'CC Spends',val:ccSpends,sub:'due next bill — clear now',color:'text-yellow-400',to:'/cards'},
               iOweTotal>0&&{label:'I Owe (Personal)',val:iOweTotal,sub:`${fmtINR(persEmi)}/mo`,color:'text-red-400',to:'/personal'},
-              chitRepayDebt>0&&{label:'Chit Repayment',val:chitRepayDebt,sub:`${fmtINR(withdrewMo)}/mo`,color:'text-red-400',to:'/savings'},
+              chitRepayDebt>0&&{label:'Chit repayment',val:chitRepayDebt,sub:`${fmtINR(withdrewMo)}/mo`,color:'text-red-400',to:'/savings'},
             ].filter(Boolean).filter((r:any)=>r.val>0).map((r:any)=>(
               <div key={r.label} className="flex items-center justify-between px-4 py-2 cursor-pointer transition-colors rounded-lg mx-1"
                 style={{}}
@@ -446,7 +447,7 @@ export default function DashboardPage() {
         <div className="rounded-2xl overflow-hidden" style={{background:'var(--bg-card)'}}>
           <button type="button" onClick={()=>navigate('/payoff')} title="Open the payoff plan — see which debt to clear first with this free cash"
             className="w-full px-4 py-2.5 flex items-center justify-between gap-2 text-left hover:bg-white/5" style={{background:'transparent',border:'none',cursor:'pointer'}}>
-            <span className="text-[13px] font-semibold" style={{color:'var(--text)'}}>Payoff Priority</span>
+            <span className="text-[13px] font-semibold" style={{color:'var(--text)'}}>Payoff priority</span>
             <span className="flex items-center gap-2">
               {freeCash>0&&<span className="text-[11px] text-green-400 font-bold">{fmtINR(freeCash)} free/mo</span>}
               <span className="text-[11px]" style={{color:'var(--text-faint)'}}>Payoff plan →</span>
@@ -454,7 +455,7 @@ export default function DashboardPage() {
           </button>
           <div className="p-3 space-y-2">
             {totalCC>0&&(
-              <div onClick={()=>navigate('/cards')} role="button" title="Open Credit Cards" className="py-2.5 px-3 rounded-lg cursor-pointer transition-all hover:brightness-125 hover:-translate-y-px" style={{background:'color-mix(in srgb, var(--danger) 8%, transparent)',border:'1px solid color-mix(in srgb, var(--danger) 15%, transparent)'}}>
+              <div onClick={()=>navigate('/cards')} role="button" title="Open credit cards" className="py-2.5 px-3 rounded-lg cursor-pointer transition-all hover:brightness-125 hover:-translate-y-px" style={{background:'color-mix(in srgb, var(--danger) 8%, transparent)',border:'1px solid color-mix(in srgb, var(--danger) 15%, transparent)'}}>
                 <div className="flex justify-between items-start mb-1">
                   <span className="text-[11px] font-bold text-red-400">⚡ CC Outstanding</span>
                   <span className="mono text-red-400 text-[11px] font-bold">{fmtINR(totalCC)}</span>
@@ -463,7 +464,7 @@ export default function DashboardPage() {
               </div>
             )}
             {ccSpends>0&&(
-              <div onClick={()=>navigate('/cards')} role="button" title="Open Credit Cards" className="py-2.5 px-3 rounded-lg cursor-pointer transition-all hover:brightness-125 hover:-translate-y-px" style={{background:'color-mix(in srgb, var(--warning) 8%, transparent)',border:'1px solid color-mix(in srgb, var(--warning) 15%, transparent)'}}>
+              <div onClick={()=>navigate('/cards')} role="button" title="Open credit cards" className="py-2.5 px-3 rounded-lg cursor-pointer transition-all hover:brightness-125 hover:-translate-y-px" style={{background:'color-mix(in srgb, var(--warning) 8%, transparent)',border:'1px solid color-mix(in srgb, var(--warning) 15%, transparent)'}}>
                 <div className="flex justify-between items-start mb-1">
                   <span className="text-[11px] font-bold text-orange-400">💳 CC Spends Due</span>
                   <span className="mono text-orange-400 text-[11px] font-bold">{fmtINR(ccSpends)}</span>
@@ -498,17 +499,17 @@ export default function DashboardPage() {
         {/* ASSETS & INCOME */}
         <div className="rounded-2xl overflow-hidden" style={{background:'var(--bg-card)'}}>
           <div className="px-4 py-2.5 flex items-center justify-between" style={{background:'transparent'}}>
-            <span className="text-[13px] font-semibold" style={{color:'var(--text)'}}>Assets & Income</span>
+            <span className="text-[13px] font-semibold" style={{color:'var(--text)'}}>Assets & income</span>
             <span className="mono font-bold text-[13px]" style={{color:'var(--success)'}}>{fmtINR(totalAssets)}</span>
           </div>
           <div>
             {[
               /* Every row here owns a page, so every row links to it. This block was entirely
                  static — the numbers with the most obvious "show me why" were dead text. */
-              {label:'Savings Corpus',val:totalSavings,sub:`${savings.filter((v:any)=>v.mode!=='withdrew'&&getEff(v).pending>0).length} building · ${fmtINR(savMo)}/mo`,color:'text-green-400',to:'/savings'},
+              {label:'Savings corpus',val:totalSavings,sub:`${savings.filter((v:any)=>v.mode!=='withdrew'&&getEff(v).pending>0).length} building · ${fmtINR(savMo)}/mo`,color:'text-green-400',to:'/savings'},
               {label:'Investments',val:totalCurrentValue,sub:`${fmtINR(totalInvested)} invested${investmentPnL!==0?` · ${investmentPnL>0?'+':''}${fmtINR(investmentPnL)} P&L`:''}`,color:'text-blue-400',to:'/investments'},
               netOwnedAssets!==0&&{label:'Owned Assets (net)',val:netOwnedAssets,sub:`gross ${fmtINR(totalOwnedAssets)} − EMI pending`,color:netOwnedAssets>=0?'text-blue-400':'text-red-400',neg:netOwnedAssets<0,to:'/closed-loans'},
-              peopleOweTotal>0&&{label:'People Owe Me',val:peopleOweTotal,sub:`${(peopleOweMe as any[]).filter((p:any)=>p.status!=='Paid'&&p.status!=='Settled').length} pending`,color:'text-green-400',to:'/people-owe'},
+              peopleOweTotal>0&&{label:'People owe me',val:peopleOweTotal,sub:`${(peopleOweMe as any[]).filter((p:any)=>p.status!=='Paid'&&p.status!=='Settled').length} pending`,color:'text-green-400',to:'/people-owe'},
             ].filter(Boolean).map((r:any)=>(
               <div key={r.label} onClick={()=>r.to && navigate(r.to)} title={r.to?`Open ${r.label}`:undefined}
                    className={`flex items-center justify-between px-4 py-2 ${r.to?'cursor-pointer transition-colors hover:bg-[var(--bg-hover)]':''}`}>
@@ -516,12 +517,12 @@ export default function DashboardPage() {
                 <div className={`mono font-bold text-[13px] ${r.color}`}>{r.neg?'−':''}{fmtINR(Math.abs(r.val))}</div>
               </div>
             ))}
-            <div className="flex items-center justify-between px-4 py-2 cursor-pointer transition-colors hover:bg-[var(--bg-hover)]" title="Open Monthly Income" onClick={()=>navigate('/income')}>
-              <div><div className="text-[13px]">Monthly Income <span className="text-[11px]" style={{color:'var(--text-faint)'}}>›</span></div><div className="text-[11px]" style={{color:'var(--text-faint)'}}>{income.filter((v:any)=>v.active!==false).length} sources</div></div>
+            <div className="flex items-center justify-between px-4 py-2 cursor-pointer transition-colors hover:bg-[var(--bg-hover)]" title="Open monthly income" onClick={()=>navigate('/income')}>
+              <div><div className="text-[13px]">Monthly income <span className="text-[11px]" style={{color:'var(--text-faint)'}}>›</span></div><div className="text-[11px]" style={{color:'var(--text-faint)'}}>{income.filter((v:any)=>v.active!==false).length} sources</div></div>
               <div className="mono font-bold text-[13px] text-green-400">{fmtINR(monthlyIncome)}</div>
             </div>
-            <div className="flex items-center justify-between px-4 py-2 cursor-pointer transition-colors hover:bg-[var(--bg-hover)]" title="Open Recurring Outflow" onClick={()=>navigate('/lookup')}>
-              <div><div className="text-[13px]">Recurring Outflow <span className="text-[11px]" style={{color:'var(--text-faint)'}}>›</span></div><div className="text-[11px]" style={{color:'var(--text-faint)'}}>EMIs + savings + expenses</div></div>
+            <div className="flex items-center justify-between px-4 py-2 cursor-pointer transition-colors hover:bg-[var(--bg-hover)]" title="Open recurring outflow" onClick={()=>navigate('/lookup')}>
+              <div><div className="text-[13px]">Recurring outflow <span className="text-[11px]" style={{color:'var(--text-faint)'}}>›</span></div><div className="text-[11px]" style={{color:'var(--text-faint)'}}>EMIs + savings + expenses</div></div>
               <div className="mono font-bold text-[13px] text-yellow-400">{fmtINR(recurringOutflow)}</div>
             </div>
             <div className="flex items-center justify-between px-4 py-2.5" style={{background:'color-mix(in srgb, var(--success-strong) 6%, transparent)'}}>
@@ -542,7 +543,7 @@ export default function DashboardPage() {
           <div className="rounded-2xl overflow-hidden w-full max-w-3xl max-h-[90vh] overflow-y-auto" style={{background:'var(--bg-card)'}} onClick={e=>e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-3.5 border-b sticky top-0 z-10" style={{borderColor:'var(--border)',background:'var(--bg-card)'}}>
               <div>
-                <div className="font-bold text-[13px]">Financial Charts</div>
+                <div className="font-bold text-[13px]">Financial charts</div>
                 <div className="text-[11px]" style={{color:'var(--text-muted)'}}>Debt · Cash flow · Net worth trajectory · History</div>
               </div>
               <button onClick={()=>setShowChart(false)} className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-red-500/20 text-red-400 font-bold">✕</button>
@@ -551,14 +552,14 @@ export default function DashboardPage() {
 
               {/* Debt Composition */}
               <div>
-                <div className="text-[13px] font-semibold mb-3" style={{color:'var(--text)'}}>Debt Composition</div>
+                <div className="text-[13px] font-semibold mb-3" style={{color:'var(--text)'}}>Debt composition</div>
                 <div className="space-y-2">
                   {[
-                    {label:'Loan Principal',val:totalLoans,color:'var(--danger-strong)'},
-                    {label:'Future Interest',val:totalLoanIntLeft,color:'#f97316'},
+                    {label:'Loan principal',val:totalLoans,color:'var(--danger-strong)'},
+                    {label:'Future interest',val:totalLoanIntLeft,color:'#f97316'},
                     {label:'CC total',val:totalCC+totalCCEmiPending+ccSpends,color:'#eab308',sub:'EMI+spends+outstanding'},
                     {label:'I Owe (Personal)',val:iOweTotal,color:'#f59e0b'},
-                    {label:'Chit Repayment',val:chitRepayDebt,color:'#a855f7'},
+                    {label:'Chit repayment',val:chitRepayDebt,color:'#a855f7'},
                   ].filter(d=>d.val>0).map(d=>{
                     const tot=totalLoans+totalLoanIntLeft+totalCC+totalCCEmiPending+ccSpends+iOweTotal+chitRepayDebt
                     const pct=tot>0?Math.round(d.val/tot*100):0
@@ -678,7 +679,7 @@ export default function DashboardPage() {
 
               {/* Net Worth History — last */}
               <div>
-                <div className="text-[13px] font-semibold mb-3" style={{color:'var(--text)'}}>Net Worth History</div>
+                <div className="text-[13px] font-semibold mb-3" style={{color:'var(--text)'}}>Net worth history</div>
                 {trendData.length >= 2 ? (
                   <ResponsiveContainer width="100%" height={180}>
                     <AreaChart data={trendData.map((s:any)=>({mo:s.monthYear?.slice(0,7),nw:Math.round(Number(s.netWorth??0)/1000)}))} margin={{left:0,right:0,top:4,bottom:0}}>
@@ -694,7 +695,7 @@ export default function DashboardPage() {
                   <div className="h-32 rounded-xl flex flex-col items-center justify-center gap-2" style={{background:'var(--bg-base)'}}>
                     <span className="text-2xl">📸</span>
                     <div className="text-[11px]" style={{color:'var(--text-muted)'}}>Take monthly snapshots to see trend</div>
-                    <div className="text-[11px]" style={{color:'var(--text-faint)'}}>Settings → Save Snapshot</div>
+                    <div className="text-[11px]" style={{color:'var(--text-faint)'}}>Settings → save snapshot</div>
                   </div>
                 )}
               </div>
