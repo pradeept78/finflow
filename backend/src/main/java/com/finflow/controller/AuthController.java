@@ -16,10 +16,17 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final com.finflow.service.InviteService inviteService;
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<AuthResponse>> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.ok(ApiResponse.ok("Registered successfully", authService.register(request)));
+    }
+
+    /** Public: tells the sign-up page whether to ask for an invite code, or that sign-up is closed. */
+    @GetMapping("/signup-mode")
+    public ResponseEntity<ApiResponse<String>> signupMode() {
+        return ResponseEntity.ok(ApiResponse.ok(inviteService.mode()));
     }
 
     @PostMapping("/login")

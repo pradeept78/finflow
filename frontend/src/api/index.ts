@@ -1,12 +1,14 @@
 import api from './axios'
 import { withCycleDates } from '../utils/cardCycle'
-import type { LoginRequest, RegisterRequest } from '../types'
+import type { LoginRequest, RegisterRequest, SignupMode, AdminUser, InviteCode } from '../types'
 import type { Loan, CreditCard, PersonalEmi, Saving, Investment, InsurancePolicy, IncomeEntry, Expense, PeopleOwe, ClosedLoan } from '../types'
 
 // Auth
 export const authApi = {
   login: (data: LoginRequest) => api.post('/auth/login', data),
   register: (data: RegisterRequest) => api.post('/auth/register', data),
+  /** 'invite' (sign-up needs a code from an admin), 'open' or 'closed' */
+  signupMode: () => api.get<{ data: SignupMode }>('/auth/signup-mode').then(r => r.data.data),
 }
 
 // Generic CRUD factory
@@ -40,16 +42,16 @@ export const expensesApi    = crud<Expense>('expenses')
 export const peopleOweApi   = crud<PeopleOwe>('people-owes')
 export const closedLoansApi = crud<ClosedLoan>('closed-loans')
 
+// Account administration only: admins see who has an account, never anyone's finances.
 export const adminApi = {
   isAdmin: () => api.get<{ data: boolean }>('/admin/me/is-admin').then(r => r.data.data),
-  getUsers: () => api.get<{ data: any[] }>('/admin/users').then(r => r.data.data),
+  getUsers: () => api.get<{ data: AdminUser[] }>('/admin/users').then(r => r.data.data),
   resetPassword: (id: number, password: string) => api.post(`/admin/users/${id}/reset-password`, { password }),
   setRole: (id: number, role: string) => api.patch(`/admin/users/${id}/role`, { role }),
   deleteUser: (id: number) => api.delete(`/admin/users/${id}`),
-  // A specific user's raw loans/cards/personal/savings/investments/expenses/insurance/income —
-  // the per-item counterpart to getUsers()'s 40 aggregate totals. Fetched on demand (only once an
-  // admin actually expands a user's full ledger), never bundled into the main user list.
-  getUserCommitments: (id: number) => api.get<{ data: any }>(`/admin/users/${id}/commitments`).then(r => r.data.data),
+  getInvites: () => api.get<{ data: { mode: SignupMode; invites: InviteCode[] } }>('/admin/invites').then(r => r.data.data),
+  createInvite: (note: string) => api.post<{ data: InviteCode }>('/admin/invites', { note }).then(r => r.data.data),
+  revokeInvite: (id: number) => api.delete(`/admin/invites/${id}`),
 }
 
 export const snapshotApi = {

@@ -125,6 +125,23 @@ Then `docker compose up -d backend`.
 
 ---
 
+## Sign-up and admins
+
+Sign-up is **invite-only** by default. An admin creates a single-use code on `/admin` → Invites and sends
+its link (`/register?invite=XXXX-XXXX-XXXX`, which fills the code in). Change it with `SIGNUP_MODE` in `.env`
+(compose passes it to the backend), then `docker compose up -d backend`:
+
+| `SIGNUP_MODE` | Who can create an account |
+|---|---|
+| `invite` (default) | someone with an unused invite code |
+| `open` | anyone who can reach the app |
+| `closed` | nobody |
+
+Admins see **account details only** (name, email, role, joined, last seen) and can reset passwords, change
+roles, delete accounts and manage invites. They cannot see anyone's loans, cards, balances or totals.
+
+---
+
 ## Secrets
 
 `JWT_SECRET` and `SPRING_DATASOURCE_PASSWORD` have **no fallback value** in `application.yml`

@@ -60,6 +60,9 @@ jwt:
   expiration: ${JWT_EXPIRATION:86400000}
 
 app:
+  # Who may create an account: invite (default; needs a code from /admin), open, or closed. See InviteService.
+  signup:
+    mode: ${SIGNUP_MODE:invite}
   cors:
     # Port wildcards, because the Vite dev server does not always land on 3000 — if the Docker
     # frontend already holds that port it moves to 3001, and the browser's Origin header survives
