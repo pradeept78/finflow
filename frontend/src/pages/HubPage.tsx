@@ -265,7 +265,7 @@ export default function HubPage({ section = 'overview' }: Props) {
   const cardThisMonth  = o.card
   const totalOutflow   = o.total
   // Free / month = income − committed (card bills not taken off) — same figure as every page (calcOutflow.freeFigures)
-  const freeCash       = freeFigures(o, monthlyIncome).free
+  const { free: freeCash, left: leftThisMonth } = freeFigures(o, monthlyIncome)
   // Friends' EMIs on your cards: the bank charges them to you each month and your friend pays you back, so they are neither
   // your cost nor your profit — they are left out of Outflow, and therefore out of Free / Month too. Shown beside it so the
   // figure isn't mistaken for money that is fully yours when the bank is actually debiting a bit more.
@@ -465,7 +465,7 @@ export default function HubPage({ section = 'overview' }: Props) {
              breaks the same figure out row by row. */
           sub={horizon && oToday ? `${deltaTxt(oToday.total ?? 0, o.total ?? totalOutflow)} · ${outflowTierLine(o)}` : outflowTierLine(o)}
           to="/lookup"/>
-        <Card color={freeCash>=0?'var(--success)':'var(--danger)'} label="Free / month" value={(freeCash>=0?'+':'−')+fmtINR(Math.abs(freeCash))} suffix={incomePct(freeCash, monthlyIncome)} title={`Free = income ${fmtINR(monthlyIncome)} − committed ${fmtINR(o.locked)} (EMIs, bills, insurance, savings, SIPs). Card bills are not taken off — Left this month on Lookup includes them. Committed = ${fmtINR(o.locked)} of ${fmtINR(monthlyIncome)} income.${friendsEmiMo>0 ? ` Friends' EMIs (${fmtINR(friendsEmiMo)}/mo) are left out — they repay you.` : ''} The % is the share of income already committed; what's left over is not yet assigned to anything (it is not counted as savings — your savings and SIPs are already inside the committed part).`} sub={`${horizon ? (typicalSpend ? 'typical card spend' : 'no new card spend') : 'after card bill'} · ${fmtINR(totalOutflow)} committed${monthlyIncome>0 ? ` (${Math.round(totalOutflow/monthlyIncome*100)}%)` : ''}${friendsEmiMo>0 ? ` · excl. ${fmtINR(friendsEmiMo)} friends'` : ''}`} to="/budget"/>
+        <Card color={freeCash>=0?'var(--success)':'var(--danger)'} label="Free / month" value={(freeCash>=0?'+':'−')+fmtINR(Math.abs(freeCash))} suffix={incomePct(freeCash, monthlyIncome)} title={`Free = income ${fmtINR(monthlyIncome)} − committed ${fmtINR(o.locked)} (EMIs, bills, insurance, savings, SIPs). Card bills are not taken off — Left this month on Lookup includes them. Committed = ${fmtINR(o.locked)} of ${fmtINR(monthlyIncome)} income.${friendsEmiMo>0 ? ` Friends' EMIs (${fmtINR(friendsEmiMo)}/mo) are left out — they repay you.` : ''} The % is the share of income already committed; what's left over is not yet assigned to anything (it is not counted as savings — your savings and SIPs are already inside the committed part).`} sub={`before card bills · left this month ${leftThisMonth>=0?'+':'−'}${fmtINR(leftThisMonth)} · ${fmtINR(o.locked)} committed${monthlyIncome>0 ? ` (${Math.round(o.locked/monthlyIncome*100)}%)` : ''}${friendsEmiMo>0 ? ` · excl. ${fmtINR(friendsEmiMo)} friends'` : ''}`} to="/budget"/>
       </div>
       {(totalDebt > 0 || monthlyIncome > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 [&>*]:min-w-0">

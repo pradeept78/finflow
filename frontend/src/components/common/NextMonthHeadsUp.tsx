@@ -1,42 +1,43 @@
+import { useQuery } from '@tanstack/react-query'
+import { loansApi, cardsApi, personalEmiApi, savingsApi, investmentsApi } from '../../api'
 import { fmtINR } from '../../utils/format'
 import { nextMonthHeadsUp, fmtDueDate } from '../../utils/cardCycle'
+import { newCommitmentsNextMonth } from '../../utils/nextMonth'
+
+const KIND_WORD: Record<string, string> = { loan: 'loan', 'card-emi': 'card EMI', iowe: 'I owe EMI', savings: 'savings', sip: 'SIP' }
 
 /**
- * Heads-up in the current month: what's already set to land on next month's card bills — EMIs taken after
- * the statement date (first billed next month) and spends logged after it. Not part of this month's total;
- * it explains why next month will be higher. Renders nothing when there's nothing new.
+ * Heads-up in the current month: what's already set for next month — new commitments whose first payment
+ * is next month (loans, card EMIs, I Owe, savings, SIPs; utils/nextMonth) and card spends already on next
+ * month's bills (utils/cardCycle). None of it is in this month's total; it explains next month's jump.
+ * A slim pill with the full list in its tooltip. Reads the shared query cache, so any page can show it.
+ * Renders nothing when there's nothing new.
  */
-export default function NextMonthHeadsUp({ cards, className = '' }: { cards: any[]; className?: string }) {
-  const h = nextMonthHeadsUp(cards)
-  if (!h.newEmis.length && !h.spends.length && !h.friendEmis.length) return null
-  const extra = h.newEmiTotal + h.spendTotal
+export default function NextMonthHeadsUp({ className = '' }: { className?: string }) {
+  const { data: loans = [] } = useQuery({ queryKey: ['loans'], queryFn: loansApi.getAll })
+  const { data: cards = [] } = useQuery({ queryKey: ['cards'], queryFn: cardsApi.getAll })
+  const { data: personal = [] } = useQuery({ queryKey: ['personal'], queryFn: personalEmiApi.getAll })
+  const { data: savings = [] } = useQuery({ queryKey: ['savings'], queryFn: savingsApi.getAll })
+  const { data: investments = [] } = useQuery({ queryKey: ['investments'], queryFn: investmentsApi.getAll })
+
+  const fresh = newCommitmentsNextMonth({ loans: loans as any[], cards: cards as any[], personal: personal as any[], savings: savings as any[], investments: investments as any[] })
+  const own = fresh.filter(x => !x.owedBy), friends = fresh.filter(x => x.owedBy)
+  const h = nextMonthHeadsUp(cards as any[])
+  const items = [
+    ...own.map(x => `${x.label} ${KIND_WORD[x.kind]} +${fmtINR(x.amount)}/mo from ${fmtDueDate(x.firstDue)}`),
+    ...h.spends.map(s => `${s.card} spends ${fmtINR(s.amount)} · due ${fmtDueDate(s.due)}`),
+  ]
+  if (!items.length && !friends.length) return null
+  const extra = own.reduce((s, x) => s + x.amount, 0) + h.spendTotal
+  const friendLines = friends.map(x => `${x.label} ${fmtINR(x.amount)}/mo — carried for ${x.owedBy}, not in your totals`)
+  const title = [`Already set for ${h.month} (first payment next month, or spent after this cycle's statement date — not in this month's total):`,
+    ...items.map(x => `• ${x}`), ...friendLines.map(x => `• ${x}`)].join('\n')
   return (
-    <div className={`rounded-2xl px-4 py-3 text-[12px] ${className}`}
-      style={{ background: 'color-mix(in srgb, var(--info) 6%, var(--bg-card))', border: '1px solid var(--hairline)', borderLeft: '3px solid var(--info)' }}>
-      <div className="flex items-baseline justify-between gap-3 mb-1.5">
-        <div className="text-[13px] font-semibold">Heads-up for {h.month}</div>
-        {extra > 0 && <div className="mono font-semibold tabular-nums" style={{ color: 'var(--warning)' }}>+{fmtINR(extra)}</div>}
-      </div>
-      <ul className="space-y-1" style={{ color: 'var(--text-muted)' }}>
-        {h.newEmis.map(e => (
-          <li key={`e-${e.card}-${e.label}`}>
-            New EMI <b style={{ color: 'var(--text)' }}>{e.label}</b> on {e.card}: <span className="mono" style={{ color: 'var(--text)' }}>+{fmtINR(e.emi)}/mo</span> from {fmtDueDate(e.firstDue)}
-          </li>
-        ))}
-        {h.spends.map(s => (
-          <li key={`s-${s.card}-${s.due.getTime()}`}>
-            Spends already on the next {s.card} bill: <span className="mono" style={{ color: 'var(--text)' }}>{fmtINR(s.amount)}</span>, due {fmtDueDate(s.due)}
-          </li>
-        ))}
-        {h.friendEmis.map(e => (
-          <li key={`f-${e.card}-${e.label}`}>
-            {e.label} on {e.card} starts too ({fmtINR(e.emi)}/mo) — carried for {e.owedBy}, not in your totals
-          </li>
-        ))}
-      </ul>
-      <div className="mt-1.5 text-[11px]" style={{ color: 'var(--text-faint)' }}>
-        Taken or spent after this cycle's statement date, so they're billed next month — not in this month's total.
-      </div>
+    <div title={title}
+      className={`text-[11px] px-2.5 py-1 rounded-lg min-w-0 max-w-full whitespace-nowrap overflow-hidden text-ellipsis ${className}`}
+      style={{ background: 'color-mix(in srgb, var(--info) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--info) 18%, transparent)', color: 'var(--text-faint)' }}>
+      📅 <span style={{ color: 'var(--info)', fontWeight: 700 }}>{h.month}{extra > 0 ? `: +${fmtINR(extra)}` : ''}</span>
+      {items.length > 0 ? <> — {items.join(' · ')}</> : <> — {friendLines.join(' · ')}</>}
     </div>
   )
 }

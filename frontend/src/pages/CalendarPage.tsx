@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { loansApi, cardsApi, personalEmiApi, savingsApi, investmentsApi, insuranceApi, expensesApi, incomeApi, paidMarksApi } from '../api'
-import { calcOutflow, outflowTierLine } from '../utils/calcOutflow'
+import { calcOutflow, outflowTierLine, freeFigures } from '../utils/calcOutflow'
 import { cardCycle } from '../utils/cardCycle'
 import { ioweFacts } from '../utils/iowe'
 import { KindStrip } from '../components/common/KindStrip'
@@ -472,7 +472,11 @@ export default function CalendarPage() {
             </div>
             <div className="text-right">
               <div className="text-[12px] font-medium mb-1" style={{color:'var(--text-muted)'}}>Left this month · after card bills</div>
-              <div className="text-[24px] font-semibold tracking-tight tabular-nums" style={{color:months[0].free>=0?'var(--success)':'var(--danger)'}}>{months[0].free>=0?'+':'-'}{fmtINR(Math.abs(months[0].free))}</div>
+              <div className="text-[24px] font-semibold tracking-tight tabular-nums" style={{color:months[0].free>=0?'var(--success)':'var(--danger)'}}>{months[0].free>=0?'+':'−'}{fmtINR(Math.abs(months[0].free))}</div>
+              {/* The other shared figure, same name as on Hub / Dashboard / Lookup, so the two can be told apart */}
+              {(() => { const f = freeFigures(shared, monthlyIncome).free; return (
+                <div className="text-[11px] tabular-nums" style={{color:'var(--text-faint)'}}>Free / month {f>=0?'+':'−'}{fmtINR(f)} · before card bills</div>
+              ) })()}
             </div>
           </div>
           {/* Own full-width row under both blocks: inside the left column the wide pill strip forced the

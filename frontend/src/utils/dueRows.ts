@@ -1,5 +1,6 @@
 import { getEff, resolveDueDay, isDueThisMonth, isOneOff, toMonthly } from './format'
 import { cardCycle, fmtDueDate, emiStartsLater } from './cardCycle'
+import { startsAfterThisMonth } from './nextMonth'
 import { isLive } from './ended'
 import { ioweFacts } from './iowe'
 import { isChitRepaying } from './kinds'
@@ -62,6 +63,7 @@ export function buildDueRows(data: DueData, now: Date = new Date()): { rows: Due
 
   // Loans
   loans.forEach(l => {
+    if (startsAfterThisMonth(l, now)) return     // first EMI after this month — not due yet
     const eff = getEff(l)
     if (eff.pending <= 0) return
     rows.push({ key: `loan-${l.id}`, kind: 'loan', label: l.lender, sub: l.loanType ?? '', amount: Number(l.emi ?? 0), dueDay: resolveDueDay(l), ref: l, pending: eff.pending, isLast: eff.pending === 1 })
@@ -113,6 +115,7 @@ export function buildDueRows(data: DueData, now: Date = new Date()): { rows: Due
 
   // I Owe: EMI / interest-only, plus a lump sum falling due this month.
   personal.forEach(p => {
+    if (startsAfterThisMonth(p, now)) return
     if (p.active === false) return
     if (Number(p.emi ?? 0) > 0) {
       const isOpen = ioweFacts(p).mode !== 'amortising'
@@ -139,6 +142,7 @@ export function buildDueRows(data: DueData, now: Date = new Date()): { rows: Due
 
   // Savings / chit: still-building is a savings contribution; paid-out is a repayment.
   savings.forEach(v => {
+    if (startsAfterThisMonth(v, now)) return
     const eff = getEff(v)
     if (eff.pending <= 0) return
     const repaying = isChitRepaying(v)
@@ -168,6 +172,7 @@ export function buildDueRows(data: DueData, now: Date = new Date()): { rows: Due
 
   // SIP / investments
   investments.forEach(v => {
+    if (startsAfterThisMonth(v, now)) return
     if (!isLive(v) || !(Number(v.monthly ?? 0) > 0)) return
     rows.push({ key: `inv-${v.id}`, kind: 'sip', label: v.name, sub: v.investType ?? 'SIP', amount: Number(v.monthly), dueDay: resolveDueDay(v), ref: v })
   })

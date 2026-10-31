@@ -8,6 +8,8 @@ import { fmtINR, getEff, resolveDueDay, isPaidThisMonth, monthlyIncomeTotal, ord
 import { calcLoanSplit } from '../utils/loanCalc'
 import { emiFacts } from '../utils/emiFacts'
 import { Plus, Pencil, Trash2, Archive, ChevronDown } from 'lucide-react'
+import NextMonthHeadsUp from '../components/common/NextMonthHeadsUp'
+import { startsAfterThisMonth } from '../utils/nextMonth'
 import { MoreFields } from '../components/common/MoreFields'
 import toast from 'react-hot-toast'
 import { KpiRow } from '../components/common/KpiTile'
@@ -84,7 +86,12 @@ export default function LoansPage() {
   const pickedLoans = activeLoans.filter((l: any) => wi.picked.has(String(l.id)))
   const pickNeed = pickedLoans.reduce((s: number, l: any) => s + getEff(l).pending * Number(l.emi ?? 0), 0)
   const pickFree = pickedLoans.reduce((s: number, l: any) => s + Number(l.emi ?? 0), 0)
-  const totalEmi = activeLoans.reduce((s: number, l: any) => s + Number(l.emi ?? 0), 0)
+  // EMIs paid this month: a loan whose first EMI is after this month isn't one yet (utils/nextMonth) — same
+  // rule as every total; its EMI shows as "+₹X from Nov" instead.
+  const notStarted = activeLoans.filter((l: any) => startsAfterThisMonth(l))
+  const totalEmi = activeLoans.filter((l: any) => !startsAfterThisMonth(l)).reduce((s: number, l: any) => s + Number(l.emi ?? 0), 0)
+  const startingEmi = notStarted.reduce((s: number, l: any) => s + Number(l.emi ?? 0), 0)
+  const nextMonthName = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1).toLocaleDateString('en-IN', { month: 'short' })
   const totalPending = loans.reduce((s: number, l: any) => { const e = getEff(l), t = l.tenure ?? (e.paid + e.pending); return s + calcLoanSplit(l.amount ?? 0, l.emi ?? 0, t, e.paid, l.principalPaid ?? undefined).princLeft }, 0)
   const totalIntLeft = loans.reduce((s: number, l: any) => { const e = getEff(l), t = l.tenure ?? (e.paid + e.pending); return s + calcLoanSplit(l.amount ?? 0, l.emi ?? 0, t, e.paid, l.principalPaid ?? undefined).intLeft }, 0)
   const totalIntPaid = loans.reduce((s: number, l: any) => { const e = getEff(l), t = l.tenure ?? (e.paid + e.pending); return s + calcLoanSplit(l.amount ?? 0, l.emi ?? 0, t, e.paid, l.principalPaid ?? undefined).intPaid }, 0)
@@ -154,7 +161,7 @@ export default function LoansPage() {
 
   // Footer sums scoped to the type filter above, same formulas as the unfiltered totals.
   const filteredActiveLoans = sorted.filter((l: any) => getEff(l).pending > 0)
-  const filteredTotalEmi = filteredActiveLoans.reduce((s: number, l: any) => s + Number(l.emi ?? 0), 0)
+  const filteredTotalEmi = filteredActiveLoans.filter((l: any) => !startsAfterThisMonth(l)).reduce((s: number, l: any) => s + Number(l.emi ?? 0), 0)
   const filteredTotalPending = sorted.reduce((s: number, l: any) => { const e = getEff(l), t = l.tenure ?? (e.paid + e.pending); return s + calcLoanSplit(l.amount ?? 0, l.emi ?? 0, t, e.paid, l.principalPaid ?? undefined).princLeft }, 0)
   const filteredTotalIntLeft = sorted.reduce((s: number, l: any) => { const e = getEff(l), t = l.tenure ?? (e.paid + e.pending); return s + calcLoanSplit(l.amount ?? 0, l.emi ?? 0, t, e.paid, l.principalPaid ?? undefined).intLeft }, 0)
 
@@ -176,7 +183,7 @@ export default function LoansPage() {
         {/* ── SUMMARY ROW ── */}
         <KpiRow className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 [&>*]:min-w-0" keep={[0, 2]}>
           {[
-            { label: 'Monthly EMI',     value: fmtINR(totalEmi),                    sub: `${activeLoans.length} active loans`, accent: '#f97316' },
+            { label: 'Monthly EMI',     value: fmtINR(totalEmi),                    sub: `${activeLoans.length - notStarted.length} paying now${startingEmi > 0 ? ` · +${fmtINR(startingEmi)} from ${notStarted.some((l: any) => { const d = new Date(l.startDate); const n = new Date(); return d.getFullYear() * 12 + d.getMonth() === n.getFullYear() * 12 + n.getMonth() + 1 }) ? nextMonthName : 'later'}` : ''}`, accent: '#f97316' },
             { label: 'Total Loan',      value: fmtINR(totalLoanAmount),             sub: `${fmtINR(totalWithInterest)} with interest`,  accent: '#2dd4bf' },
             { label: 'Total to Clear',  value: fmtINR(totalPending + totalIntLeft), sub: `principal ${fmtINR(totalPending)} + interest ${fmtINR(totalIntLeft)}`, accent: 'var(--warning)' },
             { label: 'Paid So Far',     value: fmtINR(totalPaidSoFar),              sub: `${fmtINR(totalIntPaid)} was interest`,        accent: 'var(--cyan)' },
@@ -240,6 +247,7 @@ export default function LoansPage() {
           )
         })()}
 
+        <div className="flex"><NextMonthHeadsUp /></div>
         {/* ── TABLE ── */}
         <WhatIfBar count={pickedLoans.length} need={pickNeed} free={pickFree} billNow={totalEmi} income={monthlyIncomeTotal(incomeRows as any[])} onClear={wi.clear} />
         <div className="rounded-2xl overflow-hidden text-[13px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', overflowX: 'auto' }}>

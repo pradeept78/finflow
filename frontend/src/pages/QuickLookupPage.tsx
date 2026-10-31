@@ -478,7 +478,7 @@ export default function QuickLookupPage() {
             )
           })}
           </>}
-          <NextMonthHeadsUp cards={cards as any[]} />
+          <div className="flex"><NextMonthHeadsUp /></div>
           {upcoming.length > 0 && (() => {
             const startOfToday = new Date(new Date().toDateString()).getTime()
             const left = upcoming.filter(u => !(nextMarks as string[]).includes(u.key)).reduce((a, u) => a + u.amount, 0)

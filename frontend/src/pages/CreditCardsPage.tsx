@@ -206,7 +206,9 @@ export default function CreditCardsPage() {
         </KpiRow>
 
         {/* ── VIEW SWITCH ── */}
-        <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap">
+        {/* Wraps on every width: with the utilisation alert and the next-month heads-up both present, a forced
+            single line truncated both pills mid-word. */}
+        <div className="flex items-center gap-2 flex-wrap">
           <SegTabs<'cards' | 'emis' | 'spends' | 'outstanding'> value={cardsView} onChange={setCardsView} accent="var(--warning)"
             options={[
               { id: 'cards', label: '💳 By card', badge: cards.length },
@@ -226,6 +228,7 @@ export default function CreditCardsPage() {
               </div>
             )
           })()}
+          <NextMonthHeadsUp className="flex-shrink" />
           <div className="flex items-center gap-2 flex-wrap ml-auto flex-shrink-0 justify-end">
             {cardsView === 'emis' && (
               <label className="flex items-center gap-1.5 text-[11px] cursor-pointer mr-1" style={{ color: 'var(--text-faint)' }}>
@@ -249,7 +252,6 @@ export default function CreditCardsPage() {
           </div>
         </div>
 
-        <NextMonthHeadsUp cards={cards as any[]} />
         {/* ── TABLE ── */}
         <WhatIfBar count={pickedEmis.length} need={pickNeed} free={pickFree} billNow={totEmi} income={monthlyIncomeTotal(incomeRows as any[])} onClear={wi.clear} />
         {cardsView === 'cards' && (<>

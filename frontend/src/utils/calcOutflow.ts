@@ -3,6 +3,7 @@ import { isLive } from './ended'
 import { isChitRepaying } from './kinds'
 import { ioweFacts } from './iowe'
 import { cardCycle, emiStartsLater } from './cardCycle'
+import { startsAfterThisMonth, newCommitmentsNextMonth } from './nextMonth'
 
 /**
  * SINGLE SOURCE OF TRUTH for monthly outflow.
@@ -53,6 +54,11 @@ export interface OutflowComponents {
   sipInvest:    number
   /** Sum of everything above: the standing monthly commitment. */
   locked:       number
+  /** New monthly commitments whose first payment is NEXT month (loans, card EMIs, I Owe, savings, SIPs) —
+   *  not in `locked`; shown as "(+₹X from Nov)" so the change is visible a month ahead. */
+  startingNext: number
+  /** Short name of next month, e.g. "Nov" */
+  nextMonthLabel: string
 
   /** Statement balance and logged spends that fall DUE this month (see cardCycle.ts). */
   ccOutstanding: number
@@ -85,8 +91,10 @@ export function calcOutflow(
   now:         Date  = new Date(),
 ): OutflowComponents {
 
+  // Not started yet (first EMI after this month): no payment this month — see utils/nextMonth.
+  const notYet = (v: any) => startsAfterThisMonth(v, now)
   const loanEmi = loans
-    .filter(l => getEff(l).pending > 0)
+    .filter(l => getEff(l).pending > 0 && !notYet(l))
     .reduce((s, l) => s + num(l.emi), 0)
 
   // A spend/EMI tagged "for a friend" and not yet paid back is real money leaving the account this
@@ -103,7 +111,7 @@ export function calcOutflow(
   // here — but its principal is not amortising and must not be shown as reducing. `ioweFacts`
   // classifies each row and returns the right monthly figure for its shape.
   const iOweEmi = personal
-    .filter(p => p.active !== false)
+    .filter(p => p.active !== false && !notYet(p))
     .reduce((s, p) => s + ioweFacts(p).monthly, 0)
 
   // Same bug class the header above already fixed for insurance, just never applied here: this
@@ -139,12 +147,12 @@ export function calcOutflow(
   // repaid — that is an outflow against a debt. Anything still building is a savings contribution.
   const isRepaying = isChitRepaying
 
-  const openPlans = savings.filter(v => getEff(v).pending > 0)
+  const openPlans = savings.filter(v => getEff(v).pending > 0 && !notYet(v))
   const savings_  = openPlans.filter(v => !isRepaying(v)).reduce((s, v) => s + num(v.monthly), 0)
   const chitRepay = openPlans.filter(isRepaying).reduce((s, v) => s + num(v.monthly), 0)
 
   const sipInvest = investments
-    .filter(v => isLive(v))
+    .filter(v => isLive(v) && !notYet(v))
     .reduce((s, v) => s + num(v.monthly), 0)
 
   const locked = loanEmi + ccEmi + iOweEmi + expenses_ + insuranceEmi + savings_ + chitRepay + sipInvest
@@ -176,6 +184,8 @@ export function calcOutflow(
     setAside: expenseProvision + insuranceProvision,
     savings: savings_, chitRepay, sipInvest, locked,
     ccOutstanding, ccSpends, card, cardNext, dueNow,
+    startingNext: newCommitmentsNextMonth({ loans, cards, personal, savings, investments }, now).filter(x => !x.owedBy).reduce((s, x) => s + x.amount, 0),
+    nextMonthLabel: new Date(now.getFullYear(), now.getMonth() + 1, 1).toLocaleDateString('en-IN', { month: 'short' }),
     total: locked + card + dueNow,
   }
 }
@@ -213,7 +223,9 @@ export const outflowSubLine = (o: OutflowComponents): string =>
 
 /** "committed ₹2,76,575 + card bill ₹1,83,690 + renewals ₹45,000" — the tiers of `total` as one line. Same words on every page. */
 export const outflowTierLine = (o: OutflowComponents): string =>
-  `committed ₹${Math.round(o.locked).toLocaleString('en-IN')} + card bill ₹${Math.round(o.card).toLocaleString('en-IN')}`
+  `committed ₹${Math.round(o.locked).toLocaleString('en-IN')}`
+  + (o.startingNext > 0 ? ` (+₹${Math.round(o.startingNext).toLocaleString('en-IN')} from ${o.nextMonthLabel})` : '')
+  + ` + card bill ₹${Math.round(o.card).toLocaleString('en-IN')}`
   + (o.dueNow > 0 ? ` + renewals & one-offs ₹${Math.round(o.dueNow).toLocaleString('en-IN')}` : '')
 
 /**
