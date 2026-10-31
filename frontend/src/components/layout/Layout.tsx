@@ -61,7 +61,7 @@ const hubNav = [
 ]
 
 const PAGE_LINK_LABELS: Record<string,string> = {
-  '/closed-loans':'Closed Assets','/earnings':'Earnings','/payoff':'Payoff','/history':'History','/break-savings':'Break Savings','/export':'Export','/admin':'Admin',
+  '/closed-loans':'Closed Assets','/earnings':'Earnings','/payoff':'Payoff','/history':'History','/break-savings':'Break Savings','/export':'Export','/admin':'Admin','/account':'Your account',
   '/statements/overview':'Overview','/statements/spending':'Spending','/statements/people':'People & Merchants',
   '/statements/accounts':'Accounts & Cards','/statements/transactions':'Transactions','/statements/ledger':'Lending & Loans',
   '/statements/data':'Data & Imports','/statements/debt-match':'Debt Matching',
@@ -228,7 +228,7 @@ export default function Layout() {
                         '/savings':'Savings / Chit','/investments':'Investments','/income':'Income',
                         '/insurance':'Insurance','/people-owe':'People Owe Me',
                         '/closed-loans':'Closed Assets','/closed-assets':'Closed Assets','/earnings':'Earnings','/payoff':'Payoff',
-                        '/history':'History','/break-savings':'Break Savings','/export':'Export','/admin':'Admin',
+                        '/history':'History','/break-savings':'Break Savings','/export':'Export','/admin':'Admin','/account':'Your account',
                         '/statements/overview':'Overview','/statements/spending':'Spending','/statements/people':'People & Merchants',
                         '/statements/accounts':'Accounts & Cards','/statements/transactions':'Transactions',
                         '/statements/ledger':'Lending & Loans','/statements/data':'Data & Imports',
@@ -268,17 +268,21 @@ export default function Layout() {
           {!mobileOpen && <FootBtn title="Show the menu as a bar across the top" onClick={() => setNavLayout('top')} hideOnMobile><PanelTop size={16} /></FootBtn>}
         </div>
         <div className={`flex items-center ${col && !mobileOpen ? 'flex-col gap-1.5' : 'gap-2.5'} rounded-xl ${col && !mobileOpen ? 'p-1 py-2' : 'px-2.5 py-2'}`} style={{ background: 'rgba(255,255,255,0.04)' }}>
-          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[13px] font-bold"
-            title={col && !mobileOpen ? `${user?.name ?? ''} ${user?.email ?? ''}` : undefined}
-            style={{ background: 'rgba(249,115,22,.18)', color: '#fb923c', border: '1px solid rgba(249,115,22,.3)' }}>
-            {(user?.name || user?.email || '?').trim().charAt(0).toUpperCase()}
-          </div>
-          {(!col || mobileOpen) && (
-            <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-semibold text-[#eef0f6] truncate leading-tight">{user?.name}</div>
-              <div className="text-[11px] text-[#8c96a9] truncate">{user?.email}</div>
+          {/* Avatar and name open the account page (change password, delete account). */}
+          <NavLink to="/account" onClick={handleNavClick} aria-label="Your account"
+            title={col && !mobileOpen ? `Your account · ${user?.email ?? ''}` : 'Your account'}
+            className={`flex items-center min-w-0 rounded-lg hover:bg-white/5 transition-colors ${col && !mobileOpen ? 'justify-center' : 'gap-2.5 flex-1 -m-1 p-1'}`}>
+            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[13px] font-bold"
+              style={{ background: 'rgba(249,115,22,.18)', color: '#fb923c', border: '1px solid rgba(249,115,22,.3)' }}>
+              {(user?.name || user?.email || '?').trim().charAt(0).toUpperCase()}
             </div>
-          )}
+            {(!col || mobileOpen) && (
+              <div className="min-w-0 flex-1">
+                <div className="text-[13px] font-semibold text-[#eef0f6] truncate leading-tight">{user?.name}</div>
+                <div className="text-[11px] text-[#8c96a9] truncate">{user?.email}</div>
+              </div>
+            )}
+          </NavLink>
           <button onClick={handleLogout} title="Log out" aria-label="Log out"
             className="w-8 h-8 flex items-center justify-center rounded-lg text-[#aab2c2] hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0">
             <LogOut size={16} />
@@ -320,6 +324,11 @@ export default function Layout() {
             className="text-[11px] font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer' }}>
             ⤙ Sidebar
           </button>
+          <NavLink to="/account" title="Your account" aria-label="Your account"
+            className="w-7 h-7 rounded-full flex items-center justify-center text-[12px] font-bold"
+            style={{ background: 'rgba(249,115,22,.18)', color: '#fb923c', border: '1px solid rgba(249,115,22,.3)' }}>
+            {(user?.name || user?.email || '?').trim().charAt(0).toUpperCase()}
+          </NavLink>
           <button onClick={handleLogout} title={`Log out ${user?.email ?? ''}`} className="p-1.5 rounded-lg text-[#aab2c2] hover:text-red-400 hover:bg-red-500/10 transition-colors"><LogOut size={15} /></button>
         </div>
       </div>
@@ -354,7 +363,10 @@ export default function Layout() {
       {mobileOpen && (
         <div className="fixed inset-0 z-50 md:hidden print:hidden">
           <div className="absolute inset-0 bg-black/60" onClick={() => setMobileOpen(false)} />
-          <aside aria-label="Menu" className="sheet-up absolute inset-x-0 bottom-0 max-h-[85vh] rounded-t-2xl border-t flex flex-col" style={{background:'#0c0e14',borderColor:'#252836',paddingBottom:'env(safe-area-inset-bottom)'}}>
+          {/* Sits on top of the bottom tab bar (h-14 + safe area, drawn above this sheet) rather than under it,
+              which used to hide the user card at the bottom: account link and Log out. */}
+          <aside aria-label="Menu" className="sheet-up absolute inset-x-0 rounded-t-2xl border-t flex flex-col"
+            style={{background:'#0c0e14',borderColor:'#252836',bottom:'calc(3.5rem + env(safe-area-inset-bottom))',maxHeight:'calc(85vh - 3.5rem)'}}>
             <SidebarContent />
           </aside>
         </div>
