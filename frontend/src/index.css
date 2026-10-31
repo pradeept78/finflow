@@ -92,7 +92,6 @@
   .light .text-gray-400 { color: var(--text-faint) !important; }
   .light .text-teal-400 { color: var(--cyan) !important; }
   .light .text-\[\#9ca3af\] { color: var(--text-muted) !important; }
-  .light button[title="Search (Cmd+K)"] { color: var(--text-muted) !important; }
   .light .hover\:bg-\[\#252836\]:hover { background-color: var(--bg-hover) !important; }
   .light .hover\:bg-\[\#161922\]:hover { background-color: var(--bg-hover) !important; }
   .light .divide-\[\#252836\] > * + * { border-color: var(--border) !important; }
@@ -269,8 +268,18 @@
   .stat-tile { padding: 10px 12px; }
   .stat-value { font-size: 1.1rem; }
 
-  /* Modal full screen on mobile */
-  .modal-box { max-width: 100% !important; margin: 8px; max-height: 95vh; }
+  /* Phones: every Add / Edit form is a bottom sheet — slides up, Save within thumb reach, clears the
+     iPhone home indicator. Same look as Quick add and the More menu (.sheet-up). */
+  .modal-overlay { align-items: flex-end; padding: 0; }
+  .modal-box {
+    max-width: 100% !important; margin: 0; max-height: 92vh;
+    border-radius: 16px 16px 0 0; border-bottom: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    animation: sheet-up .22s ease-out;
+  }
+  .modal-box::before { content: ''; display: block; width: 36px; height: 4px; border-radius: 2px; background: var(--border); margin: 8px auto 0; flex-shrink: 0; }
+  .modal-body { padding-left: 16px; padding-right: 16px; }
+  .modal-footer .btn-primary, .modal-footer .btn-secondary { flex: 1; justify-content: center; min-height: 44px; }
 
   /* Hide less important columns on mobile */
   .hide-mobile { display: none !important; }
@@ -415,3 +424,8 @@
 
 /* Native checkboxes/radios/sliders take the brand colour instead of the browser's default white/blue. */
 input[type="checkbox"], input[type="radio"], input[type="range"] { accent-color: #ea580c; }
+
+/* Bottom sheets on phones (More menu, Quick add, every modal) slide up from the tab bar. */
+@keyframes sheet-up { from { transform: translateY(24px); opacity: 0 } to { transform: none; opacity: 1 } }
+.sheet-up { animation: sheet-up .22s ease-out; }
+@media (prefers-reduced-motion: reduce) { .sheet-up, .modal-box { animation: none !important; } }

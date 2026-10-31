@@ -6,6 +6,7 @@ import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner,
 import { fmtINR, toMonthly, isOneOff, monthlyIncomeTotal } from '../utils/format'
 import { Plus, Pencil, Trash2, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { KpiRow } from '../components/common/KpiTile'
 
 const empty: IncomeEntry = { label: '', amount: 0, frequency: 'Monthly', active: true }
 
@@ -61,7 +62,7 @@ export default function IncomePage() {
       <PageHeader title="Income" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}><Plus size={14}/> Add</button>}/>
 
       {items.length > 0 && (
-  <div className="grid grid-cols-4 gap-3">
+  <KpiRow className="grid grid-cols-4 gap-3" keep={[0, 1]}>
           {[
             {label:'Monthly Income',  value:fmtINR(Math.round(monthly)), sub:`${active.length} active sources`,   accent:'var(--success)'},
             {label:'Annual Income',   value:fmtINR(Math.round(monthly*12)), sub:'projected annual',              accent:'var(--cyan)'},
@@ -79,7 +80,7 @@ export default function IncomePage() {
               </div>
             </div>
           ))}
-        </div>
+        </KpiRow>
       )}
 
       {items.length === 0 ? <EmptyState icon="💰" title="No income sources" sub="Add your salary and other income sources" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}>+ Add income source</button>} /> : (

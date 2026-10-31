@@ -1,7 +1,8 @@
 import { mk, browser, BASE } from './run.mjs'
 import { mockStatements } from './stmock.mjs'
 import fs from 'node:fs'
-const axeSrc=fs.readFileSync(new URL('../node_modules/axe-core/axe.min.js', import.meta.url),'utf8')
+// qa/package.json installs axe-core here; older setups had it one level up in frontend/node_modules.
+const axeSrc=fs.readFileSync([new URL('./node_modules/axe-core/axe.min.js', import.meta.url), new URL('../node_modules/axe-core/axe.min.js', import.meta.url)].find(u=>fs.existsSync(u)),'utf8')
 const urls=['/hub/overview','/hub/debt','/hub/savings','/dashboard','/master','/loans','/cards','/budget','/payoff','/savings','/investments','/calendar','/lookup','/history','/insurance','/expenses','/income','/people-owe','/closed-loans','/earnings','/export','/statements/overview','/statements/transactions']
 const p=await mk(1440,900); await mockStatements(p)
 await p.context().addInitScript(()=>localStorage.setItem('ff_theme','dark'))

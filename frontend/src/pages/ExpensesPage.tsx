@@ -7,6 +7,7 @@ import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner,
 import { fmtINR, toMonthly, isOneOff, isDueThisMonth } from '../utils/format'
 import { Plus, Pencil, Trash2, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { KpiRow } from '../components/common/KpiTile'
 
 const empty: Expense = { label: '', amount: 0, frequency: 'Monthly', dueDay: 1, active: true }
 const CATS = ['Rent','Food','Transport','Utilities','Subscriptions','Healthcare','Education','Family','Other']
@@ -107,7 +108,7 @@ export default function ExpensesPage() {
 
 
       {items.length > 0 && (
-        <div className="grid grid-cols-4 gap-3">
+        <KpiRow className="grid grid-cols-4 gap-3" keep={[0, 1]}>
           {[
             {label:'Monthly Total',  value:fmtINR(total),              sub:`${recurring.length} recurring expenses`, accent:'var(--danger)'},
             {label:'Annual Cost',    value:fmtINR(Math.round(total*12)),sub:'projected',                    accent:'var(--orange)'},
@@ -122,7 +123,7 @@ export default function ExpensesPage() {
               </div>
             </div>
           ))}
-        </div>
+        </KpiRow>
       )}
 
       {items.length === 0 ? <EmptyState icon="🧾" title="No expenses" sub="Track your recurring monthly expenses" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}>+ Add expense</button>} /> : (

@@ -20,6 +20,7 @@ import { usePicks, PickBox, WhatIfBar, SelectAllLink } from '../components/commo
 import { KindStrip } from '../components/common/KindStrip'
 import { masterKind } from '../utils/kinds'
 import { buildMasterRows, TYPE_COLOR, isFriendOwed, amountSortVal, fmtMonthYear, type MasterRow } from '../utils/buildMasterRows'
+import { KpiRow } from '../components/common/KpiTile'
 
 /**
  * Everything you owe or are committed to paying, in one place — renamed back to "All Commitments"
@@ -737,7 +738,7 @@ export default function MasterTablePage() {
       {pageTab === 'view' && (
       <>
       {!tilesCollapsed && (
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 print:hidden">
+      <KpiRow className="grid grid-cols-2 lg:grid-cols-4 gap-2 print:hidden" keep={[2, 3]}>
         {[
           // Was its own "Outstanding + Spend" tile between Total Debt and Investments — folded into
           // Funds Needed's sub-line instead (per request), since that's the figure it's actually a
@@ -786,7 +787,7 @@ export default function MasterTablePage() {
             <div className="text-[11px] leading-snug line-clamp-2" title={String(m.sub)} style={{ color: 'var(--text-faint)' }}>{m.sub}</div>
           </div>
         ))}
-      </div>
+      </KpiRow>
       )}
       {!tilesCollapsed && <div className="print:hidden"><IncomeSplitCard o={shared} income={monthlyIncome} /></div>}
       </>

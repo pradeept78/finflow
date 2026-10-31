@@ -6,6 +6,7 @@ import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner,
 import { fmtINR, monthsElapsed } from '../utils/format'
 import { Plus, Pencil, Trash2, Archive, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { KpiRow } from '../components/common/KpiTile'
 
 const INV_ICON: Record<string,string> = {
   MF:'📈', SIP:'🔄', FD:'🏦', Gold:'🥇', Stocks:'📊', RD:'💰', PPF:'🏛️', NPS:'🎯', Other:'💼'
@@ -111,7 +112,7 @@ export default function InvestmentsPage() {
       </>} title="Investments" action={<button className="btn-primary btn-sm" onClick={()=>openModal({})}><Plus size={14}/> Add</button>}/>
 
       {items.length > 0 && (
-        <div className="grid grid-cols-4 gap-3">
+        <KpiRow className="grid grid-cols-4 gap-3" keep={[1, 2]}>
           {[
             {label:'Total Invested',   value:fmtINR(totalInvested), sub:`${active.length} investments`,     accent:'var(--info)'},
             {label:'Current Value',    value:fmtINR(totalValue),    sub:'market/maturity value · defaults to invested',  accent:totalValue>=totalInvested?'var(--success)':'var(--danger)'},
@@ -126,7 +127,7 @@ export default function InvestmentsPage() {
               </div>
             </div>
           ))}
-        </div>
+        </KpiRow>
       )}
 
       {/* Smart insight */}

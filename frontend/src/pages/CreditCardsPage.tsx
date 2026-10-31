@@ -7,12 +7,13 @@ import { emiFacts, rateColor } from '../utils/emiFacts'
 import api from '../api/axios'
 import type { CreditCard } from '../types'
 import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner, ErrorState, SortHeader, FromLink } from '../components/common'
-import { fmtINR, getEff, isPaidThisMonth, resolveDueDay, monthlyIncomeTotal } from '../utils/format'
-import { cardCycle } from '../utils/cardCycle'
+import { fmtINR, getEff, isPaidThisMonth, resolveDueDay, monthlyIncomeTotal, ordinal } from '../utils/format'
+import { cardCycle, emiStartsLater, fmtDueDate } from '../utils/cardCycle'
 import { cardLimitUse } from '../utils/cardLimit'
 import { AmountInput } from '../components/common/AmountInput'
 import { Plus, Pencil, Trash2, CheckCircle, Archive, ChevronDown, Shield } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { KpiRow } from '../components/common/KpiTile'
 
 type ModalType = 'card' | 'emi' | 'spend' | 'editEmi' | null
 
@@ -178,7 +179,7 @@ export default function CreditCardsPage() {
       {cards.length === 0 ? <EmptyState icon="💳" title="No cards" sub="Add your first credit card" action={<button className="btn-primary btn-sm" onClick={() => { setCardForm({ banker: '', cardLimit: 0, outstanding: 0 }); setFormErrors({}); setModalType('card') }}>+ Add card</button>} /> : (<>
 
         {/* ── SUMMARY ROW ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 [&>*]:min-w-0">
+        <KpiRow className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 [&>*]:min-w-0" keep={[2, 4]}>
           {[
             { label: 'Total Limit',     value: fmtINR(totLimit),   sub: `${cards.length} cards`,       accent: 'var(--cyan)' },
             { label: 'Total Liability', value: fmtINR(totalLiab),  sub: `${util}% utilization`,        accent: totalLiab > 0 ? 'var(--danger)' : 'var(--success)' },
@@ -195,7 +196,7 @@ export default function CreditCardsPage() {
               </div>
             </div>
           ))}
-        </div>
+        </KpiRow>
 
         {/* ── VIEW SWITCH ── */}
         <div className="flex items-center gap-2 flex-wrap lg:flex-nowrap">
@@ -244,11 +245,10 @@ export default function CreditCardsPage() {
         {/* ── TABLE ── */}
         <WhatIfBar count={pickedEmis.length} need={pickNeed} free={pickFree} billNow={totEmi} income={monthlyIncomeTotal(incomeRows as any[])} onClear={wi.clear} />
         {cardsView === 'cards' && (<>
-        <div className="md:hidden text-[11px] text-right mb-1 print:hidden" style={{ color: 'var(--text-faint)' }}>swipe sideways for more columns ↔</div>
         <div className="rounded-2xl overflow-hidden text-[13px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', overflowX: 'auto' }}>
 
-          {/* Column headers */}
-          <div className="grid min-w-[760px] px-4 py-2 text-[12px] font-medium border-b"
+          {/* Column headers — phones show card rows instead */}
+          <div className="hidden md:grid min-w-[760px] px-4 py-2 text-[12px] font-medium border-b"
             style={{ gridTemplateColumns: 'minmax(180px,1.7fr) minmax(85px,1fr) minmax(60px,1fr) minmax(90px,1fr) minmax(75px,1fr) minmax(70px,1fr) minmax(70px,1fr)', borderColor: 'var(--hairline)', background: 'color-mix(in srgb, var(--text) 5%, transparent)', color: 'var(--text-faint)' }}>
             <SortHeader label="Card" col="banker" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
             <SortHeader label="Limit" col="limit" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" />
@@ -307,9 +307,45 @@ export default function CreditCardsPage() {
 
             return (
               <div key={c.id} style={{ borderTop: idx === 0 ? 'none' : '1px solid color-mix(in srgb, var(--text) 5%, transparent)' }}>
-                {/* Main row */}
+                {/* Phone row: what this card needs from you this month, when, and how much of the limit is used.
+                    Tap opens the same details and actions as the table row (tablet and desktop only). */}
+                {(() => {
+                  const cy = cardCycle(c)
+                  const ownEmiNow = activeEmis.filter((e: any) => emiOwn(e) && !emiStartsLater(c, e)).reduce((a: number, e: any) => a + Number(e.emi ?? 0), 0)
+                  const payNow = cy.billThisMonth + ownEmiNow
+                  return (
+                    <button type="button" className="md:hidden w-full text-left px-4 py-3" aria-expanded={isExp}
+                      style={{ background: isExp ? 'var(--bg-base)' : 'transparent' }} onClick={() => setExpanded(isExp ? null : c.id)}>
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className="font-medium text-[14px] truncate">{c.banker}</span>
+                        <span className="mono font-semibold text-[14px] tabular-nums flex-shrink-0" style={{ color: payNow > 0 ? 'var(--danger)' : 'var(--success)' }}>
+                          {payNow > 0 ? fmtINR(payNow) : '✓ nothing due'}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3 mt-0.5 text-[12px]" style={{ color: 'var(--text-muted)' }}>
+                        <span className="truncate">
+                          {cy.billDue ? `due ${fmtDueDate(cy.billDue)}` : dueDayNum ? `due ${ordinal(dueDayNum)}` : 'no due day'}
+                          {c.billingDay ? ` · statement ${ordinal(c.billingDay)}` : ''}
+                          {isPaid && <span style={{ color: 'var(--success)' }}> · ✓ paid</span>}
+                        </span>
+                        <span className="flex-shrink-0 tabular-nums" style={{ color: utilClr }}>{used}% used</span>
+                      </div>
+                      {(ownEmiNow > 0 || cy.nextBill > 0) && (
+                        <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>
+                          {ownEmiNow > 0 && `EMIs ${fmtINR(ownEmiNow)}/mo`}{ownEmiNow > 0 && cy.nextBill > 0 && ' · '}
+                          {cy.nextBill > 0 && `next bill ${fmtINR(cy.nextBill)} due ${fmtDueDate(cy.nextDue)}`}
+                        </div>
+                      )}
+                      <div className="h-1 rounded-full mt-2 overflow-hidden" style={{ background: 'var(--border)' }}>
+                        <div className="h-full rounded-full" style={{ width: `${Math.min(100, used)}%`, background: utilClr }} />
+                      </div>
+                    </button>
+                  )
+                })()}
+
+                {/* Main row (tablet and desktop) */}
                 <div
-                  className="grid min-w-[760px] items-center px-4 py-3 cursor-pointer transition-colors"
+                  className="hidden md:grid min-w-[760px] items-center px-4 py-3 cursor-pointer transition-colors"
                   style={{ gridTemplateColumns: 'minmax(180px,1.7fr) minmax(85px,1fr) minmax(60px,1fr) minmax(90px,1fr) minmax(75px,1fr) minmax(70px,1fr) minmax(70px,1fr)', background: isExp ? 'var(--bg-base)' : 'transparent' }}
                   onMouseEnter={e => { if (!isExp) (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
                   onMouseLeave={e => { if (!isExp) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
@@ -556,7 +592,7 @@ export default function CreditCardsPage() {
           })()}
 
           {/* Footer */}
-          <div className="grid min-w-[760px] px-4 py-3 text-[13px] font-bold border-t"
+          <div className="hidden md:grid min-w-[760px] px-4 py-3 text-[13px] font-bold border-t"
             style={{ gridTemplateColumns: 'minmax(180px,1.7fr) minmax(85px,1fr) minmax(60px,1fr) minmax(90px,1fr) minmax(75px,1fr) minmax(70px,1fr) minmax(70px,1fr)', borderColor: 'var(--hairline)', background: 'color-mix(in srgb, var(--text) 5%, transparent)', color: 'var(--text-faint)' }}>
             <span>{cards.length} cards</span>
             <span className="text-right mono" style={{ color: 'var(--cyan)' }}>{fmtINR(totLimit)}</span>

@@ -4,11 +4,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { loansApi, paidMarksApi, closedLoansApi, incomeApi } from '../api'
 import FilterMenu from '../components/common/FilterMenu'
 import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner, ErrorState, AlertModal, InputModal, SortHeader } from '../components/common'
-import { fmtINR, getEff, resolveDueDay, isPaidThisMonth, monthlyIncomeTotal } from '../utils/format'
+import { fmtINR, getEff, resolveDueDay, isPaidThisMonth, monthlyIncomeTotal, ordinal } from '../utils/format'
 import { calcLoanSplit } from '../utils/loanCalc'
 import { emiFacts } from '../utils/emiFacts'
 import { Plus, Pencil, Trash2, Archive, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { KpiRow } from '../components/common/KpiTile'
 
 export default function LoansPage() {
   const qc = useQueryClient()
@@ -175,7 +176,7 @@ export default function LoansPage() {
       {loans.length === 0 ? <EmptyState icon="🏦" title="No loans" sub="Add your first loan to track EMIs and payoff date" action={<button className="btn-primary btn-sm" onClick={() => setModal({ open: true, loan: { loanType: 'Personal Loan' } })}>+ Add loan</button>} /> : (<>
 
         {/* ── SUMMARY ROW ── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 [&>*]:min-w-0">
+        <KpiRow className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 [&>*]:min-w-0" keep={[0, 2]}>
           {[
             { label: 'Monthly EMI',     value: fmtINR(totalEmi),                    sub: `${activeLoans.length} active loans`, accent: '#f97316' },
             { label: 'Total Loan',      value: fmtINR(totalLoanAmount),             sub: `${fmtINR(totalWithInterest)} with interest`,  accent: '#2dd4bf' },
@@ -193,7 +194,7 @@ export default function LoansPage() {
               </div>
             </div>
           ))}
-        </div>
+        </KpiRow>
 
         {/* Insights row: upcoming debits + high rate tip, side by side */}
         {(() => {
@@ -243,7 +244,6 @@ export default function LoansPage() {
 
         {/* ── TABLE ── */}
         <WhatIfBar count={pickedLoans.length} need={pickNeed} free={pickFree} billNow={totalEmi} income={monthlyIncomeTotal(incomeRows as any[])} onClear={wi.clear} />
-        <div className="md:hidden text-[11px] text-right mb-1 print:hidden" style={{ color: 'var(--text-faint)' }}>swipe sideways for more columns ↔</div>
         <div className="rounded-2xl overflow-hidden text-[13px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', overflowX: 'auto' }}>
 
           {/* Filter bar — sorting now lives on the column headers below (click a header, arrow shows direction) */}
@@ -262,8 +262,8 @@ export default function LoansPage() {
             </div>
           </div>
 
-          {/* Column headers */}
-          <div className="grid px-4 py-2 text-[12px] font-medium border-b"
+          {/* Column headers — phones show card rows instead, so no headers there */}
+          <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b"
             style={{ gridTemplateColumns: COLS_MAIN, borderColor: 'var(--border)', color: 'var(--text-faint)' }}>
             <SortHeader label="Lender" col="lender" sortCol={sortCol} sortDir={sortDir} onSort={onSort} />
             {showDebit && <SortHeader label="Debited From" col="debited" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="center" />}
@@ -303,9 +303,32 @@ export default function LoansPage() {
 
             return (
               <div key={l.id} style={{ borderTop: idx === 0 ? 'none' : '1px solid color-mix(in srgb, var(--text) 5%, transparent)' }}>
-                {/* Main row */}
+                {/* Phone row: one card per loan — name and EMI, then type, due day and EMIs left, and a progress
+                    bar. Tap opens the same details and actions as the table row below (which phones don't show). */}
+                <button type="button" className={`md:hidden w-full text-left px-4 py-3 ${done ? 'opacity-50' : ''}`}
+                  style={{ background: isExp ? 'var(--bg-base)' : 'transparent' }}
+                  aria-expanded={isExp} onClick={() => setExpanded(isExp ? null : l.id)}>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="font-medium text-[14px] truncate">{l.lender}</span>
+                    <span className="mono font-semibold text-[14px] tabular-nums flex-shrink-0" style={{ color: 'var(--danger)' }}>{fmtINR(l.emi ?? 0)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-3 mt-0.5 text-[12px]" style={{ color: 'var(--text-muted)' }}>
+                    <span className="truncate">
+                      {(l.loanType || 'Loan').replace(/ Loan$/, '')}{resolveDueDay(l) ? ` · due ${ordinal(resolveDueDay(l)!)}` : ''}
+                      {missed > 0 && <span style={{ color: 'var(--danger)' }}> · {missed} missed</span>}
+                    </span>
+                    <span className="flex-shrink-0 tabular-nums">{done ? '✓ closed' : isPaid ? '✓ paid this month' : `${eff.pending} left`}</span>
+                  </div>
+                  {!done && t > 0 && (
+                    <div className="h-1 rounded-full mt-2 overflow-hidden" style={{ background: 'var(--border)' }}>
+                      <div className="h-full rounded-full" style={{ width: `${pct}%`, background: 'var(--success)' }} />
+                    </div>
+                  )}
+                </button>
+
+                {/* Main row (tablet and desktop) */}
                 <div
-                  className="grid items-center px-4 py-3 cursor-pointer transition-colors"
+                  className="hidden md:grid items-center px-4 py-3 cursor-pointer transition-colors"
                   style={{ gridTemplateColumns: COLS_MAIN, background: isExp ? 'var(--bg-base)' : 'transparent' }}
                   onMouseEnter={e => { if (!isExp) (e.currentTarget as HTMLElement).style.background = 'var(--bg-hover)' }}
                   onMouseLeave={e => { if (!isExp) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
@@ -542,7 +565,7 @@ export default function LoansPage() {
           })}
 
           {/* Footer */}
-          <div className="grid px-4 py-3 text-[13px] font-bold border-t"
+          <div className="hidden md:grid px-4 py-3 text-[13px] font-bold border-t"
             style={{ gridTemplateColumns: COLS_FOOT, borderColor: 'var(--border)', background: 'color-mix(in srgb, var(--text) 5%, transparent)', color: 'var(--text-faint)' }}>
             <span>{filteredActiveLoans.length} active{filterLoanType!=='All'?` (${filterLoanType})`:''}</span>
             {showDebit && <span></span>}

@@ -6,6 +6,7 @@ import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner,
 import { fmtINR, getEff, dueStatus, isPaidThisMonth, resolveDueDay } from '../utils/format'
 import { Plus, Pencil, Trash2, Archive, ChevronDown } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { KpiRow } from '../components/common/KpiTile'
 
 const empty: Saving = { name: '', monthly: 0, tenure: 0, mode: 'saving' }
 const today = new Date().getDate()
@@ -130,7 +131,7 @@ export default function SavingsPage() {
       </>} title="Savings & Chit Funds" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}><Plus size={14}/> Add</button>}/>
 
       {items.length > 0 && (
-        <div className="grid grid-cols-4 gap-3">
+        <KpiRow className="grid grid-cols-4 gap-3" keep={[0, 1]}>
           {[
             {label:'Building Corpus',  value:fmtINR(buildCorpus),  sub:`${building.length} active · ${fmtINR(totalMo)}/mo`,       accent:'var(--success)'},
             {label:'Chit Repayment',   value:fmtINR(repayLeft),    sub:`${repaying.length} repaying · ${fmtINR(repaying.reduce((s:number,v:any)=>s+Number(v.monthly??0),0))}/mo`, accent:'var(--danger)'},
@@ -145,7 +146,7 @@ export default function SavingsPage() {
               </div>
             </div>
           ))}
-        </div>
+        </KpiRow>
       )}
 
       {/* Smart insight */}

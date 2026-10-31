@@ -6,6 +6,7 @@ import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner,
 import { fmtINR, toMonthly, freqMonths, isOneOff } from '../utils/format'
 import { Plus, Pencil, Trash2, ChevronDown, RefreshCw } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { KpiRow } from '../components/common/KpiTile'
 
 const TYPE_COLOR: Record<string,string> = {
   Life:'var(--success)', Health:'var(--cyan)', Term:'var(--purple)', Vehicle:'var(--warning)', Other:'var(--text-muted)',
@@ -136,7 +137,7 @@ export default function InsurancePage() {
       <PageHeader title="Insurance" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}><Plus size={14}/> Add</button>}/>
 
       {items.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <KpiRow className="grid grid-cols-2 lg:grid-cols-4 gap-3" keep={[0, 1]}>
           {[
             {label:'Monthly Premiums', value:fmtINR(Math.round(emiMo)),     sub:(()=>{const n=active.filter(isMonthlyPlan).length;return n>0?`${n} billed monthly · not a bank EMI`:'none billed monthly — see Annual Cost'})(), accent:'var(--cyan)'},
             {label:'Annual Cost',   value:fmtINR(Math.round(annualCost)),   sub:`${active.filter(isLumpPlan).length} lump-sum policies`, accent:'var(--warning)'},
@@ -151,7 +152,7 @@ export default function InsurancePage() {
               </div>
             </div>
           ))}
-        </div>
+        </KpiRow>
       )}
 
       {/* Smart insight */}

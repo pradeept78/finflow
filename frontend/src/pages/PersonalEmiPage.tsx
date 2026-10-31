@@ -8,6 +8,7 @@ import { ioweFacts } from '../utils/iowe'
 import { fmtINR, getEff, isPaidThisMonth, resolveDueDay, monthlyIncomeTotal } from '../utils/format'
 import { Plus, Pencil, Trash2, Archive, ChevronDown, CheckCircle } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { KpiRow } from '../components/common/KpiTile'
 
 const empty: PersonalEmi = { person: '', amount: 0 }
 
@@ -153,7 +154,7 @@ export default function PersonalEmiPage() {
       )}
 
       {items.length > 0 && (
-        <div className="grid grid-cols-4 gap-3">
+        <KpiRow className="grid grid-cols-4 gap-3" keep={[0, 1]}>
           {[
             {label:'Total Owed',    value:fmtINR(totalOwed),  sub:`${items.length} entries`,         accent:'var(--warning)'},
             {label:'Monthly EMI',   value:fmtINR(totalEmi),   sub:'combined monthly payments',       accent:'var(--danger)'},
@@ -174,7 +175,7 @@ export default function PersonalEmiPage() {
               </div>
             </div>
           ))}
-        </div>
+        </KpiRow>
       )}
 
       {/* Smart insight */}
