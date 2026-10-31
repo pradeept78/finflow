@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { cardCycle, statementAfter, dueFor, emiStartsLater } from '../cardCycle'
+import { cardCycle, statementAfter, dueFor, emiStartsLater, billingPeriods, periodLabel, amountDueOn } from '../cardCycle'
 import { calcOutflow } from '../calcOutflow'
 
 const D = (y: number, m: number, d: number) => new Date(y, m - 1, d)
@@ -97,5 +97,45 @@ describe('card EMIs follow the same cycle', () => {
     const o = calcOutflow([], [card], [], [], [], [], [], now)
     expect(o.ccEmi).toBe(7000)
     expect(o.cardNext).toBe(4000)
+  })
+})
+
+describe('billing periods for display', () => {
+  // Statement on the 18th, due on the 4th (next month) — on 31 Oct.
+  const card = { billingDay: 18, dueDay: 4 }
+  it('last bill: 18 Sep – 17 Oct, statement 18 Oct, due 4 Nov; current cycle: 18 Oct – 17 Nov, statement 18 Nov, due 4 Dec', () => {
+    const p = billingPeriods(card, D(2026, 10, 31))!
+    expect(iso(p.last.from)).toBe('2026-09-18')
+    expect(iso(p.last.to)).toBe('2026-10-17')
+    expect(iso(p.last.statement)).toBe('2026-10-18')
+    expect(iso(p.last.due)).toBe('2026-11-04')
+    expect(iso(p.current.from)).toBe('2026-10-18')
+    expect(iso(p.current.to)).toBe('2026-11-17')
+    expect(iso(p.current.statement)).toBe('2026-11-18')
+    expect(iso(p.current.due)).toBe('2026-12-04')
+  })
+  it('on the statement day itself, today starts the new cycle', () => {
+    const p = billingPeriods(card, D(2026, 10, 18))!
+    expect(iso(p.current.from)).toBe('2026-10-18')
+    expect(iso(p.last.statement)).toBe('2026-10-18')
+  })
+  it('HDFC 3rd / 20th: 3 Sep – 2 Oct is due 20 Oct', () => {
+    const p = billingPeriods({ billingDay: 3, dueDay: 20 }, D(2026, 10, 15))!
+    expect(`${iso(p.last.from)} ${iso(p.last.to)} ${iso(p.last.due)}`).toBe('2026-09-03 2026-10-02 2026-10-20')
+  })
+  it('no statement day: nothing to show', () => {
+    expect(billingPeriods({ dueDay: 4 }, D(2026, 10, 31))).toBeNull()
+  })
+  it('short label', () => {
+    expect(periodLabel(billingPeriods(card, D(2026, 10, 31))!.current)).toBe('18 Oct – 17 Nov · due 4 Dec')
+  })
+})
+
+describe('amount per bill', () => {
+  it('statement 18th / due 4th on 31 Oct: typed ₹42,000 is due 4 Nov; a 25 Oct spend is on the 4 Dec bill', () => {
+    const c = cardCycle({ billingDay: 18, dueDay: 4, outstanding: 42000, spends: [{ amount: 18000, spendDate: '2026-10-25' }], emis: [] }, D(2026, 10, 31))
+    expect(c.dues.map(d => `${iso(d.due)} ${d.amount}`)).toEqual(['2026-11-04 42000', '2026-12-04 18000'])
+    expect(amountDueOn(c, D(2026, 12, 4))).toBe(18000)
+    expect(amountDueOn(c, D(2026, 11, 4))).toBe(42000)
   })
 })

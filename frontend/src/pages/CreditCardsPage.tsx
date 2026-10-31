@@ -8,7 +8,7 @@ import api from '../api/axios'
 import type { CreditCard } from '../types'
 import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner, ErrorState, SortHeader, FromLink } from '../components/common'
 import { fmtINR, getEff, isPaidThisMonth, resolveDueDay, monthlyIncomeTotal, ordinal } from '../utils/format'
-import { cardCycle, emiStartsLater, fmtDueDate } from '../utils/cardCycle'
+import { cardCycle, emiStartsLater, fmtDueDate, billingPeriods, periodLabel, amountDueOn } from '../utils/cardCycle'
 import { cardLimitUse } from '../utils/cardLimit'
 import { AmountInput } from '../components/common/AmountInput'
 import { Plus, Pencil, Trash2, CheckCircle, Archive, ChevronDown, Shield } from 'lucide-react'
@@ -315,6 +315,7 @@ export default function CreditCardsPage() {
                     Tap opens the same details and actions as the table row (tablet and desktop only). */}
                 {(() => {
                   const cy = cardCycle(c)
+                  const periods = billingPeriods(c)
                   const ownEmiNow = activeEmis.filter((e: any) => emiOwn(e) && !emiStartsLater(c, e)).reduce((a: number, e: any) => a + Number(e.emi ?? 0), 0)
                   const payNow = cy.billThisMonth + ownEmiNow
                   return (
@@ -323,23 +324,21 @@ export default function CreditCardsPage() {
                       <div className="flex items-baseline justify-between gap-3">
                         <span className="font-medium text-[14px] truncate">{c.banker}</span>
                         <span className="mono font-semibold text-[14px] tabular-nums flex-shrink-0" style={{ color: payNow > 0 ? 'var(--danger)' : 'var(--success)' }}>
-                          {payNow > 0 ? fmtINR(payNow) : '✓ nothing due'}
+                          {payNow > 0 ? fmtINR(payNow) : cy.dues.length ? <span style={{ color: 'var(--warning)' }}>{fmtINR(cy.dues[0].amount)}</span> : '✓ nothing due'}
                         </span>
                       </div>
                       <div className="flex items-center justify-between gap-3 mt-0.5 text-[12px]" style={{ color: 'var(--text-muted)' }}>
                         <span className="truncate">
-                          {cy.billDue ? `due ${fmtDueDate(cy.billDue)}` : dueDayNum ? `due ${ordinal(dueDayNum)}` : 'no due day'}
-                          {c.billingDay ? ` · statement ${ordinal(c.billingDay)}` : ''}
+                          {periods ? `Billed ${fmtDueDate(periods.last.from)} – ${fmtDueDate(periods.last.to)}${amountDueOn(cy, periods.last.due) > 0 ? ` · ${fmtINR(amountDueOn(cy, periods.last.due))}` : ''} · due ${fmtDueDate(periods.last.due)}` : cy.billDue ? `due ${fmtDueDate(cy.billDue)}` : dueDayNum ? `due ${ordinal(dueDayNum)}` : 'no due day'}
                           {isPaid && <span style={{ color: 'var(--success)' }}> · ✓ paid</span>}
                         </span>
                         <span className="flex-shrink-0 tabular-nums" style={{ color: utilClr }}>{used}% used</span>
                       </div>
-                      {(ownEmiNow > 0 || cy.nextBill > 0) && (
-                        <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>
-                          {ownEmiNow > 0 && `EMIs ${fmtINR(ownEmiNow)}/mo`}{ownEmiNow > 0 && cy.nextBill > 0 && ' · '}
-                          {cy.nextBill > 0 && `next bill ${fmtINR(cy.nextBill)} due ${fmtDueDate(cy.nextDue)}`}
-                        </div>
-                      )}
+                      {periods && <div className="text-[12px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                        Now {fmtDueDate(periods.current.from)} – {fmtDueDate(periods.current.to)}{amountDueOn(cy, periods.current.due) > 0 ? ` · ${fmtINR(amountDueOn(cy, periods.current.due))} so far` : ''} · due {fmtDueDate(periods.current.due)}
+                      </div>}
+                      {ownEmiNow > 0 && <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>EMIs {fmtINR(ownEmiNow)}/mo</div>}
+                      {!periods && cy.nextBill > 0 && <div className="text-[11px] mt-0.5" style={{ color: 'var(--text-faint)' }}>next bill {fmtINR(cy.nextBill)} due {fmtDueDate(cy.nextDue)}</div>}
                       <div className="h-1 rounded-full mt-2 overflow-hidden" style={{ background: 'var(--border)' }}>
                         <div className="h-full rounded-full" style={{ width: `${Math.min(100, used)}%`, background: utilClr }} />
                       </div>
@@ -363,11 +362,16 @@ export default function CreditCardsPage() {
                         <span className="font-medium text-[13px]">{c.banker}</span>
                         {activeEmis.length > 0 && <span className="text-[11px] px-1.5 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--info) 15%, transparent)', color: 'var(--info)' }}>{activeEmis.length} EMI</span>}
                       </div>
-                      {daysLeft !== null && (
-                        <div className="text-[11px] mt-0.5" style={{ color: daysLeft <= 3 ? 'var(--danger)' : daysLeft <= 7 ? 'var(--warning)' : 'var(--text-faint)' }}>
-                          Statement in {daysLeft}d
-                        </div>
-                      )}
+                      {daysLeft !== null && (() => {
+                        const bp = billingPeriods(c)
+                        const inDays = bp ? Math.round((bp.current.statement.getTime() - new Date(new Date().toDateString()).getTime()) / 86400000) : daysLeft
+                        return (
+                          <div className="text-[11px] mt-0.5" style={{ color: inDays <= 3 ? 'var(--danger)' : inDays <= 7 ? 'var(--warning)' : 'var(--text-faint)' }}
+                            title={bp ? `Last statement: ${periodLabel(bp.last)}\nCurrent cycle: ${periodLabel(bp.current)}` : undefined}>
+                            {bp ? `Cycle ${fmtDueDate(bp.current.from)} – ${fmtDueDate(bp.current.to)} · statement in ${inDays}d` : `Statement in ${daysLeft}d`}
+                          </div>
+                        )
+                      })()}
                     </div>
                   </div>
 
@@ -448,6 +452,26 @@ export default function CreditCardsPage() {
                 {/* Expanded */}
                 {isExp && (
                   <div style={{ background: 'var(--bg-base)', borderTop: '1px solid color-mix(in srgb, var(--text) 5%, transparent)' }}>
+                    {/* Billing periods from the statement and due days (utils/cardCycle) */}
+                    {(() => {
+                      const bp = billingPeriods(c)
+                      if (!bp) return <div className="px-4 pt-3 text-[12px]" style={{ color: 'var(--text-faint)' }}>Add a statement day to this card to see its billing periods.</div>
+                      const cyc = cardCycle(c)
+                      const Row = ({ label, p, hint }: { label: string; p: typeof bp.last; hint: string }) => (
+                        <div className="flex-1 min-w-[200px] rounded-xl px-3 py-2" style={{ border: '1px solid var(--hairline)', background: 'var(--bg-card)' }}>
+                          <div className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>{label}</div>
+                          <div className="text-[13px] font-semibold tabular-nums">{fmtDueDate(p.from)} – {fmtDueDate(p.to)}
+                            {amountDueOn(cyc, p.due) > 0 && <span className="mono ml-2" style={{ color: 'var(--danger)' }}>{fmtINR(amountDueOn(cyc, p.due))}</span>}</div>
+                          <div className="text-[11px] tabular-nums" style={{ color: 'var(--text-muted)' }}>{hint} {fmtDueDate(p.statement)} · due <b style={{ color: 'var(--text)' }}>{fmtDueDate(p.due)}</b></div>
+                        </div>
+                      )
+                      return (
+                        <div className="flex flex-wrap gap-2 px-4 pt-3">
+                          <Row label="Last statement" p={bp.last} hint="billed" />
+                          <Row label="Current cycle" p={bp.current} hint="statement" />
+                        </div>
+                      )
+                    })()}
                     {/* Tab bar */}
                     <div className="flex items-center border-b px-4" style={{ borderColor: 'color-mix(in srgb, var(--text) 5%, transparent)' }}>
                       {(c.emis ?? []).length > 0 && (
@@ -973,6 +997,15 @@ export default function CreditCardsPage() {
             <FormField label="Outstanding (₹)"><AmountInput placeholder="0" className={"input" + (formErrors.outstanding ? ' border-red-500' : '')} value={cardForm.outstanding} onValue={n => { setCardForm((f: any) => ({ ...f, outstanding: n ?? 0 })); setFormErrors(er => ({ ...er, outstanding: '' })) }} />{formErrors.outstanding && <p className="text-[11px] text-red-400 mt-1">{formErrors.outstanding}</p>}</FormField>
             <FormField label="Due Day"><input className={"input" + (formErrors.dueDay ? ' border-red-500' : '')} type="number" min={1} max={31} placeholder="1–31" value={cardForm.dueDay || ''} onChange={e => { setCardForm((f: any) => ({ ...f, dueDay: +e.target.value })); setFormErrors(er => ({ ...er, dueDay: '' })) }} />{formErrors.dueDay && <p className="text-[11px] text-red-400 mt-1">{formErrors.dueDay}</p>}</FormField>
             <FormField label="Statement Day"><input className={"input" + (formErrors.billingDay ? ' border-red-500' : '')} type="number" min={1} max={31} placeholder="1–31" value={cardForm.billingDay || ''} onChange={e => { setCardForm((f: any) => ({ ...f, billingDay: +e.target.value })); setFormErrors(er => ({ ...er, billingDay: '' })) }} />{formErrors.billingDay && <p className="text-[11px] text-red-400 mt-1">{formErrors.billingDay}</p>}</FormField>
+            {(() => {
+              const bp = billingPeriods({ billingDay: cardForm.billingDay, dueDay: cardForm.dueDay })
+              return bp ? (
+                <div className="form-full text-[12px] rounded-lg px-3 py-2" style={{ background: 'color-mix(in srgb, var(--info) 8%, transparent)', color: 'var(--text-muted)' }}>
+                  Statement on the {ordinal(cardForm.billingDay)} covers the {ordinal(cardForm.billingDay)} to the {cardForm.billingDay > 1 ? ordinal(cardForm.billingDay - 1) : 'month end'} · due the {ordinal(cardForm.dueDay || cardForm.billingDay)}.
+                  {' '}Current cycle: <b style={{ color: 'var(--text)' }}>{periodLabel(bp.current)}</b>
+                </div>
+              ) : null
+            })()}
             <FormField label="Notes" className="form-full"><textarea className="input" rows={3} value={cardForm.notes || ''} onChange={e => setCardForm((f: any) => ({ ...f, notes: e.target.value }))} /></FormField>
           </div>
         </Modal>
