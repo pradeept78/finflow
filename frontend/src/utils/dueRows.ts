@@ -100,11 +100,11 @@ export function buildDueRows(data: DueData, now: Date = new Date()): { rows: Due
   expenses.forEach(e => {
     if (!isLive(e)) return
     if (isOneOff(e.frequency)) {
-      if (sameMonth(e.startDate, now) && Number(e.amount ?? 0) > 0) rows.push({ key: `exp-${e.id}`, kind: 'one-time', label: e.label, sub: 'One-time expense', amount: Number(e.amount), dueDay: resolveDueDay(e, 1), ref: e, category: e.category })
+      if (sameMonth(e.startDate, now) && Number(e.amount ?? 0) > 0) rows.push({ key: `exp-${e.id}`, kind: 'one-time', label: e.label, sub: 'One-time expense', amount: Number(e.amount), dueDay: resolveDueDay(e), ref: e, category: e.category })
       return
     }
     if (!isDueThisMonth(e.startDate, e.frequency)) return
-    rows.push({ key: `exp-${e.id}`, kind: 'bill', label: e.label, sub: e.category ?? 'Expense', amount: Number(e.amount ?? 0), dueDay: resolveDueDay(e, 1), ref: e, category: e.category })
+    rows.push({ key: `exp-${e.id}`, kind: 'bill', label: e.label, sub: e.category ?? 'Expense', amount: Number(e.amount ?? 0), dueDay: resolveDueDay(e), ref: e, category: e.category })
   })
 
   // Savings / chit: still-building is a savings contribution; paid-out is a repayment.
@@ -115,7 +115,7 @@ export function buildDueRows(data: DueData, now: Date = new Date()): { rows: Due
     rows.push({
       key: `sav-${v.id}`, kind: repaying ? 'chit-repay' : 'savings',
       label: repaying ? `${v.name} (${v.prizeTaken ? 'won - paying back' : 'withdrew'})` : v.name,
-      sub: repaying ? 'Still Owe' : (v.savingType ?? 'Savings'), amount: Number(v.monthly ?? 0), dueDay: resolveDueDay(v) ?? 10, ref: v, pending: eff.pending, isLast: eff.pending === 1,
+      sub: repaying ? 'Still Owe' : (v.savingType ?? 'Savings'), amount: Number(v.monthly ?? 0), dueDay: resolveDueDay(v), ref: v, pending: eff.pending, isLast: eff.pending === 1,
     })
   })
 
@@ -123,23 +123,23 @@ export function buildDueRows(data: DueData, now: Date = new Date()): { rows: Due
   insurance.forEach(v => {
     if (!isLive(v)) return
     if (v.isCardEmi) {
-      if (!isOneOff(v.frequency)) notCounted.push({ key: `ins-${v.id}`, label: v.name, sub: 'Insurance', amount: toMonthly(v.premium, v.frequency), dueDay: resolveDueDay(v, 1), why: 'already a Card EMI' })
+      if (!isOneOff(v.frequency)) notCounted.push({ key: `ins-${v.id}`, label: v.name, sub: 'Insurance', amount: toMonthly(v.premium, v.frequency), dueDay: resolveDueDay(v), why: 'already a Card EMI' })
       return
     }
     const amt = Number(v.premium ?? 0)
     if (amt <= 0) return
     if (isOneOff(v.frequency)) {
-      if (sameMonth(v.startDate, now)) rows.push({ key: `ins-${v.id}`, kind: 'one-time', label: v.name, sub: 'One-time premium', amount: amt, dueDay: resolveDueDay(v, 1), ref: v })
+      if (sameMonth(v.startDate, now)) rows.push({ key: `ins-${v.id}`, kind: 'one-time', label: v.name, sub: 'One-time premium', amount: amt, dueDay: resolveDueDay(v), ref: v })
       return
     }
     if (!isDueThisMonth(v.startDate, v.frequency)) return
-    rows.push({ key: `ins-${v.id}`, kind: 'insurance', label: v.name, sub: `Insurance · ${v.frequency}`, amount: amt, dueDay: resolveDueDay(v, 1), ref: v })
+    rows.push({ key: `ins-${v.id}`, kind: 'insurance', label: v.name, sub: `Insurance · ${v.frequency}`, amount: amt, dueDay: resolveDueDay(v), ref: v })
   })
 
   // SIP / investments
   investments.forEach(v => {
     if (!isLive(v) || !(Number(v.monthly ?? 0) > 0)) return
-    rows.push({ key: `inv-${v.id}`, kind: 'sip', label: v.name, sub: v.investType ?? 'SIP', amount: Number(v.monthly), dueDay: resolveDueDay(v) ?? 1, ref: v })
+    rows.push({ key: `inv-${v.id}`, kind: 'sip', label: v.name, sub: v.investType ?? 'SIP', amount: Number(v.monthly), dueDay: resolveDueDay(v), ref: v })
   })
 
   return { rows, notCounted }

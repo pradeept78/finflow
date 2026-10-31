@@ -180,7 +180,8 @@ export default function QuickLookupPage() {
   const visibleItems = kindFilter.size > 0 ? items.filter(it => kindFilter.has(it.kind)) : items
   const byDay = new Map<number, typeof items>()
   visibleItems.forEach(item => { const d = item.dueDay ?? 0; if (!byDay.has(d)) byDay.set(d, []); byDay.get(d)!.push(item) })
-  const days = [...byDay.keys()].sort((a, b) => a - b)
+  // Day 0 = no due day set: listed last as "Any day this month", never overdue.
+  const days = [...byDay.keys()].sort((a, b) => (a === 0 ? 99 : a) - (b === 0 ? 99 : b))
   // totalDue: outstanding already inside items (card chips show outstanding as amount)
   const totalDue = items.filter(x => !isMarked(x.key, x.dueDay)).reduce((s, x) => s + x.amount, 0)
 
@@ -424,14 +425,14 @@ export default function QuickLookupPage() {
             const lc = isOv ? 'text-red-400' : isTd ? 'text-orange-400' : isSn ? 'text-yellow-400' : allPaid ? 'text-green-400' : ''
             const bl = isOv ? 'border-l-red-500' : isTd ? 'border-l-orange-500' : isSn ? 'border-l-yellow-500' : allPaid ? 'border-l-green-500' : 'border-l-[var(--border)]'
             const accent = isOv ? 'var(--danger)' : isTd ? 'var(--orange)' : isSn ? 'var(--warning)' : allPaid ? 'var(--success)' : 'var(--text-faint)'
-            const when = day === 0 ? 'no date' : isTd ? 'today' : isOv ? 'overdue' : day > today ? `in ${day - today} day${day - today === 1 ? '' : 's'}` : 'earlier'
+            const when = day === 0 ? 'any day' : isTd ? 'today' : isOv ? 'overdue' : day > today ? `in ${day - today} day${day - today === 1 ? '' : 's'}` : 'earlier'
             return (
               <div key={day} className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--hairline)', borderLeft: `3px solid ${accent}` }}>
                 <div className="flex flex-col sm:flex-row">
                   <div className="sm:w-28 flex-shrink-0 flex sm:flex-col items-baseline sm:items-start justify-between sm:justify-center gap-1 px-4 py-3 sm:border-r" style={{ borderColor: 'var(--hairline)', background: `color-mix(in srgb, ${accent} 6%, transparent)` }}>
                     <div className="flex items-baseline gap-1.5 sm:flex-col sm:gap-0">
                       <span className="text-[24px] font-semibold tabular-nums leading-none" style={{ color: day === 0 ? 'var(--text-muted)' : accent === 'var(--text-faint)' ? 'var(--text)' : accent }}>{day === 0 ? '—' : day}</span>
-                      <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>{day === 0 ? 'No date' : when}</span>
+                      <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>{day === 0 ? 'Any day this month' : when}</span>
                     </div>
                     {!allPaid ? <span className="mono text-[12px] font-semibold tabular-nums" style={{ color: accent === 'var(--text-faint)' ? 'var(--text)' : accent }}>{fmtINR(dayUnpaid)}</span> : <span className="text-[11px] font-semibold" style={{ color: 'var(--success)' }}>✓ done</span>}
                   </div>

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { dataHealth } from '../dataHealth'
-const iso = (m: number) => { const d = new Date(); d.setMonth(d.getMonth() - m); return d.toISOString().slice(0, 10) }
+// Mid-month anchor: setMonth() on the 29th-31st rolls into the next month (31 Oct - 8 months = "31 Feb" = 3 Mar).
+const iso = (m: number) => { const d = new Date(); d.setDate(15); d.setMonth(d.getMonth() - m); return d.toISOString().slice(0, 10) }
 describe('dataHealth', () => {
   it('flags records that cannot auto-calculate', () => {
     const h = dataHealth({

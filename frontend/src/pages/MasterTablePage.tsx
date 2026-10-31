@@ -521,7 +521,7 @@ export default function MasterTablePage() {
     if (a === 0) return 1; if (b === 0) return -1
     return a - b
   })
-  const dueGroupKey = (d: number) => d === 0 ? 'No fixed date' : `Day ${d}`
+  const dueGroupKey = (d: number) => d === 0 ? 'Any day this month' : `Day ${d}`
   const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate()
   const daysAwayFor = (d: number) => d >= today ? d - today : (daysInMonth - today + d)
   const runningByDay = new Map<number, number>()
@@ -1303,7 +1303,7 @@ export default function MasterTablePage() {
         </div>
       ) : (
         <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-          {dueGroupList.every(g => (dueBuckets.get(g === 'No fixed date' ? 0 : Number(g.replace('Day ', ''))) ?? []).length === 0) ? (
+          {dueGroupList.every(g => (dueBuckets.get(g === 'Any day this month' ? 0 : Number(g.replace('Day ', ''))) ?? []).length === 0) ? (
             <div className="p-8 text-center" style={{ color: 'var(--text-faint)' }}>No items match "{search}"</div>
           ) : dueDays.map(d => {
             const g = dueGroupKey(d)
@@ -1321,7 +1321,7 @@ export default function MasterTablePage() {
               <div key={g}>
                 <GroupHead
                   title={g} count={groupRows.length} open={!isCollapsed} onToggle={() => toggleGroup(g)}
-                  accent={g === 'No fixed date' ? 'var(--text-faint)' : isTodayGroup ? 'var(--warning)' : isOverdueGroup ? 'var(--danger)' : groupPaid && d < today ? 'var(--success)' : 'var(--info)'}
+                  accent={g === 'Any day this month' ? 'var(--text-faint)' : isTodayGroup ? 'var(--warning)' : isOverdueGroup ? 'var(--danger)' : groupPaid && d < today ? 'var(--success)' : 'var(--info)'}
                   tag={isTodayGroup
                     ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--warning) 16%, transparent)', color: 'var(--warning)' }}>Today</span>
                     : groupPaid && d > 0 && d < today
@@ -1329,7 +1329,7 @@ export default function MasterTablePage() {
                     : isOverdueGroup
                       ? <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full" style={{ background: 'color-mix(in srgb, var(--danger) 14%, transparent)', color: 'var(--danger)' }}>{today - d}d overdue</span>
                       : daysAway !== null ? <span className="text-[11px]" style={{ color: 'var(--text-faint)' }}>in {daysAway}d</span> : null}
-                  right={g === 'No fixed date'
+                  right={g === 'Any day this month'
                     ? <span className="text-[12px]" style={{ color: 'var(--text-faint)' }}>no set date</span>
                     : (
                       <span className="flex flex-col items-end leading-tight tabular-nums">
