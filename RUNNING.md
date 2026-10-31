@@ -184,21 +184,23 @@ And confirm `/admin` loads without a red banner or a 500 — see item 3 at the t
 mechanism. Building an import is real work: id remapping, referential ordering (cards before card
 EMIs), a merge-versus-replace decision.
 
-The reliable backup is a database dump. `backup.sh` reads its credentials from `.env` and keeps the
-last 7 dumps in `~/finflow-backups/`:
+The reliable backup is a database dump. `backup.sh` takes its credentials from the `finflow-mysql`
+container itself (no `.env` needed) and keeps the last 7 dumps in `~/finflow-backups/`:
 ```bash
 ./backup.sh                          # dumps Docker's finflow-mysql
 ```
 
-**Nightly schedule.** `scripts/com.finflow.backup.plist` runs it every day at 21:30 via launchd (not
-cron: a run missed while the Mac sleeps happens on wake). Docker must be running. Install once:
+**Nightly schedule (installed 31 Oct 2026).** `scripts/com.finflow.backup.plist` runs it daily at 21:30
+via launchd (not cron: a run missed while the Mac sleeps happens on wake). Docker must be running.
+macOS blocks background jobs from reading `~/Downloads`, so the job runs an installed copy at
+`~/finflow-backups/backup.sh`. **After changing `backup.sh`, re-copy it.** To install or reinstall:
 ```bash
+install -m 755 backup.sh ~/finflow-backups/backup.sh
 cp scripts/com.finflow.backup.plist ~/Library/LaunchAgents/
+launchctl bootout gui/$(id -u)/com.finflow.backup 2>/dev/null
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.finflow.backup.plist
 launchctl kickstart gui/$(id -u)/com.finflow.backup     # run now; check ~/finflow-backups/backup.log
 ```
-If the log shows `Operation not permitted`, macOS is blocking access to `~/Downloads`: give `/bin/bash`
-Full Disk Access, or move the repo out of Downloads and fix the path in the plist.
 
 **Restore** (tested 31 Oct 2026 into a scratch database: every table count matched):
 ```bash

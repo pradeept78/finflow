@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <!-- Nightly backup of the Docker database via backup.sh. launchd (not cron) so a backup missed while
-     the Mac was asleep runs on wake. Install: see RUNNING.md › Backups. -->
+     the Mac was asleep runs on wake. Runs an installed copy of backup.sh outside ~/Downloads (macOS blocks background jobs there).
+     Install: see RUNNING.md › Backup. -->
 <plist version="1.0"><dict>
   <key>Label</key><string>com.finflow.backup</string>
-  <key>ProgramArguments</key><array><string>/bin/bash</string><string>/Users/Pradeep_1/Downloads/finflow-clean/backup.sh</string></array>
+  <key>ProgramArguments</key><array><string>/bin/bash</string><string>/Users/Pradeep_1/finflow-backups/backup.sh</string></array>
   <key>EnvironmentVariables</key><dict><key>PATH</key><string>/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string></dict>
   <key>StartCalendarInterval</key><dict><key>Hour</key><integer>21</integer><key>Minute</key><integer>30</integer></dict>
   <key>StandardOutPath</key><string>/Users/Pradeep_1/finflow-backups/backup.log</string>
