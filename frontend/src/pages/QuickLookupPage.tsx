@@ -3,6 +3,7 @@ import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { loansApi, cardsApi, personalEmiApi, expensesApi, savingsApi, investmentsApi, insuranceApi, incomeApi, paidMarksApi, closedLoansApi, peopleOweApi } from '../api'
 import { fmtINR, getEff, toMonthly, resolveDueDay, isPaidThisMonth, isDueThisMonth, freqMonths, monthlyIncomeTotal, isOneOff } from '../utils/format'
+import { cardCycle } from '../utils/cardCycle'
 import { calcOutflow, outflowTierLine, outflowRows as outflowRowsOf, outflowSubLine } from '../utils/calcOutflow'
 import { ioweFacts } from '../utils/iowe'
 import { calcLoanSplit } from '../utils/loanCalc'
@@ -319,12 +320,13 @@ export default function QuickLookupPage() {
           to `c.billingDay` via `resolveDueDay` — a card set up with only a billing day (no explicit
           due day) showed up correctly in the due list but this nudge never fired for it. */}
       {cards.filter((c: any) => {
-        const cardSpends = (c.spends ?? []).reduce((a: number, sp: any) => a + Number(sp.amount ?? 0), 0)
-        const dueDay = resolveDueDay(c, c.billingDay)
-        return cardSpends > 0 && (dueDay ?? 0) > 0 && (dueDay ?? 0) < today
+        // Only spends on a bill that fell due THIS month and has passed (cardCycle) — not the ongoing cycle's.
+        const cy = cardCycle(c)
+        return cy.spendsThisMonth > 0 && !!cy.billDue && cy.billDue.getDate() < today
       }).map((c: any) => {
-        const cardSpends = (c.spends ?? []).reduce((a: number, sp: any) => a + Number(sp.amount ?? 0), 0)
-        const dueDay = resolveDueDay(c, c.billingDay)
+        const cy = cardCycle(c)
+        const cardSpends = cy.spendsThisMonth
+        const dueDay = cy.billDue?.getDate() ?? resolveDueDay(c, c.billingDay)
         const paidKey = `spend-cleared-${c.id}`
         if (isMarked(paidKey, dueDay)) return null   // was `item.dueDay` — `item` is not in scope here
         return (

@@ -8,6 +8,7 @@ import api from '../api/axios'
 import type { CreditCard } from '../types'
 import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner, ErrorState, SortHeader, FromLink } from '../components/common'
 import { fmtINR, getEff, isPaidThisMonth, resolveDueDay, monthlyIncomeTotal } from '../utils/format'
+import { cardCycle } from '../utils/cardCycle'
 import { cardLimitUse } from '../utils/cardLimit'
 import { AmountInput } from '../components/common/AmountInput'
 import { Plus, Pencil, Trash2, CheckCircle, Archive, ChevronDown, Shield } from 'lucide-react'
@@ -146,6 +147,10 @@ export default function CreditCardsPage() {
   const totEmiCount = cards.reduce((s: number, c: any) => s + liveEmis(c).length, 0)   // all running EMIs, friends' included
   const totEmiAll   = totEmi + totEmiFriends                                          // what the cards are charged each month
   const totSpends  = cards.reduce((s: number, c: any) => s + (c.spends ?? []).reduce((a: number, sp: any) => a + Number(sp.amount ?? 0), 0), 0)
+  // Which bill each amount is on (statement day → due day, see utils/cardCycle): due this month vs the next bill.
+  const cycles         = cards.map((c: any) => cardCycle(c))
+  const spendsDueNow   = cycles.reduce((s, c) => s + c.spendsThisMonth, 0)
+  const outDueNow      = cycles.reduce((s, c) => s + c.outstandingThisMonth, 0)
   const util       = totLimit > 0 ? Math.round((totOut + totSpends + totEmiPend) / totLimit * 100) : 0 // same three parts as cardLimitUse, summed over cards
   const totalLiab  = totOut + totEmiPend + totSpends
   // "For a friend" spends/EMIs that haven't been paid back yet — a receivable owed TO the user,
@@ -178,8 +183,8 @@ export default function CreditCardsPage() {
             { label: 'Total Limit',     value: fmtINR(totLimit),   sub: `${cards.length} cards`,       accent: 'var(--cyan)' },
             { label: 'Total Liability', value: fmtINR(totalLiab),  sub: `${util}% utilization`,        accent: totalLiab > 0 ? 'var(--danger)' : 'var(--success)' },
             { label: 'EMI / month',     value: fmtINR(totEmiAll),  sub: `${fmtINR(totEmiPend)} pending · ${totEmiCount} EMI${totEmiCount !== 1 ? 's' : ''}${totEmiFriends > 0 ? ` · ${fmtINR(totEmi)} yours + ${fmtINR(totEmiFriends)} friends'` : ''}`, accent: 'var(--warning)' },
-            { label: 'Spends',          value: fmtINR(totSpends),  sub: 'this billing cycle',           accent: 'var(--pink)' },
-            { label: 'Outstanding',     value: fmtINR(totOut),     sub: totOut > 0 ? 'pay this cycle' : '✓ all clear', accent: totOut > 0 ? 'var(--danger)' : 'var(--success)' },
+            { label: 'Spends',          value: fmtINR(totSpends),  sub: totSpends === 0 ? 'none logged' : spendsDueNow > 0 ? `${fmtINR(spendsDueNow)} due this month · rest on next bill` : 'all on the next bill', accent: 'var(--pink)' },
+            { label: 'Outstanding',     value: fmtINR(totOut),     sub: totOut === 0 ? '✓ all clear' : outDueNow >= totOut ? 'due this month' : outDueNow > 0 ? `${fmtINR(outDueNow)} due this month · rest next month` : 'due next month', accent: totOut > 0 ? 'var(--danger)' : 'var(--success)' },
             { label: 'Friends Owe You', value: fmtINR(totOwedToMe), sub: owedCount > 0 ? `${owedCount} item${owedCount>1?'s':''}` : '✓ none pending', accent: totOwedToMe > 0 ? 'var(--info)' : 'var(--success)' },
           ].map(m => (
             <div key={m.label} className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${m.accent} 5%, var(--bg-card)) 0%, var(--bg-card) 70%)`, border: `1px solid var(--hairline)` }}>

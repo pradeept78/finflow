@@ -2,6 +2,7 @@ import { getEff, toMonthly, isOneOff, freqMonths, isDueInMonth } from './format'
 import { isLive } from './ended'
 import { isChitRepaying } from './kinds'
 import { ioweFacts } from './iowe'
+import { cardCycle, emiStartsLater } from './cardCycle'
 
 /**
  * SINGLE SOURCE OF TRUTH for monthly outflow.
@@ -53,10 +54,13 @@ export interface OutflowComponents {
   /** Sum of everything above: the standing monthly commitment. */
   locked:       number
 
+  /** Statement balance and logged spends that fall DUE this month (see cardCycle.ts). */
   ccOutstanding: number
   ccSpends:      number
-  /** Statement balance plus the unbilled cycle. A one-month figure. */
+  /** What has to be paid on cards this month. A one-month figure. */
   card:          number
+  /** Already on the cards but due in a later month — the next bill. Not part of `total`. */
+  cardNext:      number
 
   /** Full amounts of non-monthly bills, premiums, one-time payments and lump sums due this month. */
   dueNow:        number
@@ -92,7 +96,7 @@ export function calcOutflow(
 
   const ccEmi = cards.reduce((s, c) =>
     s + (c.emis ?? [])
-      .filter((e: any) => getEff(e).pending > 0 && !isFriendOwed(e))
+      .filter((e: any) => getEff(e).pending > 0 && !isFriendOwed(e) && !emiStartsLater(c, e, now))
       .reduce((a: number, e: any) => a + num(e.emi), 0), 0)
 
   // An interest-only entry keeps paying for as long as it is open, so its servicing cost belongs
@@ -145,9 +149,12 @@ export function calcOutflow(
 
   const locked = loanEmi + ccEmi + iOweEmi + expenses_ + insuranceEmi + savings_ + chitRepay + sipInvest
 
-  const ccOutstanding = cards.reduce((s, c) => s + num(c.outstanding), 0)
-  const ccSpends = cards.reduce((s, c) =>
-    s + (c.spends ?? []).filter((sp: any) => !isFriendOwed(sp)).reduce((a: number, sp: any) => a + num(sp.amount), 0), 0)
+  // Each card's money counts in the month its bill is DUE: a spend after the statement date lands on
+  // next month's bill (cardNext), not this month's.
+  const cycles = cards.map(c => cardCycle(c, now))
+  const ccOutstanding = cycles.reduce((s, c) => s + c.outstandingThisMonth, 0)
+  const ccSpends = cycles.reduce((s, c) => s + c.spendsThisMonth, 0)
+  const cardNext = cycles.reduce((s, c) => s + c.nextBill, 0)
   const card = ccOutstanding + ccSpends
 
   // Kept in step with buildDueRows (dueRows.ts): the same items it lists as due this month, at the
@@ -168,7 +175,7 @@ export function calcOutflow(
     loanEmi, ccEmi, iOweEmi, expenses: expenses_, expenseProvision, insuranceEmi, insuranceProvision,
     setAside: expenseProvision + insuranceProvision,
     savings: savings_, chitRepay, sipInvest, locked,
-    ccOutstanding, ccSpends, card, dueNow,
+    ccOutstanding, ccSpends, card, cardNext, dueNow,
     total: locked + card + dueNow,
   }
 }

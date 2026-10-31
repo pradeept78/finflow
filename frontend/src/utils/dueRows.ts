@@ -1,4 +1,5 @@
 import { getEff, resolveDueDay, isDueThisMonth, isOneOff, toMonthly } from './format'
+import { cardCycle, fmtDueDate, emiStartsLater } from './cardCycle'
 import { isLive } from './ended'
 import { ioweFacts } from './iowe'
 import { isChitRepaying } from './kinds'
@@ -70,14 +71,21 @@ export function buildDueRows(data: DueData, now: Date = new Date()): { rows: Due
         notCounted.push({ key: `card-emi-${e.id}`, label: `${c.banker} — ${e.label}`, sub: 'CC EMI', amount: Number(e.emi ?? 0), dueDay, why: `carried for ${e.owedBy}` })
         return
       }
+      if (emiStartsLater(c, e, now)) return   // first instalment is on next month's bill — listed under "next bill" below
       rows.push({ key: `card-emi-${e.id}`, kind: 'card-emi', label: `${c.banker} — ${e.label}`, sub: `CC EMI · ${eff.pending} left`, amount: Number(e.emi ?? 0), dueDay, ref: e, parent: c, pending: eff.pending, isLast: eff.pending === 1 })
     })
-    if (Number(c.outstanding ?? 0) > 0) {
-      rows.push({ key: `card-out-${c.id}`, kind: 'card-out', label: `${c.banker} Outstanding`, sub: 'CC statement balance', amount: Number(c.outstanding), dueDay, ref: c, parent: c })
+    // Statement balance and spends: only what falls DUE this month is listed (same rule as calcOutflow, via
+    // cardCycle). Money already on the card for a later bill goes to "not counted" with its due date.
+    const cyc = cardCycle(c, now)
+    const billDay = cyc.billDue ? cyc.billDue.getDate() : dueDay
+    if (cyc.outstandingThisMonth > 0) {
+      rows.push({ key: `card-out-${c.id}`, kind: 'card-out', label: `${c.banker} Outstanding`, sub: 'CC statement balance', amount: cyc.outstandingThisMonth, dueDay: billDay, ref: c, parent: c })
     }
-    const own = (c.spends ?? []).filter((sp: any) => !(sp.owedBy && !sp.owedSettled)).reduce((a: number, sp: any) => a + Number(sp.amount ?? 0), 0)
-    if (own > 0) {
-      rows.push({ key: `spend-${c.id}`, kind: 'card-spend', label: c.banker, sub: '🛍️ Spends — next bill', amount: own, dueDay, ref: c, parent: c })
+    if (cyc.spendsThisMonth > 0) {
+      rows.push({ key: `spend-${c.id}`, kind: 'card-spend', label: c.banker, sub: `🛍️ Spends — bill due ${fmtDueDate(cyc.billDue)}`, amount: cyc.spendsThisMonth, dueDay: billDay, ref: c, parent: c })
+    }
+    if (cyc.nextBill > 0) {
+      notCounted.push({ key: `card-next-${c.id}`, label: `${c.banker} — next bill`, sub: 'Credit card', amount: cyc.nextBill, dueDay: cyc.nextDue?.getDate(), why: `due ${fmtDueDate(cyc.nextDue)}, next month` })
     }
   })
 

@@ -62,6 +62,7 @@ describe('Master vs the shared due-list', () => {
   it('friend-owed and card-EMI rows are not charging, and match the shared "not counted" list', () => {
     expect(rows.filter(r => isFriendOwed(r) || r.isCardEmi).some(r => r.charging)).toBe(false)
     const masterUncounted = rows.filter(r => (isFriendOwed(r) && r.type === 'CC EMI') || r.isCardEmi).map(r => r.key).sort()
-    expect(masterUncounted).toEqual(due.notCounted.map(x => masterKeyOf(x.key)).sort())
+    // card-next-* = money already on a card for a LATER bill (cardCycle); it has no Master row of its own.
+    expect(masterUncounted).toEqual(due.notCounted.filter(x => !x.key.startsWith('card-next-')).map(x => masterKeyOf(x.key)).sort())
   })
 })

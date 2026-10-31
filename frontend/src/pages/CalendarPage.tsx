@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { loansApi, cardsApi, personalEmiApi, savingsApi, investmentsApi, insuranceApi, expensesApi, incomeApi, paidMarksApi } from '../api'
 import { calcOutflow, outflowTierLine } from '../utils/calcOutflow'
+import { cardCycle } from '../utils/cardCycle'
 import { ioweFacts } from '../utils/iowe'
 import { KindStrip } from '../components/common/KindStrip'
 import { calendarKind, isChitRepaying } from '../utils/kinds'
@@ -326,9 +327,12 @@ export default function CalendarPage() {
        it must equal what Dashboard, Budget, Lookup and Hub report to the rupee — so it comes from
        the shared calculator rather than being recomputed here with slightly different rules. */
     const regularOut = i === 0 ? shared.locked : (loanEmi + ccEmi + savEmi + repayEmi + persEmi + baseExpenses + billsDue + insEmi + sipEmi)
+    // Next month also pays the cards' next bill: spends after this statement date and a statement balance due
+    // next month (cardCycle). EMIs starting on that bill are already projected by the EMI loop above.
+    const cardNextBill = i === 1 ? (cards as any[]).reduce((s, c) => { const cy = cardCycle(c, now); return s + cy.nextBill - cy.nextBillEmis }, 0) : 0
     const totalOut = i === 0
       ? shared.total   // already includes this month's lump sums, one-offs and renewals (calcOutflow dueNow)
-      : regularOut + lumpSum + oneTime + ccOutstanding
+      : regularOut + lumpSum + oneTime + ccOutstanding + cardNextBill
     const free = monthlyIncome - totalOut
     const dropAmt = ending.filter(e => !e.type.includes('Due') && !e.type.includes('Matures')).reduce((s, e) => s + e.amount, 0)
 
