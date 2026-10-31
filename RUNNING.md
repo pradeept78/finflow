@@ -99,6 +99,24 @@ The native copy on 3306 is now a dev sandbox: anything entered on `:3000` does *
 
 ---
 
+## Phone access (Tailscale)
+
+The Docker stack is reachable from your own devices at **https://admins-macbook-pro-5.tail372646.ts.net**
+(tailnet only, not public). Open it on the phone and use *Add to Home Screen*. HTTPS is what lets the
+service worker register, so the installed app opens offline.
+
+```bash
+tailscale serve --bg 3100            # set up once; persists across reboots
+tailscale serve status
+tailscale serve --https=443 off      # stop sharing
+```
+The Mac must be awake, with Docker and Tailscale running. On this Mac `accept-dns` is off
+(`tailscale set --accept-dns=false`): with it on, Tailscale's own DNS lookups failed and it couldn't
+fetch the certificate. The side effect is that the Mac itself doesn't resolve `*.ts.net` names; use
+`http://localhost:3100` there. Tailscale renews the certificate itself.
+
+---
+
 ## Secrets
 
 `JWT_SECRET` and `SPRING_DATASOURCE_PASSWORD` have **no fallback value** in `application.yml`
