@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { authApi } from '../api'
 import { useAuthStore } from '../store/authStore'
 import { AuthShell, PasswordInput, PasswordRules } from '../components/auth/AuthShell'
 
@@ -10,6 +12,11 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  // Invite links look like /register?invite=ABCD-EFGH-JKMN (copied from /admin), so the code is filled in.
+  const [params] = useSearchParams()
+  const [inviteCode, setInviteCode] = useState(params.get('invite') ?? '')
+  // 'invite' unless the server says otherwise; a failed check still shows the field, since the server decides anyway.
+  const { data: mode = 'invite' } = useQuery({ queryKey: ['signup-mode'], queryFn: authApi.signupMode, retry: false })
   const register = useAuthStore(s => s.register)
   const navigate = useNavigate()
 
@@ -30,24 +37,42 @@ export default function RegisterPage() {
 
     setLoading(true)
     try {
-      await register({ name, email, password })
+      await register({ name, email, password, inviteCode: mode === 'invite' ? inviteCode : undefined })
       navigate('/lookup')
     } catch (err: any) {
       // Same missing catch as LoginPage. "Email already registered" is the message that matters
       // most here, and it was only ever reaching a toast.
-      setError(err?.response?.data?.message || 'Could not create the account. Please try again.')
+      // Field errors ("Validation failed" + a map) read better as the field messages themselves.
+      const d = err?.response?.data
+      const fields = d?.data && typeof d.data === 'object' ? Object.values(d.data).join(' ') : ''
+      setError(fields || d?.message || 'Could not create the account. Please try again.')
     } finally {
       setLoading(false)
     }
   }
 
+  if (mode === 'closed') return (
+    <AuthShell title="Sign-up is closed" subtitle="New accounts aren't being created right now."
+      footer={<>Already have an account? <Link to="/login" className="font-medium text-orange-400 hover:underline">Sign in</Link></>}>
+      <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>If you were expecting to join, ask the person who runs this FinFlow.</p>
+    </AuthShell>
+  )
+
   return (
     <AuthShell title="Create your account" subtitle="Start tracking your finances in a couple of minutes" error={error}
       footer={<>Already have an account? <Link to="/login" className="font-medium text-orange-400 hover:underline">Sign in</Link></>}>
       <form onSubmit={handleSubmit} className="space-y-4">
+        {mode === 'invite' && (
+          <div>
+            <label className="label" htmlFor="invite">Invite code</label>
+            <input id="invite" className="input mono uppercase" type="text" placeholder="ABCD-EFGH-JKMN" autoComplete="off" autoCapitalize="characters" spellCheck={false}
+              value={inviteCode} onChange={e => setInviteCode(e.target.value)} required />
+            <p className="text-[12px] mt-1.5" style={{ color: 'var(--text-muted)' }}>FinFlow is invite-only for now. Your invite link fills this in.</p>
+          </div>
+        )}
         <div>
           <label className="label" htmlFor="name">Name</label>
-          <input id="name" className="input" type="text" placeholder="Your name" autoComplete="name" autoFocus
+          <input id="name" className="input" type="text" placeholder="Your name" autoComplete="name" autoFocus={mode !== 'invite' || !!inviteCode}
             value={name} onChange={e => setName(e.target.value)} required />
         </div>
         <div>

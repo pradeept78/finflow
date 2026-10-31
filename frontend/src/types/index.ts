@@ -213,4 +213,8 @@ export interface ClosedLoan {
 }
 
 export interface LoginRequest { email: string; password: string }
-export interface RegisterRequest { name: string; email: string; password: string }
+export interface RegisterRequest { name: string; email: string; password: string; inviteCode?: string }
+export type SignupMode = 'invite' | 'open' | 'closed'
+export interface AdminUser { id: number; name: string; email: string; role: string; isCurrentUser: boolean; createdAt?: string; lastLogin?: string }
+/** A single-use sign-up code; `code` is 12 characters with no dashes (shown as XXXX-XXXX-XXXX). */
+export interface InviteCode { id: number; code: string; note?: string; createdBy?: string; createdAt: string; usedAt?: string; usedByEmail?: string }

@@ -68,6 +68,12 @@ public class GlobalExceptionHandler {
                 .success(false).message("Validation failed").data(errors).build());
     }
 
+    // An unknown /api path (or one that was removed) used to fall through to handleGeneral as a 500.
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNotFound(Exception ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error("Not found"));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGeneral(Exception ex) {
         log.error("Unexpected error", ex);

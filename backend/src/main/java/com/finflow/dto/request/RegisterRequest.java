@@ -33,4 +33,8 @@ public class RegisterRequest {
     @Size(min = 10, max = 128, message = "Password must be 10 to 128 characters")
     @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*[0-9]).*$", message = "Password must include a letter and a number")
     private String password;
+
+    /** Needed when SIGNUP_MODE is invite (the default); see InviteService. */
+    @Size(max = 32)
+    private String inviteCode;
 }

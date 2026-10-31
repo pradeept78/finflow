@@ -47,6 +47,8 @@ services:
       # Add the phone address (e.g. the Tailscale https://….ts.net name) in .env, or logins from it fail
       # with "Invalid CORS request". See RUNNING.md › Phone access.
       CORS_ALLOWED_ORIGINS: "${CORS_ALLOWED_ORIGINS:-http://localhost:[*],http://127.0.0.1:[*]}"
+      # invite (default) | open | closed — who may create an account. See RUNNING.md › Sign-up.
+      SIGNUP_MODE: ${SIGNUP_MODE:-invite}
     ports:
       # 8180 on the host so a local `mvn spring-boot:run` keeps 8080. Container side stays 8080,
       # which is what nginx.conf proxies to.

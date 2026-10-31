@@ -17,5 +17,14 @@ export const routes={
   {id:3,name:'Hyundai',insurer:'Hyundai',policyType:'Vehicle',frequency:'Yearly',premium:32000,startDate:'2026-07-20',active:true,isCardEmi:true},
   {id:4,name:'Family',insurer:'Family',policyType:'Health',frequency:'Single',premium:20048,startDate:'2026-10-15',active:true}],
  '/income-entrys':[{id:1,label:'Salary',amount:245000,frequency:'Monthly',active:true}],
- '/people-owes':[],'/closed-loans':[],'/paid-marks':[],'/snapshots':[]
+ '/people-owes':[],'/closed-loans':[],'/paid-marks':[],'/snapshots':[],
+ // Admin page (account details and invites only) and the sign-up mode
+ '/admin/me/is-admin':true,'/auth/signup-mode':'invite',
+ '/admin/users':[
+  {id:1,name:'Pradeep',email:'pradeep@example.test',role:'ADMIN',isCurrentUser:true,createdAt:'2026-03-02T10:00:00',lastLogin:'2026-10-31T09:00:00'},
+  {id:2,name:'Ravi Kumar',email:'ravi.kumar.with.a.long.address@example.test',role:'USER',isCurrentUser:false,createdAt:'2026-10-20T10:00:00',lastLogin:'2026-10-29T18:00:00'},
+  {id:3,name:'Meera',email:'meera@example.test',role:'USER',isCurrentUser:false,createdAt:'2026-10-25T10:00:00'}],
+ '/admin/invites':{mode:'invite',invites:[
+  {id:3,code:'KQ7MW2PXHT4N',note:'for Anand',createdBy:'pradeep@example.test',createdAt:'2026-10-30T10:00:00'},
+  {id:2,code:'R8XJ3CVN6YAB',note:'for Ravi',createdBy:'pradeep@example.test',createdAt:'2026-10-19T10:00:00',usedAt:'2026-10-20T10:00:00',usedByEmail:'ravi.kumar.with.a.long.address@example.test'}]}
 }

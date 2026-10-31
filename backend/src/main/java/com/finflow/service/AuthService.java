@@ -13,6 +13,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -23,7 +24,10 @@ public class AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final LoginAttemptService loginAttempts;
+    private final InviteService inviteService;
 
+    // Transactional so the invite code claimed below is released again if saving the user fails.
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             // Was "Email already registered" — told an attacker, via the response body alone,
@@ -31,6 +35,8 @@ public class AuthService {
             // path already avoids this with a generic "Invalid credentials"; match that here.
             throw new RuntimeException("Could not create account with the details provided");
         }
+        // After the email check, so a duplicate email doesn't use up the invite.
+        inviteService.admit(request.getInviteCode(), request.getEmail());
         // User.role now carries @Builder.Default, so leaving .role(...) off here correctly gets
         // "USER" rather than null — see User.java for why that annotation is the part that matters.
         User user = User.builder()
