@@ -11,7 +11,7 @@ import { loansApi, cardsApi, personalEmiApi, savingsApi, insuranceApi, investmen
 import { masterKeyOf } from '../utils/dueRows'
 import { cardCycle, fmtDueDate } from '../utils/cardCycle'
 import { fmtINR, monthlyIncomeTotal, ordinal } from '../utils/format'
-import { calcOutflow, outflowTierLine } from '../utils/calcOutflow'
+import { calcOutflow, outflowTierLine, freeFigures } from '../utils/calcOutflow'
 import { PageHeader, LoadingSpinner, ErrorState, SortHeader } from '../components/common'
 import { Download } from 'lucide-react'
 import { PhoneRow } from '../components/common/PhoneRow'
@@ -506,7 +506,7 @@ export default function MasterTablePage() {
   // they can't disagree with Dashboard/Hub/Finance Overview even though this page shows far more.
   const shared = calcOutflow(loans as any[], cards as any[], personal as any[], savings as any[], investments as any[], expenses as any[], insurance as any[])
   const monthlyIncome = monthlyIncomeTotal(income as any[])
-  const freeAfterCommitments = monthlyIncome - shared.locked
+  const freeAfterCommitments = freeFigures(shared, monthlyIncome).free
   // Investments shown as a single summary tile (current worth), to match Total Debt's role on the
   // liability side — the table below still lists each investment as its own row.
   const totalCurrentValue = investTotals(investments as any[]).value
@@ -789,7 +789,7 @@ export default function MasterTablePage() {
               hint: `Committed ${fmtINR(shared.locked)}/mo (real cash leaving every month) + credit-card outstanding ${fmtINR(shared.ccOutstanding)} + card spends ${fmtINR(shared.ccSpends)}${shared.dueNow > 0 ? ` + ${fmtINR(shared.dueNow)} of quarterly/yearly bills, premiums and one-off payments that fall due this month at full amount` : ''}${shared.setAside > 0 ? `. Not included: ${fmtINR(shared.setAside)}/mo set aside for renewals.` : ''}`,
             }
           })(),
-          { label: 'Free / month', value: `${freeAfterCommitments >= 0 ? '+' : '−'}${fmtINR(Math.abs(freeAfterCommitments))}${incomePct(freeAfterCommitments, monthlyIncome)}`, sub: monthlyIncome > 0 ? `of ${fmtINR(monthlyIncome)} income · before card bill` : 'add income to see this', accent: freeAfterCommitments >= 0 ? 'var(--success)' : 'var(--danger)' },
+          { label: 'Free / month', value: `${freeAfterCommitments >= 0 ? '+' : '−'}${fmtINR(Math.abs(freeAfterCommitments))}${incomePct(freeAfterCommitments, monthlyIncome)}`, sub: monthlyIncome > 0 ? `of ${fmtINR(monthlyIncome)} income · before card bills` : 'add income to see this', accent: freeAfterCommitments >= 0 ? 'var(--success)' : 'var(--danger)' },
         ].map(m => (
           <div key={m.label} title={(m as any).hint} className="rounded-2xl px-4 py-3 relative overflow-hidden" style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${m.accent} 5%, var(--bg-card)) 0%, var(--bg-card) 70%)`, border: `1px solid var(--hairline)` }}>
             <div className="text-[12px] font-medium mb-1" style={{ color: 'var(--text-muted)' }}>

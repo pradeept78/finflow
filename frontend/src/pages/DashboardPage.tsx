@@ -12,7 +12,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
 import axiosApi from '../api/axios'
 import { loansApi, cardsApi, personalEmiApi, savingsApi, investmentsApi, incomeApi, expensesApi, insuranceApi, snapshotApi } from '../api'
-import { calcOutflow, outflowTierLine } from '../utils/calcOutflow'
+import { calcOutflow, outflowTierLine, freeFigures } from '../utils/calcOutflow'
 import { calcDebt, debtRows } from '../utils/calcDebt'
 import { investTotals } from '../utils/investValue'
 import { debtFreeMonths } from '../utils/debtFree'
@@ -149,9 +149,9 @@ export default function DashboardPage() {
   const lockedMonthly   = o.locked
   const cardThisMonth   = o.card
   const recurringOutflow = o.total
-  const freeCash = monthlyIncome - recurringOutflow
-  // recurringOutflow already contains totalCC and ccSpends — don't subtract them twice.
-  const freeCashThisMonth = monthlyIncome - recurringOutflow
+  // Free / month (income − committed) and Left this month (income − everything due) — same two figures,
+  // same names, as every other page (calcOutflow.freeFigures). Both used to be income − total here.
+  const { free: freeCash, left: freeCashThisMonth } = freeFigures(o, monthlyIncome)
   const dti = monthlyIncome > 0 ? Math.round((loanEmi + ccEmi) / monthlyIncome * 100) : 0
   const savingsRate = monthlyIncome > 0 ? Math.round((savMo + sipMo) / monthlyIncome * 100) : 0
 
@@ -325,7 +325,7 @@ export default function DashboardPage() {
             /* Used to link to the retired /overview page. That page's job — a fuller breakdown of
                this same free-cash figure — now lives in this page's own Chart Modal, so this tile
                opens that instead of navigating away. */
-            {label:'Free / Month', value:`${freeCash>=0?'+':'−'}${fmtINR(Math.abs(freeCash))}${incomePct(freeCash, monthlyIncome)}`, sub:`incl. card bill · ${freeCash>=0?'buffer':'deficit'} vs ${fmtINR(monthlyIncome)} income`, accent:freeCash>=0?'var(--purple)':'var(--danger)', action:()=>setShowChart(true)},
+            {label:'Free / month', value:`${freeCash>=0?'+':'−'}${fmtINR(Math.abs(freeCash))}${incomePct(freeCash, monthlyIncome)}`, sub:`before card bills · left this month ${freeCashThisMonth>=0?'+':'−'}${fmtINR(freeCashThisMonth)}`, accent:freeCash>=0?'var(--purple)':'var(--danger)', action:()=>setShowChart(true)},
             /* Tier split and itemisation from the shared calculator, so this reads identically on
                Hub, Budget, Calendar and Lookup. The hand-built version here grouped chit repayment
                into "EMIs" and — because `persEmi` was a zero placeholder (now fixed above) — left
@@ -525,11 +525,11 @@ export default function DashboardPage() {
               <div className="mono font-bold text-[13px] text-yellow-400">{fmtINR(recurringOutflow)}</div>
             </div>
             <div className="flex items-center justify-between px-4 py-2.5" style={{background:'color-mix(in srgb, var(--success-strong) 6%, transparent)'}}>
-              <div><div className="text-[13px] font-bold text-green-400">Free / Month</div><div className="text-[11px]" style={{color:'var(--text-faint)'}}>after fixed commitments + card bill</div></div>
+              <div><div className="text-[13px] font-bold text-green-400">Free / month</div><div className="text-[11px]" style={{color:'var(--text-faint)'}}>income − commitments · before card bills</div></div>
               <div className={`mono font-bold text-[13px] ${freeCash>=0?'text-green-400':'text-red-400'}`}>{freeCash>=0?'+':'−'}{fmtINR(Math.abs(freeCash))}</div>
             </div>
             <div className="flex items-center justify-between px-4 py-2.5" style={{background:freeCashThisMonth<0?'color-mix(in srgb, var(--danger-strong) 6%, transparent)':'var(--bg-base)'}}>
-              <div><div className="text-[13px] font-bold">After This Month</div><div className="text-[11px]" style={{color:'var(--text-faint)'}}>incl. CC outstanding + spends</div></div>
+              <div><div className="text-[13px] font-bold">Left this month</div><div className="text-[11px]" style={{color:'var(--text-faint)'}}>after card bills and renewals due this month</div></div>
               <div className={`mono font-bold text-[13px] ${freeCashThisMonth>=0?'text-green-400':'text-red-400'}`}>{freeCashThisMonth>=0?'+':'−'}{fmtINR(Math.abs(freeCashThisMonth))}</div>
             </div>
           </div>

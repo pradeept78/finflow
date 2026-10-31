@@ -74,3 +74,14 @@ describe('frequency spelling', () => {
     expect(o.insuranceProvision).toBeCloseTo(9800 / 6)
   })
 })
+
+describe('freeFigures: the two "free" numbers every page shows', () => {
+  it('Free / month = income − committed; Left this month also takes off the card bill and renewals', async () => {
+    const { freeFigures } = await import('../calcOutflow')
+    const o = calcOutflow([], [{ id: 1, outstanding: 2582, emis: [], spends: [] }], [], [], [], expenses, insurance, now)
+    const { free, left } = freeFigures(o, 100000)
+    expect(free).toBe(100000 - o.locked)
+    expect(left).toBe(100000 - o.locked - o.card - o.dueNow)
+    expect(free - left).toBe(2582 + o.dueNow)
+  })
+})

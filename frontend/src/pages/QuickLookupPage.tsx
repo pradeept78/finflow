@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { loansApi, cardsApi, personalEmiApi, expensesApi, savingsApi, investmentsApi, insuranceApi, incomeApi, paidMarksApi, closedLoansApi, peopleOweApi } from '../api'
 import { fmtINR, getEff, toMonthly, resolveDueDay, isPaidThisMonth, isDueThisMonth, freqMonths, monthlyIncomeTotal, isOneOff } from '../utils/format'
 import { cardCycle, fmtDueDate } from '../utils/cardCycle'
-import { calcOutflow, outflowTierLine, outflowRows as outflowRowsOf, outflowSubLine } from '../utils/calcOutflow'
+import { calcOutflow, outflowTierLine, outflowRows as outflowRowsOf, outflowSubLine, freeFigures } from '../utils/calcOutflow'
 import { ioweFacts } from '../utils/iowe'
 import { calcLoanSplit } from '../utils/loanCalc'
 import { LoadingSpinner, PageHeader, ErrorState } from '../components/common'
@@ -244,7 +244,7 @@ export default function QuickLookupPage() {
            from the shared calculator so it matches Hub, Dashboard, Budget and Calendar exactly. */
         <div className="space-y-3">
           {(() => {
-            const free = monthlyIncome - lockedMonthly
+            const free = freeFigures(o, monthlyIncome).free
             const Tile = ({ accent, label, children, className = '' }: any) => (
               <div className={`rounded-2xl px-4 sm:px-5 py-4 min-w-0 ${className}`} style={{ background: `linear-gradient(180deg, color-mix(in srgb, ${accent} 5%, var(--bg-card)) 0%, var(--bg-card) 75%)`, border: '1px solid var(--hairline)' }}>
                 <div className="text-[12px] font-medium flex items-center gap-1.5 mb-1" style={{ color: 'var(--text-muted)' }}><span className="w-1.5 h-1.5 rounded-full" style={{ background: accent }} />{label}</div>
@@ -262,7 +262,7 @@ export default function QuickLookupPage() {
                     <div className="text-[22px] sm:text-[28px] font-semibold tracking-tight tabular-nums leading-tight" style={{ color: free >= 0 ? 'var(--success)' : 'var(--danger)' }}>
                       {free >= 0 ? '+' : '−'}{fmtINR(Math.abs(Math.round(free)))}
                     </div>
-                    <div className="text-[11px] mt-0.5" style={{ color: free >= 0 ? 'var(--text-faint)' : 'var(--danger)' }}>{free >= 0 ? 'before card bill' : '⚠ over income · before card bill'}</div>
+                    <div className="text-[11px] mt-0.5" style={{ color: free >= 0 ? 'var(--text-faint)' : 'var(--danger)' }}>{free >= 0 ? 'before card bills' : '⚠ over income · before card bills'}</div>
                   </Tile>
                 )}
                 {biggest && (

@@ -215,3 +215,13 @@ export const outflowSubLine = (o: OutflowComponents): string =>
 export const outflowTierLine = (o: OutflowComponents): string =>
   `committed ₹${Math.round(o.locked).toLocaleString('en-IN')} + card bill ₹${Math.round(o.card).toLocaleString('en-IN')}`
   + (o.dueNow > 0 ? ` + renewals & one-offs ₹${Math.round(o.dueNow).toLocaleString('en-IN')}` : '')
+
+/**
+ * The two "free" figures — one formula each, one name each, on every page.
+ *  - free: "Free / month" = income − committed. Repeats every month; card bills are NOT taken off,
+ *          so it doesn't swing with what was spent on the cards.
+ *  - left: "Left this month" = income − everything due this month (committed + card bill + renewals
+ *          and one-offs). This month's real end-of-month position.
+ * Pages used to show either one under the same "Free / month" label, so two pages could disagree.
+ */
+export const freeFigures = (o: OutflowComponents, income: number) => ({ free: income - o.locked, left: income - o.total })

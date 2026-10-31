@@ -334,6 +334,32 @@ export default function CalendarPage() {
       ? shared.total   // already includes this month's lump sums, one-offs and renewals (calcOutflow dueNow)
       : regularOut + lumpSum + oneTime + ccOutstanding + cardNextBill
     const free = monthlyIncome - totalOut
+    // What the month's total is made of — always sums to totalOut, so the chips explain the number and the
+    // month-to-month change. This month comes from the shared calculator; later months from the projection.
+    const parts: { label: string; value: number; color: string }[] = (i === 0 ? [
+      { label: 'Loans', value: shared.loanEmi, color: 'var(--info)' },
+      { label: 'CC EMI', value: shared.ccEmi, color: 'var(--purple)' },
+      { label: 'Card bill', value: shared.card, color: 'var(--danger)' },
+      { label: 'Bills', value: shared.expenses, color: 'var(--cyan)' },
+      { label: 'Insurance', value: shared.insuranceEmi, color: 'var(--pink)' },
+      { label: 'Savings', value: shared.savings, color: 'var(--success)' },
+      { label: 'Chit repay', value: shared.chitRepay, color: 'var(--danger)' },
+      { label: 'SIP', value: shared.sipInvest, color: 'var(--cyan)' },
+      { label: 'I Owe', value: shared.iOweEmi, color: 'var(--warning)' },
+      { label: 'Renewals & one-offs', value: shared.dueNow, color: 'var(--orange)' },
+    ] : [
+      { label: 'Loans', value: loanEmi, color: 'var(--info)' },
+      { label: 'CC EMI', value: ccEmi, color: 'var(--purple)' },
+      { label: 'Card bill', value: ccOutstanding + cardNextBill, color: 'var(--danger)' },
+      { label: 'Bills', value: baseExpenses + billsDue, color: 'var(--cyan)' },
+      { label: 'Insurance', value: insEmi, color: 'var(--pink)' },
+      { label: 'Savings', value: savEmi, color: 'var(--success)' },
+      { label: 'Chit repay', value: repayEmi, color: 'var(--danger)' },
+      { label: 'SIP', value: sipEmi, color: 'var(--cyan)' },
+      { label: 'I Owe', value: persEmi, color: 'var(--warning)' },
+      { label: 'Lump sum', value: lumpSum, color: 'var(--orange)' },
+      { label: 'One-time', value: oneTime, color: 'var(--orange)' },
+    ])
     const dropAmt = ending.filter(e => !e.type.includes('Due') && !e.type.includes('Matures')).reduce((s, e) => s + e.amount, 0)
 
     // Tight month warning
@@ -362,7 +388,7 @@ export default function CalendarPage() {
       })
     }
 
-    return { label: d.toLocaleString('default', { month: 'short', year: 'numeric' }), ym, cardNextBill, loanEmi, ccEmi, ccOutstanding, ccSpends, savEmi, repayEmi, persEmi, lumpSum, oneTime, notCounted, insEmi, sipEmi, baseExpenses, totalOut, regularOut, free, ending, dropAmt, isCurrent: i === 0, dueItems, warnings }
+    return { label: d.toLocaleString('default', { month: 'short', year: 'numeric' }), ym, parts, cardNextBill, loanEmi, ccEmi, ccOutstanding, ccSpends, savEmi, repayEmi, persEmi, lumpSum, oneTime, notCounted, insEmi, sipEmi, baseExpenses, totalOut, regularOut, free, ending, dropAmt, isCurrent: i === 0, dueItems, warnings }
   })
 
   const maxRegular = Math.max(...months.map(m => m.regularOut), 1)
@@ -443,7 +469,7 @@ export default function CalendarPage() {
             </div>
             </div>
             <div className="text-right">
-              <div className="text-[12px] font-medium mb-1" style={{color:'var(--text-muted)'}}>Free this month · after card bill</div>
+              <div className="text-[12px] font-medium mb-1" style={{color:'var(--text-muted)'}}>Left this month · after card bills</div>
               <div className="text-[24px] font-semibold tracking-tight tabular-nums" style={{color:months[0].free>=0?'var(--success)':'var(--danger)'}}>{months[0].free>=0?'+':'-'}{fmtINR(Math.abs(months[0].free))}</div>
             </div>
           </div>
@@ -500,11 +526,8 @@ export default function CalendarPage() {
           // shows its full breakdown; a later month only re-shows it when something actually moved
           // (an EMI starts, one closes, an amount changes) — otherwise it collapses to just the
           // month name and total until the next month where something changes.
-          const unchanged = idx > 0 && !!prev &&
-            mo.loanEmi === prev.loanEmi && mo.ccEmi === prev.ccEmi && mo.ccOutstanding === prev.ccOutstanding &&
-            mo.savEmi === prev.savEmi && (mo as any).repayEmi === (prev as any).repayEmi &&
-            mo.sipEmi === prev.sipEmi && mo.insEmi === prev.insEmi && mo.persEmi === prev.persEmi &&
-            mo.lumpSum === prev.lumpSum && mo.oneTime === prev.oneTime
+          // Same parts, same amounts as the month before (this month and next are never folded: they're built differently)
+          const unchanged = idx > 1 && !!prev && mo.parts.every(pt => Math.round(pt.value) === Math.round(prev.parts.find(x => x.label === pt.label)?.value ?? 0))
 
           // A month identical to the one before it (and not tight on cash) renders as one slim line —
           // label, total, free — instead of a full card with a bar; tap it to open the full detail.
@@ -524,15 +547,16 @@ export default function CalendarPage() {
                       something changed since the one before it (see `unchanged` above). */}
                   {!unchanged && (
                     <div className="flex gap-x-3 gap-y-0.5 flex-wrap text-[11px] order-last basis-full sm:order-none sm:basis-auto sm:flex-1">
-                      {mo.loanEmi > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--info)' }} />Loans {fmtINR(mo.loanEmi)}</span>}
-                      {(mo.ccEmi + mo.ccOutstanding) > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--purple)' }} />CC EMI {fmtINR(mo.ccEmi + mo.ccOutstanding)}</span>}{mo.isCurrent && mo.ccSpends > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--pink)' }} />+Spends {fmtINR(mo.ccSpends)}</span>}
-                      {mo.savEmi > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--success)' }} />Savings {fmtINR(mo.savEmi)}</span>}{(mo as any).repayEmi > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--danger)' }} />Repaying {fmtINR((mo as any).repayEmi)}</span>}
-                      {mo.sipEmi > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--cyan)' }} />SIP {fmtINR(mo.sipEmi)}</span>}
-                      {mo.insEmi > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--pink)' }} />Insurance {fmtINR(mo.insEmi)}</span>}
-                      {mo.persEmi > 0 && <span className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--warning)' }} />I Owe {fmtINR(mo.persEmi)}</span>}
-                      {mo.cardNextBill > 0 && <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--danger)' }} />Card bill {fmtINR(mo.cardNextBill)}</span>}
-                      {mo.lumpSum > 0 && <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--orange)' }} />+Lump {fmtINR(mo.lumpSum)}</span>}
-                      {mo.oneTime > 0 && <span className="inline-flex items-center gap-1.5 font-semibold" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: 'var(--pink)' }} />+One-time {fmtINR(mo.oneTime)}</span>}
+                      {mo.parts.filter(pt => Math.round(pt.value) > 0).map(pt => (
+                        <span key={pt.label} className="inline-flex items-center gap-1.5" style={{ color: 'var(--text-muted)' }}><i className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: pt.color }} />{pt.label} {fmtINR(pt.value)}</span>
+                      ))}
+                      {/* Why this month differs from the one before: the biggest part-by-part changes */}
+                      {prev && (() => {
+                        const ch = mo.parts.map(pt => ({ label: pt.label, d: Math.round(pt.value - (prev.parts.find(x => x.label === pt.label)?.value ?? 0)) }))
+                          .concat(prev.parts.filter(x => !mo.parts.some(pt => pt.label === x.label)).map(x => ({ label: x.label, d: -Math.round(x.value) })))
+                          .filter(c => Math.abs(c.d) >= 1).sort((a, b) => Math.abs(b.d) - Math.abs(a.d)).slice(0, 3)
+                        return ch.length > 0 && <span className="basis-full" style={{ color: 'var(--text-faint)' }}>vs {prev.label.split(' ')[0]}: {ch.map(c => `${c.label} ${c.d > 0 ? '+' : '−'}${fmtINR(c.d)}`).join(' · ')}</span>
+                      })()}
                     </div>
                   )}
                   {unchanged && <div className="flex-1" />}

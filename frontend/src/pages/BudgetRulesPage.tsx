@@ -8,7 +8,7 @@ import HorizonBar from '../components/common/HorizonBar'
 import IncomeSplitCard from '../components/common/IncomeSplitCard'
 import { useQuery } from '@tanstack/react-query'
 import { loansApi, cardsApi, savingsApi, expensesApi, incomeApi, investmentsApi, insuranceApi } from '../api'
-import { calcOutflow, outflowTierLine } from '../utils/calcOutflow'
+import { calcOutflow, outflowTierLine, freeFigures } from '../utils/calcOutflow'
 import { fmtINR, getEff, monthlyIncomeTotal, toMonthly, isOneOff } from '../utils/format'
 import { cardLimitUse } from '../utils/cardLimit'
 import { ioweFacts } from '../utils/iowe'
@@ -145,7 +145,8 @@ export default function BudgetRulesPage() {
   const lockedMonthly = o.locked
   const cardThisMonth = o.card
   const totalOutflow  = o.total
-  const freeCash     = monthlyIncome - totalOutflow
+  // Free / month = income − committed, same as every page (calcOutflow.freeFigures)
+  const freeCash     = freeFigures(o, monthlyIncome).free
   const totalRules   = rules.reduce((s:number,r:any) => s + r.limit, 0)
 
   const chartData = rules.map((r:any) => {
@@ -194,7 +195,7 @@ export default function BudgetRulesPage() {
             {label:'Total Outflow',  val:fmtINR(totalOutflow),  color:'var(--danger)',
               /* Tier split only — see /lookup for the itemised components. */
               sub:outflowTierLine(o), to:'/lookup'},
-            {label:'Free / Month',   val:(freeCash>=0?'+':'-')+fmtINR(Math.abs(freeCash))+incomePct(freeCash, monthlyIncome), color:freeCash>=0?'var(--purple)':'var(--warning)', sub:(freeCash<0?'🚨 deficit':freeCash<monthlyIncome*0.1?'⚠ low buffer':'✓ healthy')+' · after card bill'},
+            {label:'Free / month',   val:(freeCash>=0?'+':'-')+fmtINR(Math.abs(freeCash))+incomePct(freeCash, monthlyIncome), color:freeCash>=0?'var(--purple)':'var(--warning)', sub:(freeCash<0?'🚨 deficit':freeCash<monthlyIncome*0.1?'⚠ low buffer':'✓ healthy')+' · before card bills'},
             {label:'Budget Score',   val:`${score}/100`, color:score>=70?'var(--success)':score>=40?'var(--warning)':'var(--danger)', sub:score>=70?'On track ✓':score>=40?'Needs work':'Off track 🚨'},
           ].map(m=>(
             /* `to` makes a tile navigable. The Total Outflow tile needs it now that it shows only
