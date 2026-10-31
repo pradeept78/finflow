@@ -18,9 +18,9 @@ export default function RegisterPage() {
     setError('')
 
     // Client-side strength check: native minLength=6 alone let weak/typo'd passwords through
-    // with no explanation. Require 8+ chars with at least one letter and one digit.
-    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
-      setError('Password must be at least 8 characters and include at least one letter and one number.')
+    // with no explanation. Require 10+ chars with at least one letter and one digit (the API checks the same).
+    if (password.length < 10 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      setError('Password must be at least 10 characters and include at least one letter and one number.')
       return
     }
     if (password !== confirmPassword) {
@@ -57,12 +57,12 @@ export default function RegisterPage() {
         </div>
         <div>
           <label className="label" htmlFor="password">Password</label>
-          <PasswordInput id="password" autoComplete="new-password" placeholder="Create a password" minLength={8} value={password} onChange={setPassword} />
+          <PasswordInput id="password" autoComplete="new-password" placeholder="Create a password" minLength={10} value={password} onChange={setPassword} />
           <PasswordRules password={password} />
         </div>
         <div>
           <label className="label" htmlFor="confirm">Confirm password</label>
-          <PasswordInput id="confirm" autoComplete="new-password" placeholder="Re-enter your password" minLength={8} value={confirmPassword} onChange={setConfirmPassword} />
+          <PasswordInput id="confirm" autoComplete="new-password" placeholder="Re-enter your password" minLength={10} value={confirmPassword} onChange={setConfirmPassword} />
           {confirmPassword && password !== confirmPassword && (
             <p className="text-[12px] mt-1.5" style={{ color: 'var(--danger)' }}>Passwords don’t match yet.</p>
           )}

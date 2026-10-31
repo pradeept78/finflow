@@ -404,8 +404,8 @@ public class AdminController {
             @RequestBody Map<String, String> body) {
         requireAdmin();
         String newPassword = body.get("password");
-        if (newPassword == null || newPassword.length() < 6)
-            throw new RuntimeException("Password must be at least 6 characters");
+        if (newPassword == null || newPassword.length() < 10 || newPassword.length() > 128)
+            throw new RuntimeException("Password must be 10 to 128 characters");
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);

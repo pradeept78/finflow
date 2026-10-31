@@ -2,6 +2,7 @@ package com.finflow.dto.request;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -27,6 +28,9 @@ public class RegisterRequest {
     private String email;
 
     @NotBlank(message = "Password is required")
-    @Size(min = 6, message = "Password must be at least 6 characters")
+    // 10+ to match the sign-up form (which also asks for a letter and a number); the cap keeps a huge
+    // body from reaching bcrypt. Existing accounts keep whatever password they have.
+    @Size(min = 10, max = 128, message = "Password must be 10 to 128 characters")
+    @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*[0-9]).*$", message = "Password must include a letter and a number")
     private String password;
 }
