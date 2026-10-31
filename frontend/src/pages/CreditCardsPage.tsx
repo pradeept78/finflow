@@ -87,6 +87,7 @@ export default function CreditCardsPage() {
   const [cardForm, setCardForm] = useState<any>({ banker: '', cardLimit: 0, outstanding: 0 })
   const [emiForm, setEmiForm] = useState<any>({})
   const [spendForm, setSpendForm] = useState<any>({})
+  const editSpend = (c: any, sp: any) => { setActiveCard(c); setSpendForm({ ...sp }); setFormErrors({}); setModalType('spend') }
   const [formErrors, setFormErrors] = useState<Record<string, string>>({})
   const [sortCol, setSortCol] = useState<string | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
@@ -128,7 +129,8 @@ export default function CreditCardsPage() {
   const editEmiMut   = useMutation({ mutationFn: ({ emiId, emi }: any) => api.put(`/card-emis/${emiId}`, emi), onSuccess: () => { qc.invalidateQueries({ queryKey: ['cards'] }); toast.success('Saved'); setModalType(null); setFormErrors({}) }, onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed to save EMI') })
   const deleteEmiMut = useMutation({ mutationFn: (id: number) => api.delete(`/card-emis/${id}`), onSuccess: () => qc.invalidateQueries({ queryKey: ['cards'] }), onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed to delete EMI') })
   const closeEmiMut  = useMutation({ mutationFn: async ({ card, emi }: any) => { const tp = (emi.emi ?? 0) * (emi.tenure ?? 0); await closedLoansApi.create({ lender: `${card.banker} — ${emi.label}`, purpose: 'CC EMI', assetType: 'CC EMI', amount: emi.principal ?? tp, totalPaid: tp, interestPaid: Math.max(0, tp - (emi.principal ?? tp)), principalPaid: emi.principal ?? tp, recoveredAmount: null, closedMonths: emi.tenure ?? 0, closedDate: new Date().toISOString().slice(0, 10) }); await api.delete(`/card-emis/${emi.id}`) }, onSuccess: () => { qc.invalidateQueries({ queryKey: ['cards'] }); qc.invalidateQueries({ queryKey: ['closed-loans'] }); toast.success('Archived!') }, onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed to archive EMI') })
-  const addSpendMut    = useMutation({ mutationFn: ({ cardId, spend }: any) => api.post(`/credit-cards/${cardId}/spends`, spend), onSuccess: () => { qc.invalidateQueries({ queryKey: ['cards'] }); toast.success('Added'); setModalType(null); setFormErrors({}) }, onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed to add spend') })
+  // Add or, when the form carries an id, edit (PUT /card-spends/{id}; owedBy '' clears it)
+  const addSpendMut    = useMutation({ mutationFn: ({ cardId, spend }: any) => spend.id ? api.put(`/card-spends/${spend.id}`, { ...spend, owedBy: spend.owedBy ?? '' }) : api.post(`/credit-cards/${cardId}/spends`, spend), onSuccess: (_r: any, v: any) => { qc.invalidateQueries({ queryKey: ['cards'] }); toast.success(v.spend.id ? 'Saved' : 'Added'); setModalType(null); setFormErrors({}) }, onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed to save spend') })
   const deleteSpendMut = useMutation({ mutationFn: (id: number) => api.delete(`/card-spends/${id}`), onSuccess: () => qc.invalidateQueries({ queryKey: ['cards'] }), onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed to delete spend') })
   const clearSpendsMut = useMutation({ mutationFn: async (c: any) => { await Promise.all((c.spends ?? []).map((sp: any) => api.delete(`/card-spends/${sp.id}`))) }, onSuccess: () => { qc.invalidateQueries({ queryKey: ['cards'] }); toast.success('Cleared') }, onError: (e: any) => toast.error(e?.response?.data?.message || 'Failed to clear spends') })
   // Toggle whether a "for a friend" spend/EMI has been paid back to you yet — doesn't touch the
@@ -610,9 +612,10 @@ export default function CreditCardsPage() {
                               expanded={phoneOpen === `in-sp-${sp.id}`} onToggle={() => setPhoneOpen(phoneOpen === `in-sp-${sp.id}` ? null : `in-sp-${sp.id}`)}
                               actions={[
                                 ...(sp.owedBy ? [{ label: sp.owedSettled ? 'Mark unsettled' : `${sp.owedBy} paid me`, tone: 'success' as const, onClick: () => toggleSpendOwedMut.mutate({ id: sp.id, owedSettled: !sp.owedSettled }) }] : []),
+                                { label: 'Edit', onClick: () => editSpend(c, sp) },
                                 { label: 'Delete', tone: 'danger' as const, onClick: () => setConfirmModal({ message: 'Delete?', onConfirm: () => deleteSpendMut.mutate(sp.id), label: 'Delete' }) },
                               ]} />
-                            <div className="hidden md:grid items-center px-4 py-2" style={{ gridTemplateColumns: 'minmax(80px,1.18fr) minmax(190px,2.4fr) minmax(70px,1.03fr) minmax(90px,1.32fr) minmax(32px,0.55fr)', borderTop: '1px solid color-mix(in srgb, var(--text) 5%, transparent)' }}>
+                            <div className="hidden md:grid items-center px-4 py-2" style={{ gridTemplateColumns: 'minmax(80px,1.18fr) minmax(190px,2.4fr) minmax(70px,1.03fr) minmax(90px,1.32fr) minmax(64px,0.55fr)', borderTop: '1px solid color-mix(in srgb, var(--text) 5%, transparent)' }}>
                               <span className="text-[11px]" style={{ color: 'var(--text-faint)' }}>{sp.spendDate}</span>
                               <div className="min-w-0">
                                 <span className="text-[13px] truncate block">{sp.purpose}</span>
@@ -629,7 +632,10 @@ export default function CreditCardsPage() {
                               </div>
                               <span className="text-[11px] text-center" style={{ color: 'var(--text-faint)' }}>{sp.category || '—'}</span>
                               <span className="mono text-right font-semibold" style={{ color: 'var(--pink)' }}>{fmtINR(Number(sp.amount ?? 0))}</span>
-                              <button className="btn-danger btn-xs" onClick={() => setConfirmModal({ message: 'Delete?', onConfirm: () => deleteSpendMut.mutate(sp.id), label: 'Delete' })}><Trash2 size={10} /></button>
+                              <div className="flex justify-end gap-1">
+                                <button className="btn-ghost btn-xs" title="Edit spend" aria-label={`Edit ${sp.purpose}`} onClick={() => editSpend(c, sp)}><Pencil size={10} /></button>
+                                <button className="btn-danger btn-xs" title="Delete spend" aria-label={`Delete ${sp.purpose}`} onClick={() => setConfirmModal({ message: 'Delete?', onConfirm: () => deleteSpendMut.mutate(sp.id), label: 'Delete' })}><Trash2 size={10} /></button>
+                              </div>
                             </div>
                             </Fragment>
                           ))}
@@ -864,7 +870,7 @@ export default function CreditCardsPage() {
           const byCat = new Map<string, number>()
           list.filter(r => r.own).forEach(r => byCat.set(r.sp.category || 'Other', (byCat.get(r.sp.category || 'Other') ?? 0) + Number(r.sp.amount ?? 0)))
           const cats = [...byCat.entries()].sort((a, b) => b[1] - a[1])
-          const COLS = 'minmax(90px,0.9fr) minmax(200px,2.2fr) minmax(110px,1.1fr) minmax(100px,1fr) minmax(110px,1fr) 56px'
+          const COLS = 'minmax(90px,0.9fr) minmax(200px,2.2fr) minmax(110px,1.1fr) minmax(100px,1fr) minmax(110px,1fr) 72px'
           return (<>
             {cats.length > 0 && (
               <div className="flex flex-wrap gap-1.5 text-[11px]">
@@ -889,6 +895,7 @@ export default function CreditCardsPage() {
                     dim={!own} expanded={phoneOpen === `sp-${sp.id}`} onToggle={() => setPhoneOpen(phoneOpen === `sp-${sp.id}` ? null : `sp-${sp.id}`)}
                     actions={[
                       ...(sp.owedBy ? [{ label: sp.owedSettled ? 'Mark unsettled' : `${sp.owedBy} paid me`, tone: 'success' as const, onClick: () => toggleSpendOwedMut.mutate({ id: sp.id, owedSettled: !sp.owedSettled }) }] : []),
+                      { label: 'Edit', onClick: () => editSpend(c, sp) },
                       { label: 'Delete', tone: 'danger' as const, onClick: () => setConfirmModal({ message: 'Delete?', onConfirm: () => deleteSpendMut.mutate(sp.id), label: 'Delete' }) },
                     ]} />
                   <div className="hidden md:grid items-center px-4 py-2" style={{ gridTemplateColumns: COLS, columnGap: 10, borderTop: '1px solid color-mix(in srgb, var(--text) 5%, transparent)', opacity: own ? 1 : 0.6 }}>
@@ -906,7 +913,10 @@ export default function CreditCardsPage() {
                     <span className="text-[12px]" style={{ color: 'var(--text-muted)' }}>💳 {c.banker}</span>
                     <span className="text-[11px]" style={{ color: 'var(--text-faint)' }}>{sp.category || '—'}</span>
                     <span className="mono text-right font-semibold" style={{ color: 'var(--pink)' }}>{fmtINR(Number(sp.amount ?? 0))}</span>
-                    <button className="btn-danger btn-xs justify-self-center" title="Delete spend" onClick={() => setConfirmModal({ message: 'Delete?', onConfirm: () => deleteSpendMut.mutate(sp.id), label: 'Delete' })}><Trash2 size={10} /></button>
+                    <div className="flex justify-center gap-1">
+                      <button className="btn-ghost btn-xs" title="Edit spend" aria-label={`Edit ${sp.purpose}`} onClick={() => editSpend(c, sp)}><Pencil size={10} /></button>
+                      <button className="btn-danger btn-xs" title="Delete spend" aria-label={`Delete ${sp.purpose}`} onClick={() => setConfirmModal({ message: 'Delete?', onConfirm: () => deleteSpendMut.mutate(sp.id), label: 'Delete' })}><Trash2 size={10} /></button>
+                    </div>
                   </div>
                   </Fragment>
                 ))}
@@ -1036,7 +1046,7 @@ export default function CreditCardsPage() {
         </Modal>
       )}
       {modalType === 'spend' && activeCard && (
-        <Modal title={`Add Spend — ${activeCard.banker}`} onClose={() => { setModalType(null); setFormErrors({}) }}
+        <Modal title={`${spendForm.id ? 'Edit' : 'Add'} Spend — ${activeCard.banker}`} onClose={() => { setModalType(null); setFormErrors({}) }}
           footer={<><button className="btn-secondary" onClick={() => { setModalType(null); setFormErrors({}) }}>Cancel</button><button className="btn-primary" disabled={addSpendMut.isPending || Object.keys(validateSpend(spendForm)).length > 0} onClick={() => { const errs = validateSpend(spendForm); if (Object.keys(errs).length > 0) { setFormErrors(errs); return } addSpendMut.mutate({ cardId: activeCard.id, spend: spendForm }) }}>{addSpendMut.isPending ? 'Saving...' : 'Save'}</button></>}>
           <div className="form-grid">
             <FormField label="Purpose *" className="form-full"><input className={"input" + (formErrors.purpose ? ' border-red-500' : '')} placeholder="Amazon, Fuel..." value={spendForm.purpose || ''} onChange={e => { setSpendForm((f: any) => ({ ...f, purpose: e.target.value })); setFormErrors(er => ({ ...er, purpose: '' })) }} />{formErrors.purpose && <p className="text-[11px] text-red-400 mt-1">{formErrors.purpose}</p>}</FormField>
