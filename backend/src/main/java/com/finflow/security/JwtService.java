@@ -76,6 +76,18 @@ public class JwtService {
         return username.equals(userDetails.getUsername()) && !isTokenExpired(token);
     }
 
+    /**
+     * True when the token was issued before the password last changed, so it must no longer work.
+     * The token's issue time is whole seconds, so the change time is cut to seconds too: the fresh
+     * token handed back by the password change itself (same second) stays valid.
+     */
+    public boolean issuedBeforePasswordChange(String token, java.time.LocalDateTime passwordChangedAt) {
+        if (passwordChangedAt == null) return false;
+        java.time.Instant changed = passwordChangedAt.atZone(java.time.ZoneId.systemDefault()).toInstant()
+                .truncatedTo(java.time.temporal.ChronoUnit.SECONDS);
+        return extractClaim(token, Claims::getIssuedAt).toInstant().isBefore(changed);
+    }
+
     private boolean isTokenExpired(String token) {
         return extractExpiration(token).before(new Date());
     }

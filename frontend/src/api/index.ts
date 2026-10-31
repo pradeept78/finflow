@@ -42,6 +42,14 @@ export const expensesApi    = crud<Expense>('expenses')
 export const peopleOweApi   = crud<PeopleOwe>('people-owes')
 export const closedLoansApi = crud<ClosedLoan>('closed-loans')
 
+// The signed-in user's own account. Both need the current password; a wrong one answers 400.
+export const accountApi = {
+  /** Returns a fresh session token: every other device is signed out by the change. */
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.put<{ data: { token: string } }>('/account/password', { currentPassword, newPassword }).then(r => r.data.data),
+  deleteAccount: (password: string) => api.delete('/account', { data: { password } }),
+}
+
 // Account administration only: admins see who has an account, never anyone's finances.
 export const adminApi = {
   isAdmin: () => api.get<{ data: boolean }>('/admin/me/is-admin').then(r => r.data.data),

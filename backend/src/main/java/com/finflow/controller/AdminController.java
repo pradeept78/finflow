@@ -69,10 +69,10 @@ public class AdminController {
             @RequestBody Map<String, String> body) {
         requireAdmin();
         String newPassword = body.get("password");
-        if (newPassword == null || newPassword.length() < 10 || newPassword.length() > 128)
-            throw new RuntimeException("Password must be 10 to 128 characters");
+        com.finflow.security.PasswordRules.check(newPassword);
         User user = userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
         user.setPassword(passwordEncoder.encode(newPassword));
+        user.setPasswordChangedAt(java.time.LocalDateTime.now());   // signs them out everywhere
         userRepository.save(user);
         return ResponseEntity.ok(ApiResponse.ok("Password reset for " + user.getEmail(), "ok"));
     }

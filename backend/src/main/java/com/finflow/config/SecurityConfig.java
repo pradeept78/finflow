@@ -87,6 +87,14 @@ public class SecurityConfig {
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
+            // No valid token on a protected path: answer 401 with a message the app reads as "session
+            // ended" (axios.ts signs out on 401). Spring's default was a bare 403, so an expired or
+            // revoked token left every page failing instead of returning to sign-in.
+            .exceptionHandling(ex -> ex.authenticationEntryPoint((req, res, e) -> {
+                res.setStatus(401);
+                res.setContentType("application/json");
+                res.getWriter().write("{\"success\":false,\"message\":\"Session expired. Please sign in again.\"}");
+            }))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authenticationProvider(authenticationProvider())
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);

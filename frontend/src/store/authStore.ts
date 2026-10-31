@@ -15,6 +15,8 @@ interface AuthStore {
   logout: () => void
   isAuthenticated: () => boolean
   setRole: (role: string | undefined) => void
+  /** Swap in a new session token (after a password change, which invalidates the old one). */
+  setToken: (token: string) => void
 }
 
 export const useAuthStore = create<AuthStore>((set, get) => ({
@@ -51,6 +53,11 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     const user = { ...current, role }
     localStorage.setItem('ff_user', JSON.stringify(user))
     set({ user })
+  },
+
+  setToken: (token) => {
+    localStorage.setItem('ff_token', token)
+    set({ token })
   },
 
   logout: () => {

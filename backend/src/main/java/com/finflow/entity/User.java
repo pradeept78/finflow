@@ -39,6 +39,9 @@ public class User {
 
     @Column(name = "last_login")
     private java.time.LocalDateTime lastLogin; // USER or ADMIN
+    /** Set on every password change; tokens issued before it are no longer accepted (JwtAuthFilter). */
+    @Column(name = "password_changed_at")
+    private LocalDateTime passwordChangedAt;
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)
