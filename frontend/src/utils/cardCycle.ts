@@ -15,6 +15,8 @@
 
 const num = (v: any) => { const n = Number(v ?? 0); return Number.isFinite(n) ? n : 0 }
 const dayOnly = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+/** 'YYYY-MM-DD' as a local date (new Date('YYYY-MM-DD') is UTC and can land on the previous day). */
+const parseDay = (iso?: string | null) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? ''); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null }
 /** Day `day` of the given month, clamped to the month's length (a "31st" statement is 28 Feb). */
 const onDay = (y: number, m: number, day: number) => new Date(y, m, Math.min(day, new Date(y, m + 1, 0).getDate()))
 
@@ -99,7 +101,9 @@ export function cardCycle(card: any, now: Date = new Date()): CardCycle {
   const byDue = new Map<number, number>()
   const parts: CardCycle['parts'] = []
   const book = (amount: number, dueDate: Date, kind: 'out' | 'spend') => {
-    if (amount <= 0 || dueDate < monthStart) return               // an older bill — assumed settled
+    // Spends on an older bill are assumed settled with it. A typed balance is different: it's still on the
+    // card until it's cleared, so one from an earlier statement counts now (overdue) instead of vanishing.
+    if (amount <= 0 || (dueDate < monthStart && kind !== 'out')) return
     byDue.set(dueDate.getTime(), (byDue.get(dueDate.getTime()) ?? 0) + amount)
     const same = parts.find(x => x.kind === kind && x.due.getTime() === dueDate.getTime())
     if (same) same.amount += amount; else parts.push({ kind, amount, due: dueDate })
@@ -112,13 +116,17 @@ export function cardCycle(card: any, now: Date = new Date()): CardCycle {
     }
   }
 
-  // A typed balance is the latest statement's amount, due on that statement's due date.
-  if (outstanding > 0) book(outstanding, dueFor(last, due), 'out')
+  // A typed balance is the statement that was out when it was entered (`outstandingAsOf`, set by the backend
+  // or chosen in the card form): typed on 26 Oct with a 28th statement day, it's the 28 Sep statement, due
+  // 18 Oct — not the 28 Oct one. No date recorded: assume the latest statement.
+  const asOf = parseDay(card?.outstandingAsOf)
+  const typedFor = asOf ? lastStatementOn(asOf, S) : last
+  if (outstanding > 0) book(outstanding, dueFor(typedFor, due), 'out')
 
   ownSpends.forEach((sp: any) => {
     const when = sp.spendDate ? new Date(sp.spendDate) : today
     const stmt = statementAfter(isNaN(when.getTime()) ? today : when, S)
-    if (outstanding > 0 && stmt <= last) return                  // already inside the typed statement
+    if (outstanding > 0 && stmt <= typedFor) return              // already inside the typed statement
     book(num(sp.amount), dueFor(stmt, due), 'spend')
   })
 

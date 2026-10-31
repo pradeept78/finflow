@@ -29,12 +29,33 @@ public class CreditCardService {
                 .orElseThrow(() -> new RuntimeException("Not found"));
     }
 
-    public CreditCard create(CreditCard entity) { entity.setUser(currentUser()); return repository.save(entity); }
+    public CreditCard create(CreditCard entity) {
+        entity.setUser(currentUser());
+        stampOutstanding(entity, null);
+        return repository.save(entity);
+    }
+
+    /**
+     * Keep `outstandingAsOf` (the date the outstanding amount was entered — it tells the frontend which
+     * statement the amount is) in step with the amount: cleared with it, set to today when a new amount is
+     * entered, left alone when unchanged, and taken as sent when the form picked the statement date itself.
+     */
+    private void stampOutstanding(CreditCard card, CreditCard before) {
+        java.math.BigDecimal amount = card.getOutstanding() == null ? java.math.BigDecimal.ZERO : card.getOutstanding();
+        if (amount.signum() <= 0) { card.setOutstandingAsOf(null); return; }
+        java.time.LocalDate sent = card.getOutstandingAsOf();
+        java.time.LocalDate had = before == null ? null : before.getOutstandingAsOf();
+        if (sent != null && !sent.equals(had)) return;                       // the form chose the statement
+        java.math.BigDecimal was = before == null || before.getOutstanding() == null ? java.math.BigDecimal.ZERO : before.getOutstanding();
+        boolean changed = was.compareTo(amount) != 0;
+        card.setOutstandingAsOf(changed || had == null ? java.time.LocalDate.now() : had);
+    }
 
     public CreditCard update(Long id, CreditCard updated) {
         CreditCard existing = getById(id);
         updated.setId(existing.getId());
         updated.setUser(existing.getUser());
+        stampOutstanding(updated, existing);
         // Set card reference on all EMIs and spends to prevent null card_id
         if (updated.getEmis() != null) updated.getEmis().forEach(e -> e.setCard(updated));
         if (updated.getSpends() != null) updated.getSpends().forEach(s -> s.setCard(updated));

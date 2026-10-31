@@ -158,3 +158,30 @@ describe('card bills due soon (next month, within 30 days)', () => {
     expect(notCounted.find(n => n.key === 'card-next-13')?.amount).toBe(3000)
   })
 })
+
+describe('Outstanding belongs to the statement it was entered for', () => {
+  // HDFC: statement 28th, due 18th. ₹84,500 typed on 26 Oct — that's the 28 Sep statement, due 18 Oct.
+  const hdfc28 = { id: 15, banker: 'HDFC', billingDay: 28, dueDay: 18, outstanding: 84500, outstandingAsOf: '2026-10-26', emis: [],
+    spends: [{ id: 1, amount: 6400, spendDate: '2026-10-20' }] }   // after the 28 Sep statement → on the 28 Oct one
+  it('typed before statement day: the amount is the previous statement, due this month (18 Oct, overdue on 31 Oct)', () => {
+    const c = cardCycle(hdfc28, D(2026, 10, 31))
+    expect(c.outstandingThisMonth).toBe(84500)
+    expect(iso(c.billDue!)).toBe('2026-10-18')
+    // the 20 Oct spend is NOT inside that typed statement — it's on the 28 Oct statement, due 18 Nov
+    expect(c.nextBill).toBe(6400)
+    expect(iso(c.nextDue!)).toBe('2026-11-18')
+  })
+  it('typed after statement day: the amount is that new statement (due next month)', () => {
+    const c = cardCycle({ ...hdfc28, outstandingAsOf: '2026-10-29' }, D(2026, 10, 31))
+    expect(c.outstandingThisMonth).toBe(0)
+    expect(c.nextBill).toBe(84500)          // the 20 Oct spend is inside it, not added again
+  })
+  it('a balance still not cleared from an older statement counts this month (overdue), not hidden', () => {
+    const c = cardCycle({ ...hdfc28, outstandingAsOf: '2026-08-30', spends: [] }, D(2026, 10, 31))
+    expect(c.outstandingThisMonth).toBe(84500)
+  })
+  it('no date recorded: old behaviour (latest statement)', () => {
+    const { outstandingAsOf, ...noDate } = hdfc28
+    expect(cardCycle(noDate, D(2026, 10, 31)).outstandingThisMonth).toBe(0)
+  })
+})

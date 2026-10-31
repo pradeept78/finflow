@@ -8,7 +8,7 @@ import api from '../api/axios'
 import type { CreditCard } from '../types'
 import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner, ErrorState, SortHeader, FromLink } from '../components/common'
 import { fmtINR, getEff, isPaidThisMonth, resolveDueDay, monthlyIncomeTotal, ordinal } from '../utils/format'
-import { cardCycle, emiStartsLater, fmtDueDate, billingPeriods, periodLabel, amountDueOn } from '../utils/cardCycle'
+import { cardCycle, emiStartsLater, fmtDueDate, billingPeriods, periodLabel, amountDueOn, lastStatementOn, dueFor } from '../utils/cardCycle'
 import { cardLimitUse } from '../utils/cardLimit'
 import { AmountInput } from '../components/common/AmountInput'
 import { Plus, Pencil, Trash2, CheckCircle, Archive, ChevronDown, Shield } from 'lucide-react'
@@ -1015,6 +1015,24 @@ export default function CreditCardsPage() {
                   {' '}Current cycle: <b style={{ color: 'var(--text)' }}>{periodLabel(bp.current)}</b>
                 </div>
               ) : null
+            })()}
+            {/* Which statement the Outstanding amount is — decides which month it's due in. Typed just before the
+                statement day, it's still the previous statement. Saved as outstandingAsOf (the statement date). */}
+            {Number(cardForm.billingDay) >= 1 && Number(cardForm.outstanding) > 0 && (() => {
+              const S = Number(cardForm.billingDay), Dd = Number(cardForm.dueDay) || S
+              const latest = lastStatementOn(new Date(), S)
+              const previous = lastStatementOn(new Date(latest.getFullYear(), latest.getMonth(), latest.getDate() - 1), S)
+              const isoOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+              const asOf = cardForm.outstandingAsOf ? lastStatementOn(new Date(`${cardForm.outstandingAsOf}T12:00:00`), S) : latest
+              const value = isoOf(asOf) === isoOf(previous) ? isoOf(previous) : isoOf(latest)
+              return (
+                <FormField label="Which statement is this amount?" className="form-full">
+                  <select className="select" value={value} onChange={e => setCardForm((f: any) => ({ ...f, outstandingAsOf: e.target.value }))}>
+                    <option value={isoOf(latest)}>Statement of {fmtDueDate(latest)} · due {fmtDueDate(dueFor(latest, Dd))}</option>
+                    <option value={isoOf(previous)}>Statement of {fmtDueDate(previous)} · due {fmtDueDate(dueFor(previous, Dd))}</option>
+                  </select>
+                </FormField>
+              )
             })()}
             <FormField label="Notes" className="form-full"><textarea className="input" rows={3} value={cardForm.notes || ''} onChange={e => setCardForm((f: any) => ({ ...f, notes: e.target.value }))} /></FormField>
           </div>

@@ -34,6 +34,11 @@ public class CreditCard extends BaseEntity {
     @Column(name = "due_day")
     private Integer dueDay;
 
+    // The date `outstanding` was entered — tells the frontend which statement that amount is (the latest
+    // one on or before this date). Set by CreditCardService when the amount changes; see V25.
+    @Column(name = "outstanding_as_of")
+    private java.time.LocalDate outstandingAsOf;
+
     // The `credit_cards` table has had a `billing_day` column since V1__init_schema.sql, and
     // resolveDueDay() (utils/format.ts) plus QuickLookupPage.tsx already read `c.billingDay` as
     // the card's statement day — but this entity never declared a matching Java field, so Jackson
