@@ -5,6 +5,7 @@ import type { Saving } from '../types'
 import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner, ErrorState, InputModal, SortHeader, FromLink } from '../components/common'
 import { fmtINR, getEff, dueStatus, isPaidThisMonth, resolveDueDay } from '../utils/format'
 import { Plus, Pencil, Trash2, Archive, ChevronDown } from 'lucide-react'
+import { PhoneRow, freqSuffix } from '../components/common/PhoneRow'
 import toast from 'react-hot-toast'
 import { KpiRow } from '../components/common/KpiTile'
 
@@ -164,7 +165,7 @@ export default function SavingsPage() {
 
       {items.length === 0 ? <EmptyState icon="🪙" title="No savings" sub="Track chit funds and savings schemes" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}>+ Add saving</button>} /> : (
         <div className="rounded-2xl overflow-hidden text-[13px]" style={{background:'var(--bg-card)',border:'1px solid var(--border)',overflowX:'auto'}}>
-          <div className="grid px-4 py-2 text-[12px] font-medium border-b"
+          <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b"
             style={{gridTemplateColumns:'minmax(180px,2.4fr) minmax(75px,0.95fr) minmax(85px,1.05fr) minmax(100px,1.2fr) minmax(80px,1fr) minmax(45px,0.6fr) minmax(75px,0.95fr) minmax(70px,0.9fr) minmax(80px,1fr)',borderColor:'var(--hairline)',background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-faint)'}}>
             <span><SortHeader label="Name" col="name" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" /></span>
             <span className="text-center">
@@ -199,7 +200,17 @@ export default function SavingsPage() {
 
             return (
               <div key={v.id} style={{borderTop:idx===0?'none':'1px solid color-mix(in srgb, var(--text) 5%, transparent)'}}>
-                <div className="grid items-center px-4 py-3 cursor-pointer transition-colors"
+                {/* Phone row (tablet and desktop: the table row below) */}
+                <PhoneRow title={v.name} amount={<>{fmtINR(v.monthly)}<span className="text-[11px] font-normal">/mo</span></>} amountColor={isW ? 'var(--danger)' : 'var(--success)'}
+                  left={`${v.savingType||'Savings'}${isW ? ' · repaying' : ''}${missed ? ` · ${missed} missed` : ''}`}
+                  right={doneItem ? '✓ done' : `${eff.pending} left`} pct={t>0 ? pct : undefined} barColor={isW ? 'var(--danger)' : 'var(--success)'}
+                  expanded={isExp} onToggle={()=>setExpanded(isExp?null:v.id)}
+                  actions={[
+                    { label: 'Edit', onClick: ()=>setModal({open:true,item:v}) },
+                    ...(!doneItem ? [{ label: 'Mark paid', tone: 'success' as const, onClick: ()=>markMut.mutate(paidKey) }] : []),
+                    { label: 'Delete', tone: 'danger' as const, onClick: ()=>setConfirmModal({message:`Delete ${v.name}?`,onConfirm:()=>deleteMut.mutate(v),label:'Delete'}) },
+                  ]} />
+                <div className="hidden md:grid items-center px-4 py-3 cursor-pointer transition-colors"
                   style={{gridTemplateColumns:'minmax(180px,2.4fr) minmax(75px,0.95fr) minmax(85px,1.05fr) minmax(100px,1.2fr) minmax(80px,1fr) minmax(45px,0.6fr) minmax(75px,0.95fr) minmax(70px,0.9fr) minmax(80px,1fr)',background:isExp?'var(--bg-base)':'transparent'}}
                   onMouseEnter={e=>{if(!isExp)(e.currentTarget as HTMLElement).style.background='var(--bg-hover)'}}
                   onMouseLeave={e=>{if(!isExp)(e.currentTarget as HTMLElement).style.background='transparent'}}
@@ -332,7 +343,7 @@ export default function SavingsPage() {
             )
           })}
 
-          <div className="grid px-4 py-3 text-[13px] font-bold border-t"
+          <div className="hidden md:grid px-4 py-3 text-[13px] font-bold border-t"
             style={{gridTemplateColumns:'minmax(180px,2.4fr) minmax(75px,0.95fr) minmax(85px,1.05fr) minmax(100px,1.2fr) minmax(80px,1fr) minmax(45px,0.6fr) minmax(75px,0.95fr) minmax(70px,0.9fr) minmax(80px,1fr)',borderColor:'var(--hairline)',background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-faint)'}}>
             <span>{filtered.length} entr{filtered.length!==1?'ies':'y'}{filterStatus!=='All'?` (${filterStatus})`:''}</span>
             <span></span>

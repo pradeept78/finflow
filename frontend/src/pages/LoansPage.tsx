@@ -8,6 +8,7 @@ import { fmtINR, getEff, resolveDueDay, isPaidThisMonth, monthlyIncomeTotal, ord
 import { calcLoanSplit } from '../utils/loanCalc'
 import { emiFacts } from '../utils/emiFacts'
 import { Plus, Pencil, Trash2, Archive, ChevronDown } from 'lucide-react'
+import { MoreFields } from '../components/common/MoreFields'
 import toast from 'react-hot-toast'
 import { KpiRow } from '../components/common/KpiTile'
 
@@ -591,10 +592,12 @@ export default function LoansPage() {
             <FormField label="Tenure (months) *"><input className={"input" + (formErrors.tenure ? ' border-red-500' : '')} type="number" value={modal.loan.tenure || ''} onChange={e => { setModal(m => ({ ...m, loan: { ...m.loan, tenure: +e.target.value } })); setFormErrors(er => ({...er, tenure:''})) }} />{formErrors.tenure && <p className="text-[11px] text-red-400 mt-1">{formErrors.tenure}</p>}</FormField>
             <FormField label="Start Date *"><input className={"input" + (formErrors.startDate ? ' border-red-500' : '')} type="date" value={modal.loan.startDate || ''} onChange={e => { setModal(m => ({ ...m, loan: { ...m.loan, startDate: e.target.value } })); setFormErrors(er => ({...er, startDate:''})) }} />{formErrors.startDate && <p className="text-[11px] text-red-400 mt-1">{formErrors.startDate}</p>}</FormField>
             <FormField label="Due Day"><input className="input" type="number" min={1} max={31} placeholder="1–31" value={modal.loan.dueDay || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, dueDay: +e.target.value } }))} /></FormField>
+            <MoreFields>
             <FormField label="Asset Current Value (₹)"><input className="input" type="number" placeholder="e.g. car current value" value={modal.loan.currentValue || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, currentValue: +e.target.value || undefined } }))} /></FormField>
             <FormField label="EMI debited from (bank/account)"><input className="input" placeholder="e.g. HDFC ••1234" value={modal.loan.debitAccount || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, debitAccount: e.target.value } }))} /></FormField>
             <FormField label="Processing fee (₹)"><input className="input" type="number" value={modal.loan.processingFee || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, processingFee: +e.target.value || undefined } }))} /></FormField>
             <FormField label="Notes" className="form-full"><textarea className="input" rows={2} value={modal.loan.notes || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, notes: e.target.value } }))} /></FormField>
+            </MoreFields>
           </div>
         </Modal>
       )}

@@ -5,8 +5,9 @@ import { usePicks, PickBox, WhatIfBar, SelectAllLink } from '../components/commo
 import type { PersonalEmi } from '../types'
 import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner, ErrorState, InputModal, SortHeader } from '../components/common'
 import { ioweFacts } from '../utils/iowe'
-import { fmtINR, getEff, isPaidThisMonth, resolveDueDay, monthlyIncomeTotal } from '../utils/format'
+import { fmtINR, getEff, isPaidThisMonth, resolveDueDay, monthlyIncomeTotal, ordinal } from '../utils/format'
 import { Plus, Pencil, Trash2, Archive, ChevronDown, CheckCircle } from 'lucide-react'
+import { PhoneRow, freqSuffix } from '../components/common/PhoneRow'
 import toast from 'react-hot-toast'
 import { KpiRow } from '../components/common/KpiTile'
 
@@ -201,7 +202,7 @@ export default function PersonalEmiPage() {
       <WhatIfBar count={pickedItems.length} need={pickNeed} free={pickFree} billNow={totalEmi} income={monthlyIncomeTotal(incomeRows as any[])} onClear={wi.clear} />
       {items.length === 0 ? <EmptyState icon="🤝" title="Nothing owed" sub="Track money you owe to people" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty,mode:'emi'})}>+ Add entry</button>} /> : (
         <div className="rounded-2xl overflow-hidden text-[13px]" style={{background:'var(--bg-card)',border:'1px solid var(--border)',overflowX:'auto'}}>
-          <div className="grid px-4 py-2 text-[12px] font-medium border-b"
+          <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b"
             style={{gridTemplateColumns:'minmax(200px,1.7fr) minmax(85px,1fr) minmax(80px,1fr) minmax(50px,1fr) minmax(80px,1fr) minmax(85px,1fr) minmax(85px,1fr)',borderColor:'var(--hairline)',background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-faint)'}}>
             <SortHeader label="Person" col="person" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" />
             <SortHeader label="Amount" col="amount" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" />
@@ -224,7 +225,20 @@ export default function PersonalEmiPage() {
             const hasPending=eff.pending>0||isLump,done=!isLump&&eff.pending===0,isExp=expanded===p.id
             return (
               <div key={p.id} style={{borderTop:idx===0?'none':'1px solid color-mix(in srgb, var(--text) 5%, transparent)',background:idx%2===0?'transparent':'color-mix(in srgb, var(--text) 2%, transparent)'}}>
-                <div className="grid items-center px-4 py-3 cursor-pointer transition-colors"
+                {/* Phone row (tablet and desktop: the table row below) */}
+                <PhoneRow title={p.person}
+                  amount={isLump ? fmtINR(p.amount) : <>{fmtINR(p.emi ?? 0)}<span className="text-[11px] font-normal">/mo</span></>} amountColor="var(--danger)"
+                  left={isLump ? `lump sum${p.paybackDate ? ` · back by ${new Date(p.paybackDate).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'})}` : ''}` : `${isIntOnly ? 'interest only' : 'EMI'}${dueDay ? ` · due ${ordinal(dueDay)}` : ''} · owed ${fmtINR(p.amount)}`}
+                  right={isPaid ? '✓ paid this month' : isIntOnly ? 'principal not reducing' : done ? '✓ done' : isLump ? '' : `${eff.pending} left`}
+                  pct={!isLump && !isIntOnly && t>0 ? pct : undefined}
+                  expanded={isExp} onToggle={()=>setExpanded(isExp?null:p.id)}
+                  actions={[
+                    { label: 'Edit', onClick: ()=>setModal({open:true,item:p,mode:isLump?'lump':'emi'}) },
+                    ...(!isLump && !done && !isPaid ? [{ label: 'Mark paid', tone: 'success' as const, onClick: ()=>markMut.mutate(paidKey) }] : []),
+                    ...(isLump || done ? [{ label: 'Settle', tone: 'success' as const, onClick: ()=>setConfirmModal({message:'Mark settled?',onConfirm:()=>settleMut.mutate(p.id),label:'Settle'}) }] : []),
+                    { label: 'Delete', tone: 'danger' as const, onClick: ()=>setConfirmModal({message:`Delete ${p.person}?`,onConfirm:()=>deleteMut.mutate(p),label:'Delete'}) },
+                  ]} />
+                <div className="hidden md:grid items-center px-4 py-3 cursor-pointer transition-colors"
                   style={{gridTemplateColumns:'minmax(200px,1.7fr) minmax(85px,1fr) minmax(80px,1fr) minmax(50px,1fr) minmax(80px,1fr) minmax(85px,1fr) minmax(85px,1fr)',background:isExp?'var(--bg-base)':'transparent'}}
                   onMouseEnter={e=>{if(!isExp)(e.currentTarget as HTMLElement).style.background='var(--bg-hover)'}}
                   onMouseLeave={e=>{if(!isExp)(e.currentTarget as HTMLElement).style.background='transparent'}}
@@ -306,7 +320,7 @@ export default function PersonalEmiPage() {
             )
           })}
 
-          <div className="grid px-4 py-3 text-[13px] font-bold border-t"
+          <div className="hidden md:grid px-4 py-3 text-[13px] font-bold border-t"
             style={{gridTemplateColumns:'minmax(200px,1.7fr) minmax(85px,1fr) minmax(80px,1fr) minmax(50px,1fr) minmax(80px,1fr) minmax(85px,1fr) minmax(85px,1fr)',borderColor:'var(--hairline)',background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-faint)'}}>
             <span>{items.length} entries</span>
             <span className="text-right mono" style={{color:'var(--warning)'}}>{fmtINR(totalOwed)}</span>

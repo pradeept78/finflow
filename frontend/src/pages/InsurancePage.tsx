@@ -5,6 +5,8 @@ import FilterMenu from '../components/common/FilterMenu'
 import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner, ErrorState, SortHeader } from '../components/common'
 import { fmtINR, toMonthly, freqMonths, isOneOff } from '../utils/format'
 import { Plus, Pencil, Trash2, ChevronDown, RefreshCw } from 'lucide-react'
+import { MoreFields } from '../components/common/MoreFields'
+import { PhoneRow, freqSuffix } from '../components/common/PhoneRow'
 import toast from 'react-hot-toast'
 import { KpiRow } from '../components/common/KpiTile'
 
@@ -174,7 +176,7 @@ export default function InsurancePage() {
 
       {items.length === 0 ? <EmptyState icon="🛡️" title="No policies" sub="Track your insurance policies" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}>+ Add policy</button>} /> : (
         <div className="rounded-2xl overflow-hidden" style={{background:'var(--bg-card)',border:'1px solid var(--hairline)'}}>
-          <div className="grid px-4 py-2 text-[12px] font-medium border-b"
+          <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b"
             style={{gridTemplateColumns:'minmax(190px,2.4fr) minmax(80px,0.8fr) minmax(130px,1.3fr) minmax(110px,1.1fr) minmax(100px,1.0fr) minmax(80px,0.8fr)',borderColor:'var(--hairline)',background:'color-mix(in srgb, var(--text) 5%, transparent)',color:'var(--text-faint)'}}>
             <SortHeader label="Policy" col="name" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" />
             <span className="text-center">Type</span>
@@ -195,7 +197,13 @@ export default function InsurancePage() {
 
             return (
               <div key={v.id} style={{borderTop:idx===0?'none':'1px solid color-mix(in srgb, var(--text) 5%, transparent)',background:idx%2===0?'transparent':'color-mix(in srgb, var(--text) 2%, transparent)'}}>
-                <div className="grid items-center px-4 py-2 cursor-pointer transition-colors"
+                {/* Phone row (tablet and desktop: the table row below) */}
+                <PhoneRow title={v.name} amount={<>{fmtINR(v.premium)}<span className="text-[11px] font-normal">{freqSuffix(v.frequency)}</span></>}
+                  left={`${v.policyType||'Other'}${v.sumAssured ? ` · cover ${fmtINR(v.sumAssured)}` : ''}${v.isCardEmi ? ' · on card EMI' : ''}`}
+                  right={isInactive ? 'inactive' : daysLeft!==null ? (daysLeft<0 ? 'ended' : daysLeft<=30 ? `renews in ${daysLeft}d` : '') : ''}
+                  rightColor={daysLeft!==null && daysLeft>=0 && daysLeft<=30 ? 'var(--warning)' : undefined}
+                  dim={isInactive} expanded={isExp} onToggle={()=>setExpanded(isExp?null:v.id)} />
+                <div className="hidden md:grid items-center px-4 py-2 cursor-pointer transition-colors"
                   style={{gridTemplateColumns:'minmax(190px,2.4fr) minmax(80px,0.8fr) minmax(130px,1.3fr) minmax(110px,1.1fr) minmax(100px,1.0fr) minmax(80px,0.8fr)',opacity:isInactive?0.5:1}}
                   onMouseEnter={e=>{(e.currentTarget as HTMLElement).style.background='var(--bg-hover)'}}
                   onMouseLeave={e=>{(e.currentTarget as HTMLElement).style.background='transparent'}}
@@ -287,7 +295,7 @@ export default function InsurancePage() {
               </div>
             )
           })}
-          <div className="grid px-4 py-3 text-[13px] font-bold border-t"
+          <div className="hidden md:grid px-4 py-3 text-[13px] font-bold border-t"
             style={{gridTemplateColumns:'minmax(190px,2.4fr) minmax(80px,0.8fr) minmax(130px,1.3fr) minmax(110px,1.1fr) minmax(100px,1.0fr) minmax(80px,0.8fr)',borderColor:'var(--hairline)',background:'color-mix(in srgb, var(--text) 5%, transparent)',color:'var(--text-faint)'}}>
             <span>{filteredActive.length} active{filterTypes.size>0?` (${Array.from(filterTypes).join(', ')})`:''}</span><span></span>
             <span className="text-right mono" style={{color:'var(--cyan)'}}>{filteredEmiMo>0?`${fmtINR(filteredEmiMo)}/mo`:''}</span>
@@ -346,6 +354,7 @@ export default function InsurancePage() {
               </select>
             </FormField>
 
+            <MoreFields>
             <FormField label="Sum Assured / Coverage (₹)">
               <input className="input" type="number" placeholder="e.g. 5000000 for ₹50L" value={modal.item.sumAssured||''} onChange={e=>setModal(m=>({...m,item:{...m.item,sumAssured:+e.target.value}}))}/>
             </FormField>
@@ -402,6 +411,7 @@ export default function InsurancePage() {
                 </FormField>
               )
             })()}
+            </MoreFields>
 
             <FormField label="Policy Start Date">
               <input className="input" type="date" value={modal.item.startDate||''} onChange={e=>setModal(m=>({...m,item:{...m.item,startDate:e.target.value}}))}/>

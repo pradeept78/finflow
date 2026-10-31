@@ -111,7 +111,7 @@ export default function StatementsSpendingPage() {
         </div>
       </SectionCard>
 
-      <div className="grid md:grid-cols-2 gap-3">
+      <div className="grid md:grid-cols-2 gap-3 [&>*]:min-w-0">
         <SectionCard>
           <CardHead eyebrow="By year" title={isIn ? 'Annual income' : 'Annual spending'} />
           <div style={{ height: 200 }}>

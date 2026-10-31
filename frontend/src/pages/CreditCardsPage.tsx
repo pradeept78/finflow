@@ -12,6 +12,8 @@ import { cardCycle, emiStartsLater, fmtDueDate } from '../utils/cardCycle'
 import { cardLimitUse } from '../utils/cardLimit'
 import { AmountInput } from '../components/common/AmountInput'
 import { Plus, Pencil, Trash2, CheckCircle, Archive, ChevronDown, Shield } from 'lucide-react'
+import { MoreFields } from '../components/common/MoreFields'
+import { PhoneRow } from '../components/common/PhoneRow'
 import toast from 'react-hot-toast'
 import { KpiRow } from '../components/common/KpiTile'
 
@@ -63,6 +65,8 @@ export default function CreditCardsPage() {
   const refetch = () => { r1(); r2() }
   const [convertEmi, setConvertEmi] = useState<{cardId:number,amount:number,months:number}|null>(null)
   const [expanded, setExpanded] = useState<number | null>(null)
+  // Phones: which EMI / spend / card row is open in the All EMIs, Spends and Outstanding views (shows its actions)
+  const [phoneOpen, setPhoneOpen] = useState<string | null>(null)
   // 'cards' = one row per card (expand for its EMIs/spends); 'emis' = every EMI of every card in one table.
   const [cardsView, setCardsView] = useState<'cards' | 'emis' | 'spends' | 'outstanding'>('cards')
   const [showDoneEmis, setShowDoneEmis] = useState(false)
@@ -479,13 +483,26 @@ export default function CreditCardsPage() {
                     {/* Tab content */}
                     {tab === 'emis' && (c.emis ?? []).length > 0 && (
                       <div>
-                        <div className="grid px-4 py-1.5 text-[12px] " style={{ gridTemplateColumns: 'minmax(190px,2.4fr) minmax(90px,1.03fr) minmax(80px,0.91fr) minmax(80px,0.91fr) minmax(100px,1.14fr)', color: 'var(--text-faint)', background: 'color-mix(in srgb, var(--text) 3%, transparent)' }}>
+                        <div className="hidden md:grid px-4 py-1.5 text-[12px] " style={{ gridTemplateColumns: 'minmax(190px,2.4fr) minmax(90px,1.03fr) minmax(80px,0.91fr) minmax(80px,0.91fr) minmax(100px,1.14fr)', color: 'var(--text-faint)', background: 'color-mix(in srgb, var(--text) 3%, transparent)' }}>
                           <span>Item</span><span className="text-right">EMI/mo</span><span className="text-right">Pending</span><span className="text-center">Progress</span><span className="text-center">Action</span>
                         </div>
                         {(c.emis ?? []).map((e: any) => {
                           const eff = getEff({ ...e, missedMonths: e.missedMonths ?? 0 }), t = e.tenure ?? 0, pct = t > 0 ? Math.round(eff.paid / t * 100) : 0
+                          const innerKey = `in-emi-${e.id}`
                           return (
-                            <div key={e.id} className="grid items-center px-4 py-2.5" style={{ gridTemplateColumns: 'minmax(190px,2.4fr) minmax(90px,1.03fr) minmax(80px,0.91fr) minmax(80px,0.91fr) minmax(100px,1.14fr)', borderTop: '1px solid color-mix(in srgb, var(--text) 5%, transparent)', opacity: eff.pending === 0 ? 0.4 : 1 }}>
+                            <Fragment key={e.id}>
+                            <PhoneRow title={e.label} amount={<>{fmtINR(e.emi)}<span className="text-[11px] font-normal">/mo</span></>} amountColor="var(--warning)"
+                              left={`${eff.paid}/${t} paid${e.category ? ` · ${e.category}` : ''}${e.owedBy ? ` · for ${e.owedBy}${e.owedSettled ? ' (settled)' : ''}` : ''}${(e.missedMonths ?? 0) > 0 ? ` · ${e.missedMonths} missed` : ''}`}
+                              right={eff.pending > 0 ? `${fmtINR((e.emi ?? 0) * eff.pending)} left` : 'finished'} pct={t > 0 ? pct : undefined}
+                              dim={eff.pending === 0} expanded={phoneOpen === innerKey} onToggle={() => setPhoneOpen(phoneOpen === innerKey ? null : innerKey)}
+                              actions={[
+                                eff.pending > 0 ? { label: 'Mark paid', tone: 'success' as const, onClick: () => markEmiMut.mutate({ cardId: c.id, emiId: e.id }) }
+                                                : { label: 'Archive', onClick: () => closeEmiMut.mutate({ card: c, emi: e }) },
+                                ...(e.owedBy ? [{ label: e.owedSettled ? 'Mark unsettled' : `${e.owedBy} paid me`, onClick: () => toggleEmiOwedMut.mutate({ id: e.id, owedSettled: !e.owedSettled }) }] : []),
+                                { label: 'Edit', onClick: () => { setActiveCard(c); setEmiForm({ ...e }); setFormErrors({}); setModalType('editEmi') } },
+                                { label: 'Delete', tone: 'danger' as const, onClick: () => setConfirmModal({ message: 'Delete?', onConfirm: () => deleteEmiMut.mutate(e.id), label: 'Delete' }) },
+                              ]} />
+                            <div className="hidden md:grid items-center px-4 py-2.5" style={{ gridTemplateColumns: 'minmax(190px,2.4fr) minmax(90px,1.03fr) minmax(80px,0.91fr) minmax(80px,0.91fr) minmax(100px,1.14fr)', borderTop: '1px solid color-mix(in srgb, var(--text) 5%, transparent)', opacity: eff.pending === 0 ? 0.4 : 1 }}>
                               <div className="flex items-start gap-1.5">
                                 {eff.pending > 0 && <PickBox checked={wi.picked.has(`${c.id}:${e.id}`)} onToggle={() => wi.toggle(`${c.id}:${e.id}`)} label={`Add ${e.label} to the what-if`} />}
                                 <div>
@@ -549,6 +566,7 @@ export default function CreditCardsPage() {
                                 <button className="btn-danger btn-xs" onClick={() => setConfirmModal({ message: 'Delete?', onConfirm: () => deleteEmiMut.mutate(e.id), label: 'Delete' })}><Trash2 size={11} /></button>
                               </div>
                             </div>
+                            </Fragment>
                           )
                         })}
                       </div>
@@ -561,7 +579,16 @@ export default function CreditCardsPage() {
                         </div>
                         <div className="max-h-48 overflow-y-auto">
                           {(c.spends ?? []).map((sp: any) => (
-                            <div key={sp.id} className="grid items-center px-4 py-2" style={{ gridTemplateColumns: 'minmax(80px,1.18fr) minmax(190px,2.4fr) minmax(70px,1.03fr) minmax(90px,1.32fr) minmax(32px,0.55fr)', borderTop: '1px solid color-mix(in srgb, var(--text) 5%, transparent)' }}>
+                            <Fragment key={sp.id}>
+                            <PhoneRow title={sp.purpose} amount={fmtINR(Number(sp.amount ?? 0))} amountColor="var(--pink)"
+                              left={`${sp.spendDate ? new Date(sp.spendDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'no date'}${sp.category ? ` · ${sp.category}` : ''}`}
+                              right={sp.owedBy ? (sp.owedSettled ? `✓ ${sp.owedBy} settled` : `for ${sp.owedBy}`) : ''} rightColor={sp.owedBy ? (sp.owedSettled ? 'var(--success)' : 'var(--info)') : undefined}
+                              expanded={phoneOpen === `in-sp-${sp.id}`} onToggle={() => setPhoneOpen(phoneOpen === `in-sp-${sp.id}` ? null : `in-sp-${sp.id}`)}
+                              actions={[
+                                ...(sp.owedBy ? [{ label: sp.owedSettled ? 'Mark unsettled' : `${sp.owedBy} paid me`, tone: 'success' as const, onClick: () => toggleSpendOwedMut.mutate({ id: sp.id, owedSettled: !sp.owedSettled }) }] : []),
+                                { label: 'Delete', tone: 'danger' as const, onClick: () => setConfirmModal({ message: 'Delete?', onConfirm: () => deleteSpendMut.mutate(sp.id), label: 'Delete' }) },
+                              ]} />
+                            <div className="hidden md:grid items-center px-4 py-2" style={{ gridTemplateColumns: 'minmax(80px,1.18fr) minmax(190px,2.4fr) minmax(70px,1.03fr) minmax(90px,1.32fr) minmax(32px,0.55fr)', borderTop: '1px solid color-mix(in srgb, var(--text) 5%, transparent)' }}>
                               <span className="text-[11px]" style={{ color: 'var(--text-faint)' }}>{sp.spendDate}</span>
                               <div className="min-w-0">
                                 <span className="text-[13px] truncate block">{sp.purpose}</span>
@@ -580,6 +607,7 @@ export default function CreditCardsPage() {
                               <span className="mono text-right font-semibold" style={{ color: 'var(--pink)' }}>{fmtINR(Number(sp.amount ?? 0))}</span>
                               <button className="btn-danger btn-xs" onClick={() => setConfirmModal({ message: 'Delete?', onConfirm: () => deleteSpendMut.mutate(sp.id), label: 'Delete' })}><Trash2 size={10} /></button>
                             </div>
+                            </Fragment>
                           ))}
                         </div>
                       </div>
@@ -670,10 +698,9 @@ export default function CreditCardsPage() {
                 </div>
               )
             })()}
-            <div className="md:hidden text-[11px] text-right mb-1 print:hidden" style={{ color: 'var(--text-faint)' }}>swipe sideways for more columns ↔</div>
             <div className="rounded-2xl overflow-hidden text-[13px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', overflowX: 'auto' }}>
-              <div style={{ minWidth: 1090 }}>
-                <div className="grid px-4 py-2 text-[12px] font-medium border-b" style={{ gridTemplateColumns: COLS, borderColor: 'var(--hairline)', background: 'color-mix(in srgb, var(--text) 5%, transparent)', color: 'var(--text-faint)' }}>
+              <div className="md:min-w-[1090px]">
+                <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b" style={{ gridTemplateColumns: COLS, borderColor: 'var(--hairline)', background: 'color-mix(in srgb, var(--text) 5%, transparent)', color: 'var(--text-faint)' }}>
                   <SortHeader label="EMI / Card" col="name" sortCol={emiSortCol} sortDir={emiSortDir} onSort={onEmiSort} />
                   <SortHeader label="Borrowed" col="borrowed" sortCol={emiSortCol} sortDir={emiSortDir} onSort={onEmiSort} align="right" />
                   <SortHeader label="Rate" col="rate" sortCol={emiSortCol} sortDir={emiSortDir} onSort={onEmiSort} align="right" />
@@ -693,7 +720,14 @@ export default function CreditCardsPage() {
                   return (
                   <Fragment key={g.key}>
                     {groupEmisBy !== 'none' && (
-                      <div className="grid items-center px-4 py-2 text-[12px] cursor-pointer select-none" role="button" aria-expanded={!isCollapsed} tabIndex={0}
+                      <button type="button" className="md:hidden w-full flex items-center justify-between px-4 py-2 text-[12px]" aria-expanded={!isCollapsed}
+                        onClick={toggleGroup} style={{ background: 'color-mix(in srgb, var(--text) 5%, transparent)', borderTop: '1px solid var(--hairline)' }}>
+                        <span className="font-semibold truncate"><ChevronDown size={13} className="inline-block mr-1 -mt-0.5" style={{ color: 'var(--text-faint)', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0)' }} />{g.label} · {g.items.length}</span>
+                        <span className="mono font-semibold" style={{ color: 'var(--warning)' }}>{fmtINR(gs(r => r.eff.pending > 0 ? Number(r.e.emi ?? 0) : 0))}/mo</span>
+                      </button>
+                    )}
+                    {groupEmisBy !== 'none' && (
+                      <div className="hidden md:grid items-center px-4 py-2 text-[12px] cursor-pointer select-none" role="button" aria-expanded={!isCollapsed} tabIndex={0}
                         title={isCollapsed ? 'Click to expand' : 'Click to collapse'}
                         onClick={toggleGroup} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleGroup() } }}
                         style={{ gridTemplateColumns: COLS, background: 'color-mix(in srgb, var(--text) 5%, transparent)', borderTop: '1px solid var(--hairline)' }}>
@@ -710,8 +744,20 @@ export default function CreditCardsPage() {
                     )}
                     {!isCollapsed && g.items.map(({ c, e, eff, t, ef, pend, endD, own: isOwn }) => {
                   const pct = t > 0 ? Math.round(eff.paid / t * 100) : 0
+                  const rowKey = `emi-${c.id}-${e.id}`
                   return (
-                    <div key={`${c.id}-${e.id}`} className="grid items-center px-4 py-2.5" style={{ gridTemplateColumns: COLS, borderTop: '1px solid color-mix(in srgb, var(--text) 5%, transparent)', opacity: eff.pending === 0 || !isOwn ? 0.55 : 1 }}>
+                    <Fragment key={`${c.id}-${e.id}`}>
+                    <PhoneRow title={e.label} amount={<>{fmtINR(e.emi)}<span className="text-[11px] font-normal">/mo</span></>} amountColor="var(--warning)"
+                      left={`${groupEmisBy !== 'card' ? `${c.banker} · ` : ''}${eff.pending > 0 ? `ends ${endD.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}` : 'finished'}${!isOwn ? ` · for ${e.owedBy}` : ''}${(e.missedMonths ?? 0) > 0 ? ` · ${e.missedMonths} missed` : ''}`}
+                      right={`${eff.paid}/${t}`} pct={t > 0 ? pct : undefined} dim={eff.pending === 0 || !isOwn}
+                      expanded={phoneOpen === rowKey} onToggle={() => setPhoneOpen(phoneOpen === rowKey ? null : rowKey)}
+                      actions={[
+                        eff.pending > 0 ? { label: 'Mark paid', tone: 'success' as const, onClick: () => markEmiMut.mutate({ cardId: c.id, emiId: e.id }) }
+                                        : { label: 'Archive', onClick: () => closeEmiMut.mutate({ card: c, emi: e }) },
+                        { label: 'Edit', onClick: () => { setActiveCard(c); setEmiForm({ ...e }); setFormErrors({}); setModalType('editEmi') } },
+                        { label: 'Delete', tone: 'danger' as const, onClick: () => setConfirmModal({ message: `Delete ${e.label}?`, onConfirm: () => deleteEmiMut.mutate(e.id), label: 'Delete' }) },
+                      ]} />
+                    <div className="hidden md:grid items-center px-4 py-2.5" style={{ gridTemplateColumns: COLS, borderTop: '1px solid color-mix(in srgb, var(--text) 5%, transparent)', opacity: eff.pending === 0 || !isOwn ? 0.55 : 1 }}>
                       <div className="flex items-start gap-1.5 min-w-0">
                         {eff.pending > 0 && <PickBox checked={wi.picked.has(`${c.id}:${e.id}`)} onToggle={() => wi.toggle(`${c.id}:${e.id}`)} label={`Add ${e.label} to the what-if`} />}
                         <div className="min-w-0">
@@ -752,12 +798,13 @@ export default function CreditCardsPage() {
                         <button className="btn-danger btn-xs" title="Delete EMI" onClick={() => setConfirmModal({ message: `Delete ${e.label}?`, onConfirm: () => deleteEmiMut.mutate(e.id), label: 'Delete' })}><Trash2 size={11} /></button>
                       </div>
                     </div>
+                    </Fragment>
                   )
                     })}
                   </Fragment>
                   )
                 })}
-                <div className="grid items-center px-4 py-3 text-[12px] font-bold border-t" style={{ gridTemplateColumns: COLS, borderColor: 'var(--border-2, color-mix(in srgb, var(--text) 13%, transparent))', background: 'color-mix(in srgb, var(--text) 4%, transparent)' }}>
+                <div className="hidden md:grid items-center px-4 py-3 text-[12px] font-bold border-t" style={{ gridTemplateColumns: COLS, borderColor: 'var(--border-2, color-mix(in srgb, var(--text) 13%, transparent))', background: 'color-mix(in srgb, var(--text) 4%, transparent)' }}>
                   <span>{own.length} EMI{own.length !== 1 ? 's' : ''}{own.length !== list.length && <span className="font-normal" style={{ color: 'var(--text-faint)' }}> · {list.length - own.length} for friends excluded</span>}</span>
                   <span className="text-right mono">{fmtINR(sum(r => r.ef.borrowed ?? 0))}</span>
                   <span></span>
@@ -800,10 +847,9 @@ export default function CreditCardsPage() {
                 {cats.map(([k, v]) => <span key={k} className="px-2 py-0.5 rounded-full" style={{ background: 'rgba(244,114,182,0.08)', color: 'var(--text-muted)', border: '1px solid rgba(244,114,182,0.18)' }}>{k} <b className="mono" style={{ color: 'var(--pink)' }}>{fmtINR(v)}</b></span>)}
               </div>
             )}
-            <div className="md:hidden text-[11px] text-right mb-1 print:hidden" style={{ color: 'var(--text-faint)' }}>swipe sideways for more columns ↔</div>
             <div className="rounded-2xl overflow-hidden text-[13px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', overflowX: 'auto' }}>
-              <div style={{ minWidth: 820 }}>
-                <div className="grid px-4 py-2 text-[12px] font-medium border-b" style={{ gridTemplateColumns: COLS, columnGap: 10, borderColor: 'var(--hairline)', background: 'color-mix(in srgb, var(--text) 5%, transparent)', color: 'var(--text-faint)' }}>
+              <div className="md:min-w-[820px]">
+                <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b" style={{ gridTemplateColumns: COLS, columnGap: 10, borderColor: 'var(--hairline)', background: 'color-mix(in srgb, var(--text) 5%, transparent)', color: 'var(--text-faint)' }}>
                   <SortHeader label="Date" col="date" sortCol={spendSortCol} sortDir={spendSortDir} onSort={onSpendSort} />
                   <SortHeader label="Purpose" col="purpose" sortCol={spendSortCol} sortDir={spendSortDir} onSort={onSpendSort} />
                   <SortHeader label="Card" col="card" sortCol={spendSortCol} sortDir={spendSortDir} onSort={onSpendSort} />
@@ -812,7 +858,16 @@ export default function CreditCardsPage() {
                   <span></span>
                 </div>
                 {list.map(({ c, sp, own }) => (
-                  <div key={`${c.id}-${sp.id}`} className="grid items-center px-4 py-2" style={{ gridTemplateColumns: COLS, columnGap: 10, borderTop: '1px solid color-mix(in srgb, var(--text) 5%, transparent)', opacity: own ? 1 : 0.6 }}>
+                  <Fragment key={`${c.id}-${sp.id}`}>
+                  <PhoneRow title={sp.purpose} amount={fmtINR(Number(sp.amount ?? 0))} amountColor="var(--pink)"
+                    left={`${c.banker} · ${sp.spendDate ? new Date(sp.spendDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : 'no date'}${sp.category ? ` · ${sp.category}` : ''}`}
+                    right={sp.owedBy ? (sp.owedSettled ? `✓ ${sp.owedBy} settled` : `for ${sp.owedBy}`) : ''} rightColor={sp.owedBy ? (sp.owedSettled ? 'var(--success)' : 'var(--info)') : undefined}
+                    dim={!own} expanded={phoneOpen === `sp-${sp.id}`} onToggle={() => setPhoneOpen(phoneOpen === `sp-${sp.id}` ? null : `sp-${sp.id}`)}
+                    actions={[
+                      ...(sp.owedBy ? [{ label: sp.owedSettled ? 'Mark unsettled' : `${sp.owedBy} paid me`, tone: 'success' as const, onClick: () => toggleSpendOwedMut.mutate({ id: sp.id, owedSettled: !sp.owedSettled }) }] : []),
+                      { label: 'Delete', tone: 'danger' as const, onClick: () => setConfirmModal({ message: 'Delete?', onConfirm: () => deleteSpendMut.mutate(sp.id), label: 'Delete' }) },
+                    ]} />
+                  <div className="hidden md:grid items-center px-4 py-2" style={{ gridTemplateColumns: COLS, columnGap: 10, borderTop: '1px solid color-mix(in srgb, var(--text) 5%, transparent)', opacity: own ? 1 : 0.6 }}>
                     <span className="text-[11px]" style={{ color: 'var(--text-faint)' }}>{sp.spendDate}</span>
                     <div className="min-w-0">
                       <span className="text-[13px] truncate block">{sp.purpose}</span>
@@ -829,8 +884,9 @@ export default function CreditCardsPage() {
                     <span className="mono text-right font-semibold" style={{ color: 'var(--pink)' }}>{fmtINR(Number(sp.amount ?? 0))}</span>
                     <button className="btn-danger btn-xs justify-self-center" title="Delete spend" onClick={() => setConfirmModal({ message: 'Delete?', onConfirm: () => deleteSpendMut.mutate(sp.id), label: 'Delete' })}><Trash2 size={10} /></button>
                   </div>
+                  </Fragment>
                 ))}
-                <div className="grid items-center px-4 py-3 text-[12px] font-bold border-t" style={{ gridTemplateColumns: COLS, columnGap: 10, borderColor: 'var(--border-2, color-mix(in srgb, var(--text) 13%, transparent))', background: 'color-mix(in srgb, var(--text) 4%, transparent)' }}>
+                <div className="hidden md:grid items-center px-4 py-3 text-[12px] font-bold border-t" style={{ gridTemplateColumns: COLS, columnGap: 10, borderColor: 'var(--border-2, color-mix(in srgb, var(--text) 13%, transparent))', background: 'color-mix(in srgb, var(--text) 4%, transparent)' }}>
                   <span style={{ gridColumn: '1 / 5' }}>{list.length} spend{list.length !== 1 ? 's' : ''}{friendSum > 0 && <span className="font-normal" style={{ color: 'var(--text-faint)' }}> · {fmtINR(friendSum)} for friends not included</span>}</span>
                   <span className="text-right mono" style={{ color: 'var(--pink)' }}>{fmtINR(ownSum)}</span>
                   <span></span>
@@ -843,18 +899,20 @@ export default function CreditCardsPage() {
         {/* ── OUTSTANDING, EVERY CARD, ONE TABLE ── */}
         {cardsView === 'outstanding' && (() => {
           const rows = (cards as any[]).map((c: any) => {
+            // Same billing-cycle rule as every total (utils/cardCycle): what falls due THIS month.
+            const cy = cardCycle(c)
             const out = Number(c.outstanding ?? 0)
-            const sp = (c.spends ?? []).filter((x: any) => !(x.owedBy && !x.owedSettled)).reduce((a: number, x: any) => a + Number(x.amount ?? 0), 0)
-            const emi = (c.emis ?? []).filter((e: any) => getEff(e).pending > 0 && !(e.owedBy && !e.owedSettled)).reduce((a: number, e: any) => a + Number(e.emi ?? 0), 0)
+            const sp = cy.spendsThisMonth
+            const emi = (c.emis ?? []).filter((e: any) => getEff(e).pending > 0 && !(e.owedBy && !e.owedSettled) && !emiStartsLater(c, e)).reduce((a: number, e: any) => a + Number(e.emi ?? 0), 0)
             const limit = Number(c.cardLimit ?? 0)
             const due = resolveDueDay(c) || null
-            return { c, out, sp, emi, limit, due, use: cardLimitUse(c), util: cardLimitUse(c).pct, total: out + sp + emi }
+            return { c, out, sp, emi, limit, due, cy, use: cardLimitUse(c), util: cardLimitUse(c).pct, total: cy.billThisMonth + emi }
           }).sort((a, b) => b.out - a.out)
           // The tab's badge counts cards that owe a statement balance, so the table lists those; a cleared card is one
           // click away rather than a dimmed row padding the list.
           const clearedCount = rows.filter(r => r.out <= 0).length
           const shown = showClearedCards ? rows : rows.filter(r => r.out > 0)
-          const tOut = shown.reduce((a, r) => a + r.out, 0), tSp = shown.reduce((a, r) => a + r.sp, 0), tEmi = shown.reduce((a, r) => a + r.emi, 0)
+          const tOut = shown.reduce((a, r) => a + r.out, 0), tSp = shown.reduce((a, r) => a + r.sp, 0), tEmi = shown.reduce((a, r) => a + r.emi, 0), tTotal = shown.reduce((a, r) => a + r.total, 0)
           const COLS = 'minmax(150px,1.6fr) minmax(105px,1fr) minmax(100px,1fr) minmax(100px,1fr) minmax(110px,1.1fr) minmax(95px,1fr) minmax(70px,0.7fr) 96px'
           return (
             <>
@@ -863,14 +921,19 @@ export default function CreditCardsPage() {
                   <label className="flex items-center gap-1.5 cursor-pointer"><input type="checkbox" checked={showClearedCards} onChange={e => setShowClearedCards(e.target.checked)} /> show {clearedCount} cleared card{clearedCount !== 1 ? 's' : ''}</label>
                 </div>
               )}
-              <div className="md:hidden text-[11px] text-right mb-1 print:hidden" style={{ color: 'var(--text-faint)' }}>swipe sideways for more columns ↔</div>
               <div className="rounded-2xl overflow-hidden text-[13px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', overflowX: 'auto' }}>
-                <div style={{ minWidth: 900 }}>
-                  <div className="grid px-4 py-2 text-[12px] font-medium border-b" style={{ gridTemplateColumns: COLS, borderColor: 'var(--hairline)', background: 'color-mix(in srgb, var(--text) 5%, transparent)', color: 'var(--text-faint)' }}>
+                <div className="md:min-w-[900px]">
+                  <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b" style={{ gridTemplateColumns: COLS, borderColor: 'var(--hairline)', background: 'color-mix(in srgb, var(--text) 5%, transparent)', color: 'var(--text-faint)' }}>
                     <span>Card</span><span className="text-right">Outstanding</span><span className="text-right">Spends</span><span className="text-right">EMIs / mo</span><span className="text-right">Total this cycle</span><span className="text-right">Limit used</span><span className="text-center">Due</span><span className="text-center">Action</span>
                   </div>
-                  {shown.map(({ c, out, sp, emi, limit, due, use, util, total }) => (
-                    <div key={c.id} className="grid items-center px-4 py-2.5" style={{ gridTemplateColumns: COLS, borderTop: '1px solid color-mix(in srgb, var(--text) 5%, transparent)', opacity: total === 0 ? 0.5 : 1 }}>
+                  {shown.map(({ c, out, sp, emi, limit, due, cy, use, util, total }) => (
+                    <Fragment key={c.id}>
+                    <PhoneRow title={c.banker} amount={total > 0 ? fmtINR(total) : '✓ nothing due'} amountColor={total > 0 ? 'var(--danger)' : 'var(--success)'}
+                      left={`${cy.billDue ? `due ${cy.billDue.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}` : due ? `due ${ordinal(due)}` : 'no due day'}${out > 0 ? ` · statement ${fmtINR(out)}` : ''}${emi > 0 ? ` · EMIs ${fmtINR(emi)}` : ''}`}
+                      right={`${util}% used`} rightColor={util > 70 ? 'var(--danger)' : util > 40 ? 'var(--warning)' : 'var(--success)'}
+                      expanded={phoneOpen === `out-${c.id}`} onToggle={() => setPhoneOpen(phoneOpen === `out-${c.id}` ? null : `out-${c.id}`)}
+                      actions={out > 0 ? [{ label: `Clear ${fmtINR(out)}`, tone: 'success' as const, onClick: () => setConfirmModal({ message: `Clear ${fmtINR(out)} on ${c.banker}?`, onConfirm: () => payOutMut.mutate(c), label: 'Clear' }) }] : []} />
+                    <div className="hidden md:grid items-center px-4 py-2.5" style={{ gridTemplateColumns: COLS, borderTop: '1px solid color-mix(in srgb, var(--text) 5%, transparent)', opacity: total === 0 ? 0.5 : 1 }}>
                       <div className="font-medium truncate">{c.banker}<div className="text-[11px] font-normal mono" style={{ color: 'var(--text-faint)' }}>limit {fmtINR(limit)}</div></div>
                       <div className="text-right mono font-semibold" style={{ color: out > 0 ? 'var(--danger)' : 'var(--text-faint)' }}>{out > 0 ? fmtINR(out) : '✓ clear'}</div>
                       <div className="text-right mono" style={{ color: sp > 0 ? 'var(--pink)' : 'var(--text-faint)' }}>{sp > 0 ? fmtINR(sp) : '—'}</div>
@@ -882,18 +945,19 @@ export default function CreditCardsPage() {
                         {out > 0 && <button className="text-[11px] px-2.5 py-1 rounded font-medium" style={{ background: 'color-mix(in srgb, var(--success) 10%, transparent)', color: 'var(--success)', border: '1px solid color-mix(in srgb, var(--success) 20%, transparent)' }} onClick={() => setConfirmModal({ message: `Clear ${fmtINR(out)} on ${c.banker}?`, onConfirm: () => payOutMut.mutate(c), label: 'Clear' })}>Clear Due</button>}
                       </div>
                     </div>
+                    </Fragment>
                   ))}
-                  <div className="grid items-center px-4 py-3 text-[12px] font-bold border-t" style={{ gridTemplateColumns: COLS, borderColor: 'var(--border-2, color-mix(in srgb, var(--text) 13%, transparent))', background: 'color-mix(in srgb, var(--text) 4%, transparent)' }}>
+                  <div className="hidden md:grid items-center px-4 py-3 text-[12px] font-bold border-t" style={{ gridTemplateColumns: COLS, borderColor: 'var(--border-2, color-mix(in srgb, var(--text) 13%, transparent))', background: 'color-mix(in srgb, var(--text) 4%, transparent)' }}>
                     <span>{shown.length} card{shown.length !== 1 ? 's' : ''}{!showClearedCards && clearedCount > 0 ? <span className="font-normal" style={{ color: 'var(--text-faint)' }}> · {clearedCount} clear</span> : null}</span>
                     <span className="text-right mono" style={{ color: 'var(--danger)' }}>{fmtINR(tOut)}</span>
                     <span className="text-right mono" style={{ color: 'var(--pink)' }}>{fmtINR(tSp)}</span>
                     <span className="text-right mono" style={{ color: 'var(--warning)' }}>{fmtINR(tEmi)}</span>
-                    <span className="text-right mono">{fmtINR(tOut + tSp + tEmi)}</span>
+                    <span className="text-right mono">{fmtINR(tTotal)}</span>
                     <span></span><span></span><span></span>
                   </div>
                 </div>
               </div>
-              <div className="text-[11px]" style={{ color: 'var(--text-faint)' }}>Outstanding = statement balance due · Spends = this cycle's purchases, not billed yet · EMIs / mo = this month's instalments · Limit used = outstanding + spends + unpaid EMIs. Friends' items aren't in the amounts you owe, but they do use your limit, so they count in Limit used.</div>
+              <div className="text-[11px]" style={{ color: 'var(--text-faint)' }}>Outstanding = statement balance due · Spends = purchases on the bill due this month (later ones are on the next bill) · EMIs / mo = this month's instalments · Limit used = outstanding + spends + unpaid EMIs. Friends' items aren't in the amounts you owe, but they do use your limit, so they count in Limit used.</div>
             </>
           )
         })()}
@@ -929,10 +993,12 @@ export default function CreditCardsPage() {
             <FormField label="EMI/month (₹)"><AmountInput className={"input" + (formErrors.emi ? ' border-red-500' : '')} value={emiForm.emi} onValue={n => { setEmiForm((f: any) => ({ ...f, emi: n ?? 0 })); setFormErrors(er => ({ ...er, emi: '' })) }} />{formErrors.emi && <p className="text-[11px] text-red-400 mt-1">{formErrors.emi}</p>}</FormField>
             <FormField label="Tenure (months)"><input className={"input" + (formErrors.tenure ? ' border-red-500' : '')} type="number" value={emiForm.tenure || ''} onChange={e => { setEmiForm((f: any) => ({ ...f, tenure: +e.target.value })); setFormErrors(er => ({ ...er, tenure: '' })) }} />{formErrors.tenure && <p className="text-[11px] text-red-400 mt-1">{formErrors.tenure}</p>}</FormField>
             <FormField label="Start Date"><input className={"input" + (formErrors.startDate ? ' border-red-500' : '')} type="date" value={emiForm.startDate || ''} onChange={e => { setEmiForm((f: any) => ({ ...f, startDate: e.target.value })); setFormErrors(er => ({ ...er, startDate: '' })) }} />{formErrors.startDate && <p className="text-[11px] text-red-400 mt-1">{formErrors.startDate}</p>}</FormField>
+            <MoreFields>
             <FormField label="For / Owed by (optional)"><input className="input" placeholder="e.g. Rahul" value={emiForm.owedBy || ''} onChange={e => setEmiForm((f: any) => ({ ...f, owedBy: e.target.value }))} /></FormField>
             <FormField label="Category"><select className="select" value={emiForm.category || 'Other'} onChange={e => setEmiForm((f: any) => ({ ...f, category: e.target.value }))}>
               {CATEGORIES.map(cat => <option key={cat}>{cat}</option>)}
             </select></FormField>
+            </MoreFields>
           </div>
         </Modal>
       )}

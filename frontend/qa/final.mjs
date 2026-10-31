@@ -7,7 +7,8 @@ for (const theme of ['dark','light']) for (const [w,h] of [[1440,900],[768,1024]
   if(theme==='light') await p.context().addInitScript(()=>localStorage.setItem('ff_theme','light'))
   const e0=errors.length
   for(const u of urls){ await p.goto(BASE+u,{waitUntil:'load'}); await p.waitForTimeout(700)
-    const r=await p.evaluate(()=>({ov:document.documentElement.scrollWidth-innerWidth, blank:(document.querySelector('main, #main-content')?.innerText||'').trim().length<20, path:location.pathname}))
+    // The page scrolls inside #main-content, so measure that too: a too-wide row there never widens the document.
+    const r=await p.evaluate(()=>({ov:Math.max(document.documentElement.scrollWidth-innerWidth,(m=>m?m.scrollWidth-m.clientWidth:0)(document.getElementById('main-content'))), blank:(document.querySelector('main, #main-content')?.innerText||'').trim().length<20, path:location.pathname}))
     if(r.ov>0) bad.push(`OVERFLOW ${theme} ${w} ${u} +${r.ov}`)
     if(r.blank) bad.push(`BLANK ${theme} ${w} ${u} -> ${r.path}`)
   }

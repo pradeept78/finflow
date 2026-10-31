@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { incomeApi } from '../api'
 import type { IncomeEntry } from '../types'
 import { PageHeader, ConfirmModal, Modal, FormField, EmptyState, LoadingSpinner, ErrorState, SortHeader } from '../components/common'
 import { fmtINR, toMonthly, isOneOff, monthlyIncomeTotal } from '../utils/format'
 import { Plus, Pencil, Trash2, ChevronDown } from 'lucide-react'
+import { PhoneRow, freqSuffix } from '../components/common/PhoneRow'
 import toast from 'react-hot-toast'
 import { KpiRow } from '../components/common/KpiTile'
 
@@ -85,7 +86,7 @@ export default function IncomePage() {
 
       {items.length === 0 ? <EmptyState icon="💰" title="No income sources" sub="Add your salary and other income sources" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}>+ Add income source</button>} /> : (
         <div className="rounded-2xl overflow-hidden" style={{background:'var(--bg-card)',border:'1px solid var(--border)',overflowX:'auto'}}>
-          <div className="grid px-4 py-2 text-[12px] font-medium border-b"
+          <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b"
             style={{gridTemplateColumns:'minmax(190px,2.4fr) minmax(120px,1.26fr) minmax(100px,1.05fr) minmax(80px,0.84fr) minmax(80px,0.84fr)',borderColor:'var(--hairline)',background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-faint)'}}>
             <span><SortHeader label="Source" col="label" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="left" /></span>
             <span className="text-right"><SortHeader label="Amount" col="amount" sortCol={sortCol} sortDir={sortDir} onSort={onSort} align="right" /></span>
@@ -106,8 +107,19 @@ export default function IncomePage() {
             const mo = toMonthly(v.amount, v.frequency)
             const isInactive = v.active===false
             return (
-              <div key={v.id}
-                className="grid items-center px-4 py-3 transition-colors"
+              <Fragment key={v.id}>
+              {/* Phone row (tablet and desktop: the table row below) */}
+              <PhoneRow title={<span className={isInactive?'line-through':''}>{v.label}</span>}
+                amount={<>{fmtINR(v.amount)}<span className="text-[11px] font-normal">{freqSuffix(v.frequency)}</span></>} amountColor="var(--success)"
+                left={`${v.incomeType||'Income'}${!oneOff && v.frequency!=='Monthly' ? ` · ${fmtINR(Math.round(mo))}/mo` : ''}`} right={isInactive ? 'off' : ''}
+                dim={isInactive} expanded={expanded===v.id} onToggle={()=>setExpanded(expanded===v.id?null:v.id)}
+                actions={[
+                  { label: 'Edit', onClick: ()=>setModal({open:true,item:v}) },
+                  { label: isInactive ? 'Turn on' : 'Turn off', onClick: ()=>toggleMut.mutate(v) },
+                  { label: 'Delete', tone: 'danger' as const, onClick: ()=>setConfirmModal({message:'Delete?',onConfirm:()=>deleteMut.mutate(v.id),label:'Delete'}) },
+                ]} />
+              <div
+                className="hidden md:grid items-center px-4 py-3 transition-colors"
                 style={{gridTemplateColumns:'minmax(190px,2.4fr) minmax(120px,1.26fr) minmax(100px,1.05fr) minmax(80px,0.84fr) minmax(80px,0.84fr)',borderTop:idx===0?'none':'1px solid color-mix(in srgb, var(--text) 5%, transparent)',opacity:isInactive?0.5:1,background:idx%2===0?'transparent':'color-mix(in srgb, var(--text) 2%, transparent)'}}>
                 <div className="flex items-center gap-1.5 min-w-0">
                   <ChevronDown size={12} style={{color:'var(--text-faint)',transform:expanded===v.id?'rotate(0)':'rotate(-90deg)',transition:'transform 0.2s',flexShrink:0,cursor:'pointer'}} onClick={()=>setExpanded(expanded===v.id?null:v.id)}/>
@@ -131,10 +143,11 @@ export default function IncomePage() {
                   <button className="btn-danger btn-xs" aria-label="Delete income source" title="Delete" onClick={()=>setConfirmModal({message:'Delete?',onConfirm:()=>deleteMut.mutate(v.id),label:'Delete'})}><Trash2 size={11}/></button>
                 </div>
               </div>
+              </Fragment>
             )
           })}
 
-          <div className="grid px-4 py-3 text-[13px] font-bold border-t"
+          <div className="hidden md:grid px-4 py-3 text-[13px] font-bold border-t"
             style={{gridTemplateColumns:'minmax(190px,2.4fr) minmax(120px,1.26fr) minmax(100px,1.05fr) minmax(80px,0.84fr) minmax(80px,0.84fr)',borderColor:'var(--hairline)',background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-faint)'}}>
             <span>{filteredActive.length} active{filterFreq!=='All'?` (${filterFreq})`:''}</span>
             <span className="text-right mono" style={{color:'var(--success)'}}>{fmtINR(filteredTotal)}</span>

@@ -9,10 +9,11 @@ import IncomeSplitCard from '../components/common/IncomeSplitCard'
 import { useQuery } from '@tanstack/react-query'
 import { loansApi, cardsApi, personalEmiApi, savingsApi, insuranceApi, investmentsApi, expensesApi, incomeApi, paidMarksApi } from '../api'
 import { masterKeyOf } from '../utils/dueRows'
-import { fmtINR, monthlyIncomeTotal } from '../utils/format'
+import { fmtINR, monthlyIncomeTotal, ordinal } from '../utils/format'
 import { calcOutflow, outflowTierLine } from '../utils/calcOutflow'
 import { PageHeader, LoadingSpinner, ErrorState, SortHeader } from '../components/common'
 import { Download } from 'lucide-react'
+import { PhoneRow } from '../components/common/PhoneRow'
 import { rateColor } from '../utils/emiFacts'
 import { investTotals } from '../utils/investValue'
 import FilterMenu from '../components/common/FilterMenu'
@@ -723,7 +724,7 @@ export default function MasterTablePage() {
             {tilesCollapsed ? '▸' : '▾'}<span className="hidden sm:inline"> Summary</span>
           </button>
         )}
-        <button onClick={() => setShowAbout(a => !a)} className={`text-[11px] ${pageTab === 'view' ? '' : 'ml-auto'}`} style={{ background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer' }}>{showAbout ? '✕' : <>ⓘ<span className="hidden sm:inline"> About this page</span></>}</button>
+        <button onClick={() => setShowAbout(a => !a)} aria-label={showAbout ? 'Close about this page' : 'About this page'} title="About this page" className={`text-[11px] ${pageTab === 'view' ? '' : 'ml-auto'}`} style={{ background: 'none', border: 'none', color: 'var(--text-faint)', cursor: 'pointer' }}>{showAbout ? '✕' : <>ⓘ<span className="hidden lg:inline"> About this page</span></>}</button>
       </div>
       {showAbout && (
         <div className="text-[11px] print:hidden rounded-lg p-3" style={{ color: 'var(--text-faint)', background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
@@ -1194,8 +1195,26 @@ export default function MasterTablePage() {
         renderGroupedByKey(typeGroupKeys, typeBuckets, true)
       ) : viewMode === 'card' ? (
         renderGroupedByKey(cardGroupKeys, cardBuckets, true)
-      ) : viewMode === 'list' ? (
-        <div className="rounded-2xl overflow-x-auto text-[12px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+      ) : viewMode === 'list' ? (<>
+        {/* Phones: one row per commitment (tap opens its page); the full 12-column table is tablet and desktop only */}
+        <div className="md:hidden rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+          {sorted.map((r, idx) => {
+            const amountPrimary = r.ccOutstanding ?? r.loanAmount ?? null
+            return (
+              <div key={r.key} style={{ borderTop: idx === 0 ? 'none' : '1px solid var(--border)' }}>
+                <PhoneRow title={r.name}
+                  amount={r.emi != null ? <>{fmtINR(r.emi)}<span className="text-[11px] font-normal">/mo</span></> : amountPrimary != null ? fmtINR(amountPrimary) : '—'}
+                  amountColor={r.emi != null ? 'var(--warning)' : r.ccOutstanding != null ? 'var(--danger)' : undefined}
+                  left={`${r.type}${r.due ? ` · due ${ordinal(r.due)}` : ''}${isFriendOwed(r) ? ` · for ${r.owedBy}` : ''}`}
+                  right={r.totalPending > 0 ? `${fmtINR(r.totalPending)} left` : ''}
+                  pct={r.totalEmis ? Math.min(100, ((r.paidEmis ?? 0) / r.totalEmis) * 100) : undefined}
+                  dim={isFriendOwed(r) || !!r.isCardEmi}
+                  onToggle={() => navigate(r.route, { state: { from: 'master' } })} />
+              </div>
+            )
+          })}
+        </div>
+        <div className="hidden md:block rounded-2xl overflow-x-auto text-[12px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
           <table className="w-full" style={{ borderCollapse: 'collapse', minWidth: 1020 }}>
             <thead>
               <tr className="text-[11px] font-medium" style={{ background: 'color-mix(in srgb, var(--text) 4%, var(--bg-card))', color: 'var(--text-faint)', borderBottom: '1px solid var(--hairline)' }}>
@@ -1302,7 +1321,7 @@ export default function MasterTablePage() {
             </tfoot>
           </table>
         </div>
-      ) : (
+      </>      ) : (
         <div className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
           {dueGroupList.every(g => (dueBuckets.get(g === 'Any day this month' ? 0 : Number(g.replace('Day ', ''))) ?? []).length === 0) ? (
             <div className="p-8 text-center" style={{ color: 'var(--text-faint)' }}>No items match "{search}"</div>
