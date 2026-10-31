@@ -44,7 +44,12 @@ api.interceptors.response.use(
   err => {
     const status = err.response?.status
     const url: string = err.config?.url ?? ''
-    const msg = err.response?.data?.message || err.message || 'Something went wrong'
+    // No response at all = no connection (or the server is down). axios calls that "Network Error";
+    // on a phone opened from the home screen with no signal, say what is actually going on.
+    const offlineMsg = typeof navigator !== 'undefined' && navigator.onLine === false
+      ? "You're offline — connect to see your latest numbers."
+      : "Can't reach FinFlow right now — check your connection and try again."
+    const msg = err.response?.data?.message || (!err.response && err.request ? offlineMsg : err.message) || 'Something went wrong'
 
     if (!isAuthAttempt(url) && isSessionError(status, String(msg))) {
       // Several calls fail at once; only the first does the sign-out, the rest just reject quietly.

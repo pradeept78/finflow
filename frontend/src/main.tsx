@@ -27,6 +27,12 @@ function ToastGuard() {
   return null
 }
 
+// Installable app: the service worker lets FinFlow open from the home screen without a connection.
+// Production builds only — in `npm run dev` a cached shell would hide your latest edits.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => { /* app works without it */ }) })
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { retry: 1, staleTime: 30_000 }

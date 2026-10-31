@@ -1,4 +1,6 @@
 import { defineConfig, type Plugin } from 'vite'
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import react from '@vitejs/plugin-react'
 
 // The app calls the API with a RELATIVE base url (`baseURL: '/api'` in src/api/axios.ts).
@@ -54,8 +56,29 @@ function stackBadge(): Plugin {
   }
 }
 
+/**
+ * Stamps public/sw.js once it has been copied to dist/: a per-build id (each deploy gets its own offline
+ * cache and drops the previous one) and the list of built files to save on install. Every page is its own
+ * lazy chunk, so without the list a page never opened online could not open offline. Build-only.
+ */
+function stampServiceWorker(): Plugin {
+  let outDir = 'dist'
+  return {
+    name: 'finflow-sw-build-id',
+    apply: 'build',
+    configResolved(c) { outDir = c.build.outDir },
+    closeBundle() {
+      const file = resolve(outDir, 'sw.js')
+      const assets = readdirSync(resolve(outDir, 'assets')).map(f => `/assets/${f}`)
+      writeFileSync(file, readFileSync(file, 'utf8')
+        .replace(/__BUILD_ID__/g, Date.now().toString(36))
+        .replace('__PRECACHE__', JSON.stringify(assets)))
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), stackBadge()],
+  plugins: [react(), stackBadge(), stampServiceWorker()],
   server: {
     // Docker publishes its frontend on 3100, so 3000 belongs to local dev and stays free.
     // strictPort still matters: without it vite silently moves to the next free port when something
