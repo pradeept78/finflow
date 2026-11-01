@@ -53,7 +53,9 @@ export const accountApi = {
 // Bank messages: what FinFlow read from bank SMS (iPhone Shortcut) or pasted text, waiting for a confirm.
 export const bankMessagesApi = {
   list: () => api.get<{ data: BankMessage[] }>('/bank-messages').then(r => r.data.data),
-  summary: () => api.get<{ data: { newCount: number; hasKey: boolean } }>('/bank-messages/summary').then(r => r.data.data),
+  summary: () => api.get<{ data: { newCount: number; hasKey: boolean; autoAdd: boolean; autoAddedRecent: number } }>('/bank-messages/summary').then(r => r.data.data),
+  undo: (id: number) => api.post<{ data: BankMessage }>(`/bank-messages/${id}/undo`).then(r => r.data.data),
+  setAutoAdd: (autoAdd: boolean) => api.put('/bank-messages/settings', { autoAdd }),
   paste: (text: string) => api.post<{ data: BankMessage }>('/bank-messages/paste', { text }).then(r => r.data.data),
   confirm: (id: number, edits?: Record<string, unknown>) => api.post<{ data: BankMessage }>(`/bank-messages/${id}/confirm`, edits ?? {}).then(r => r.data.data),
   ignore: (id: number) => api.post(`/bank-messages/${id}/ignore`),

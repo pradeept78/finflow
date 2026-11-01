@@ -39,6 +39,8 @@ public class BankMessageController {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("newCount", service.countNew(u));
         body.put("hasKey", service.hasIngestKey(u));
+        body.put("autoAdd", !Boolean.FALSE.equals(u.getAutoAddMessages()));
+        body.put("autoAddedRecent", service.countAutoAddedSince(u, LocalDateTime.now().minusDays(3)));
         return ResponseEntity.ok(ApiResponse.ok(body));
     }
 
@@ -51,6 +53,18 @@ public class BankMessageController {
     @PostMapping("/{id}/confirm")
     public ResponseEntity<ApiResponse<BankMessage>> confirm(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> edits) {
         return ResponseEntity.ok(ApiResponse.ok(service.confirm(currentUser(), id, edits)));
+    }
+
+    @PostMapping("/{id}/undo")
+    public ResponseEntity<ApiResponse<BankMessage>> undo(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.ok("Undone", service.undo(currentUser(), id)));
+    }
+
+    /** Auto-add on/off. */
+    @PutMapping("/settings")
+    public ResponseEntity<ApiResponse<String>> settings(@RequestBody Map<String, Boolean> body) {
+        service.setAutoAdd(currentUser(), !Boolean.FALSE.equals(body.get("autoAdd")));
+        return ResponseEntity.ok(ApiResponse.ok("Saved", "ok"));
     }
 
     @PostMapping("/{id}/ignore")

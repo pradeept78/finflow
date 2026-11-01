@@ -154,6 +154,10 @@ new card EMI, loan EMI) that change nothing until confirmed. Cards and loans are
   The key is made on `/messages` (shown once, stored as a SHA-256) and can be turned off there.
   `/ingest/**` is public in SecurityConfig: the key is the authentication. The phone must be on Tailscale.
 
+Sure messages (digits matched, clear amount) are **added automatically** unless the user turns that
+off on the page; every added message has **Undo**, which reverses exactly what it did (`result_ref`).
+Picking a card or loan for a message once saves the message's last 4 digits on it.
+
 The reader is `messages/BankMessageParser.java`; add new bank wordings with a case in its test.
 
 ---

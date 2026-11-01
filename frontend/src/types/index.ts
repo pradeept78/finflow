@@ -231,4 +231,6 @@ export interface BankMessage {
   minDue?: number; tenure?: number; emiAmount?: number; note?: string
   targetType?: 'CARD' | 'LOAN'; targetId?: number; sure: boolean
   status: 'NEW' | 'CONFIRMED' | 'IGNORED'; resultNote?: string
+  /** added without a tap (auto-add); Undo reverses it */
+  autoAdded?: boolean
 }
