@@ -22,16 +22,26 @@ export const MONEY_GROUPS = {
 } as const
 export type MoneyGroup = keyof typeof MONEY_GROUPS
 
+/**
+ * Kinds in one group are shades of its colour (1st the colour itself, later ones mixed further toward the
+ * text colour), so loans, card EMIs, I Owe and chit repay read as one red family but stay distinguishable.
+ * Mixing toward --text lightens in the dark theme and darkens in the light one, so each step keeps contrast.
+ */
+const SHADE = [0, 30, 50, 64, 75]
+const shade = (color: string, n: number) => {
+  const p = SHADE[Math.min(n - 1, SHADE.length - 1)]
+  return p === 0 ? color : `color-mix(in srgb, ${color} ${100 - p}%, var(--text))`
+}
 const k = (one: string, many: string, group: MoneyGroup, n: number): KindMeta =>
-  ({ one, many, color: MONEY_GROUPS[group].color, order: MONEY_GROUPS[group].order * 10 + n })
+  ({ one, many, color: shade(MONEY_GROUPS[group].color, n), order: MONEY_GROUPS[group].order * 10 + n })
 
 export const KINDS: Record<string, KindMeta> = {
   'loan':        k('loan', 'loans', 'emi', 1),
-  'gold-loan':   k('gold loan', 'gold loans', 'emi', 2),
-  'card-emi':    k('card EMI', 'card EMIs', 'emi', 3),
-  'iowe':        k('I Owe', 'I Owe', 'emi', 4),
-  'iowe-int':    k('I Owe (interest)', 'I Owe (interest)', 'emi', 5),
-  'chit-repay':  k('chit repay', 'chit repay', 'emi', 6),
+  'card-emi':    k('card EMI', 'card EMIs', 'emi', 2),
+  'iowe':        k('I Owe', 'I Owe', 'emi', 3),
+  'chit-repay':  k('chit repay', 'chit repay', 'emi', 4),
+  'gold-loan':   k('gold loan', 'gold loans', 'emi', 5),
+  'iowe-int':    k('I Owe (interest)', 'I Owe (interest)', 'emi', 3),
   'bill':        k('bill', 'bills', 'bill', 1),
   'insurance':   k('insurance', 'insurance', 'insurance', 1),
   'savings':     k('saving', 'savings', 'saving', 1),
