@@ -12,7 +12,7 @@ const errors=[]
 const browser=await chromium.launch({...(process.env.PW_CHROMIUM?{executablePath:process.env.PW_CHROMIUM}:{}),args:['--no-sandbox']})
 export async function mk(w=1440,h=900){
  const ctx=await browser.newContext({viewport:{width:w,height:h},locale:'en-IN',timezoneId:'Asia/Kolkata'})
- await ctx.addInitScript(()=>{localStorage.setItem('ff_token','x');localStorage.setItem('ff_user',JSON.stringify({id:1,name:'T',email:'t@t.com',role:'USER'}))})
+ await ctx.addInitScript(()=>{localStorage.setItem('ff_token','x');localStorage.setItem('ff_user',JSON.stringify({id:1,name:'T',email:'t@t.com',role:'USER'}));localStorage.setItem('ff_intro_done_1','1')})
  const p=await ctx.newPage()
  p.on('pageerror',e=>errors.push(e.message)); p.on('console',m=>{if(m.type()==='error'&&!/Future Flag|favicon|ERR_/.test(m.text()))errors.push(m.text())})
  await p.route(u=>u.hostname!=='127.0.0.1',r=>r.fulfill({status:200,contentType:'text/css',body:''}))
