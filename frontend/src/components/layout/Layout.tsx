@@ -376,7 +376,9 @@ export default function Layout() {
       <main id="main-content" className="flex-1 overflow-y-auto">
         <h1 className="sr-only">{(PAGE_LABELS as Record<string, string>)[location.pathname] ?? 'FinFlow'}</h1>
         {/* Mobile top bar */}
-        {!fullScreen && <div className="md:hidden flex items-center gap-2.5 px-4 py-2.5 border-b bg-[#0c0e14] sticky top-0 z-30 print:hidden" style={{borderColor:"#252836"}}>
+        {/* Exactly 49px (border included): TabbedHub's tab strip sticks at top-[49px] right under it. At ~45px
+            content scrolled through the gap between the two. */}
+        {!fullScreen && <div className="md:hidden flex items-center gap-2.5 px-4 h-[49px] border-b bg-[#0c0e14] sticky top-0 z-30 print:hidden" style={{borderColor:"#252836"}}>
           <div className="w-6 h-6 rounded-md bg-orange-500 flex items-center justify-center">
             <span className="text-white font-black text-xs">F</span>
           </div>

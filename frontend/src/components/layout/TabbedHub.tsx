@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
 import { LoadingSpinner } from '../common'
 import { useQuery } from '@tanstack/react-query'
@@ -59,13 +59,30 @@ export default function TabbedHub({ config }: { config: HubConfig }) {
     const l = el.offsetLeft - box.offsetLeft, r = l + el.offsetWidth
     if (l < box.scrollLeft) box.scrollLeft = l - 8
     else if (r > box.scrollLeft + box.clientWidth) box.scrollLeft = r - box.clientWidth + 8
+    edges()
   }, [pathname])
+  // Fade whichever edge has more tabs beyond it: a tab cut mid-word ("ard Commitments") looked broken,
+  // a fade reads as "scroll for more".
+  const [fade, setFade] = useState({ l: false, r: false })
+  const edges = useCallback(() => {
+    const b = tabsRef.current
+    if (!b) return
+    const next = { l: b.scrollLeft > 2, r: b.scrollLeft + b.clientWidth < b.scrollWidth - 2 }
+    setFade(f => (f.l === next.l && f.r === next.r ? f : next))
+  }, [])
+  useEffect(() => {
+    window.addEventListener('resize', edges)
+    return () => window.removeEventListener('resize', edges)
+  }, [edges])
+  const mask = fade.l || fade.r
+    ? `linear-gradient(to right, ${fade.l ? 'transparent 0, #000 28px' : '#000 0'}, ${fade.r ? '#000 calc(100% - 28px), transparent 100%' : '#000 100%'})`
+    : undefined
   return (
     <div>
       {/* top offset clears the mobile app bar (~49px) unless full screen has hidden it */}
       <div className={`print:hidden sticky z-20 flex items-center gap-1 -mx-2 md:-mx-4 px-2 md:px-4 ${fullScreen ? 'top-0' : 'top-[49px] md:top-0'}`}
         style={{ background: 'var(--bg-base)', borderBottom: '1px solid var(--border)' }}>
-        <div ref={tabsRef} className="flex items-center gap-0.5 overflow-x-auto min-w-0 flex-1" style={{ scrollbarWidth: 'none' }}>
+        <div ref={tabsRef} onScroll={edges} className="flex items-center gap-0.5 overflow-x-auto min-w-0 flex-1" style={{ scrollbarWidth: 'none', maskImage: mask, WebkitMaskImage: mask }}>
           {config.tabs.map(t => (
             <NavLink key={t.to} to={t.to} end
               className={`text-[12px] font-semibold ${config.tabs.length > 7 ? "px-2.5 sm:px-2.5" : "px-3 sm:px-4"} py-2.5 whitespace-nowrap flex-shrink-0`}
