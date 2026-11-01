@@ -369,7 +369,7 @@ export default function ClosedAssetsPage() {
         ))}
       </div>
       <div className="flex items-center justify-between">
-        <SegTabs options={[{ id: 'summary', label: '📊 Total picture' }, { id: 'list', label: '📋 Closed loans' }]} value={showSummary ? 'summary' : 'list'} onChange={(id: any) => setShowSummary(id === 'summary')} />
+        <SegTabs options={[{ id: 'summary', label: 'Total picture', icon: ICON.summary }, { id: 'list', label: 'Closed loans', icon: ICON.closed }]} value={showSummary ? 'summary' : 'list'} onChange={(id: any) => setShowSummary(id === 'summary')} />
         <button className="btn-primary btn-sm" onClick={() => setModal({ open: true, item: emptyForm() })}>
           <Plus size={14} /> Add entry
         </button>

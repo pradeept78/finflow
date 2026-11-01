@@ -736,7 +736,7 @@ export default function HubPage({ section = 'overview' }: Props) {
           {icon:ICON.breakSavings,label:'Break savings?',     sub:breakWorthy>0?`${breakWorthy} saving${breakWorthy>1?'s':''} worth breaking`:'None worth breaking', color:'var(--pink)',  to:'/break-savings'},
           {icon:ICON.export,label:'Export data',        sub:'Download CSV',                   color:'var(--info)',  to:'/export'},
           {icon:ICON.admin,label:'Admin panel',        sub:'User comparison',                color:'var(--danger)',  to:'/admin'},
-          {icon:ICON.lookup,label:'Quick lookup',       sub:'All payments this month',        color:'var(--warning)',  to:'/lookup'},
+          {icon:ICON.lookup,label:'Due this month',      sub:'All payments this month',        color:'var(--warning)',  to:'/lookup'},
           {icon:ICON.calendar,label:'Payment calendar',   sub:'Month-by-month forecast',        color:'var(--cyan)',  to:'/calendar'},
         ].map(q=>(
           <div key={q.label} onClick={nav(q.to)} className="rounded-xl p-3.5 cursor-pointer hover:opacity-90 transition-all flex items-center gap-3"

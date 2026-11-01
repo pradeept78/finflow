@@ -1,3 +1,4 @@
+import { ICON } from '../components/common/icons'
 import SegTabs from '../components/common/SegTabs'
 import { incomePct } from '../utils/incomePct'
 import { useState, useEffect, useRef } from 'react'
@@ -717,16 +718,16 @@ export default function MasterTablePage() {
 
       <div className="flex items-center gap-1 print:hidden" style={{ borderBottom: '1px solid var(--border)' }}>
         {([
-          { id: 'view' as const, label: '📋', full: 'All items', short: 'All', badge: String(ownRows.length) },
-          { id: 'closing' as const, label: '🎯', full: 'Closing planner', short: 'Planner',
+          { id: 'view' as const, label: ICON.list, full: 'All items', short: 'All', badge: String(ownRows.length) },
+          { id: 'closing' as const, label: ICON.payoff, full: 'Closing planner', short: 'Planner',
             badge: closingMode === 'months' && closingCutoff ? `${closingRows.length} closing` : closingMode === 'amount' && closingAmountPlan ? `${closingAmountPlan.closed.length} closable` : '' },
-          ...(uncountedRows.length > 0 ? [{ id: 'others' as const, label: '🚫', full: 'Not counted', short: 'Not counted', badge: String(uncountedRows.length) }] : []),
+          ...(uncountedRows.length > 0 ? [{ id: 'others' as const, label: ICON.empty, full: 'Not counted', short: 'Not counted', badge: String(uncountedRows.length) }] : []),
         ]).map(t => {
           const on = pageTab === t.id
           return (
             <button key={t.id} onClick={() => setPageTab(t.id)} className="text-[12px] font-semibold px-3 sm:px-4 py-2 flex items-center gap-1.5 sm:gap-2 whitespace-nowrap"
               style={{ background: 'none', border: 'none', borderBottom: `2px solid ${on ? '#f97316' : 'transparent'}`, marginBottom: -1, color: on ? 'var(--text)' : 'var(--text-faint)', cursor: 'pointer' }}>
-              {t.label}<span className="hidden sm:inline">{t.full}</span><span className="sm:hidden">{t.short}</span>
+              <t.label size={14} strokeWidth={2.2} aria-hidden className="inline-block -mt-0.5 mr-1.5" /><span className="hidden sm:inline">{t.full}</span><span className="sm:hidden">{t.short}</span>
               {t.badge && <span className="mono text-[11px] px-1.5 py-0.5 rounded-full whitespace-nowrap" style={{ background: on ? 'color-mix(in srgb, #f97316 10%, transparent)' : 'var(--bg-hover)', color: on ? 'var(--orange)' : 'var(--text-faint)' }}>{t.badge}</span>}
             </button>
           )

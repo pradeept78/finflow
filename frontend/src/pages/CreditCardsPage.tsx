@@ -42,10 +42,10 @@ const getDueBadge = (dueDay: number | undefined | null, isPaid: boolean) => {
     diff = (daysInMonth - today) + dueDay
   }
 
-  if (diff === 0)             return { label: '🔴 Due today',      color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
+  if (diff === 0)             return { label: 'Due today',      color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
   if (diff < 0 && diff >= -7) return { label: `⚠ ${Math.abs(diff)}d overdue`, color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
-  if (diff > 0 && diff <= 3)  return { label: `🔴 Due in ${diff}d`, color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
-  if (diff > 3 && diff <= 7)  return { label: `⚡ Due in ${diff}d`, color: 'var(--warning)', bg: 'color-mix(in srgb, var(--warning) 15%, transparent)' }
+  if (diff > 0 && diff <= 3)  return { label: `Due in ${diff}d`, color: 'var(--danger)', bg: 'color-mix(in srgb, var(--danger) 15%, transparent)' }
+  if (diff > 3 && diff <= 7)  return { label: `Due in ${diff}d`, color: 'var(--warning)', bg: 'color-mix(in srgb, var(--warning) 15%, transparent)' }
   if (diff > 7 && diff <= 10) return { label: `Due in ${diff}d`,    color: 'var(--info)', bg: 'color-mix(in srgb, var(--info) 10%, transparent)' }
   return null
 }
@@ -212,10 +212,10 @@ export default function CreditCardsPage() {
         <div className="flex items-center gap-2 flex-wrap">
           <SegTabs<'cards' | 'emis' | 'spends' | 'outstanding'> value={cardsView} onChange={setCardsView} accent="var(--warning)"
             options={[
-              { id: 'cards', label: '💳 By card', badge: cards.length },
-              { id: 'emis', label: '📋 All EMIs', badge: totEmiCount },
-              { id: 'spends', label: '🛍️ Spends', badge: cards.reduce((n: number, c: any) => n + (c.spends ?? []).length, 0), color: 'var(--pink)' },
-              { id: 'outstanding', label: '🧾 Outstanding', badge: cards.filter((c: any) => Number(c.outstanding ?? 0) > 0).length, color: 'var(--danger)' },
+              { id: 'cards', label: 'By card', icon: ICON.card, badge: cards.length },
+              { id: 'emis', label: 'All EMIs', icon: ICON.list, badge: totEmiCount },
+              { id: 'spends', label: 'Spends', icon: ICON.cardSpend, badge: cards.reduce((n: number, c: any) => n + (c.spends ?? []).length, 0), color: 'var(--pink)' },
+              { id: 'outstanding', label: 'Outstanding', icon: ICON.bill, badge: cards.filter((c: any) => Number(c.outstanding ?? 0) > 0).length, color: 'var(--danger)' },
             ]} />
           {/* Smart insight — a slim pill beside the view switch instead of a full-width banner row of its own */}
           {(() => {
@@ -702,11 +702,11 @@ export default function CreditCardsPage() {
           const ownPend = (items: any[]) => items.filter((r: any) => r.own).reduce((x: number, r: any) => x + r.pend, 0)
           const keyOf = (r: any): { key: string; label: string; order: number } => {
             switch (groupEmisBy) {
-              case 'card': return { key: `c${r.c.id}`, label: `💳 ${r.c.banker}`, order: 0 }
-              case 'category': { const k = r.e.category || 'Uncategorized'; return { key: `k${k}`, label: `🏷️ ${k}`, order: 0 } }
-              case 'whose': return r.own ? { key: 'mine', label: '🙋 My EMIs', order: 0 } : { key: 'friends', label: '🤝 Carried for friends', order: 1 }
+              case 'card': return { key: `c${r.c.id}`, label: r.c.banker, order: 0 }
+              case 'category': { const k = r.e.category || 'Uncategorized'; return { key: `k${k}`, label: k, order: 0 } }
+              case 'whose': return r.own ? { key: 'mine', label: 'My EMIs', order: 0 } : { key: 'friends', label: 'Carried for friends', order: 1 }
               case 'ends': {
-                if (r.eff.pending <= 0) return { key: 'done', label: '✅ Finished', order: 9 }
+                if (r.eff.pending <= 0) return { key: 'done', label: 'Finished', order: 9 }
                 const m = r.eff.pending
                 return m <= 3 ? { key: 'e3', label: '⏳ Ends within 3 months', order: 0 } : m <= 6 ? { key: 'e6', label: '⏳ Ends in 4–6 months', order: 1 }
                   : m <= 12 ? { key: 'e12', label: '⏳ Ends in 7–12 months', order: 2 } : { key: 'e13', label: '⏳ Runs beyond a year', order: 3 }

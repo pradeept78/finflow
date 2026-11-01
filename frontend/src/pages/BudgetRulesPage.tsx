@@ -210,16 +210,16 @@ export default function BudgetRulesPage() {
   )
 
   const TABS = [
-    { id: 'overview', label: '📊 Overview' },
-    { id: 'loans',    label: '🏦 Loans' },
-    { id: 'cards',    label: '💳 Cards' },
-    { id: 'iowe',     label: '🤝 I Owe / owed' },
+    { id: 'overview', label: 'Overview', icon: ICON.summary },
+    { id: 'loans',    label: 'Loans', icon: ICON.loan },
+    { id: 'cards',    label: 'Cards', icon: ICON.card },
+    { id: 'iowe',     label: 'I Owe / owed', icon: ICON.iowe },
   ]
 
   return (
     <div className="space-y-4 text-[13px]">
       <PageHeader title="Budget & spending"
-        action={<button className="text-[11px] font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap" style={{background: editing ? '#c2410c' : 'var(--bg-hover)', border:'1px solid var(--hairline)', color: editing ? '#fff' : 'var(--text-muted)', cursor:'pointer'}} onClick={() => setEditing(!editing)}>{editing ? '✓ Done editing' : '✏ Edit limits'}</button>}
+        action={<button className="text-[11px] font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap" style={{background: editing ? '#c2410c' : 'var(--bg-hover)', border:'1px solid var(--hairline)', color: editing ? '#fff' : 'var(--text-muted)', cursor:'pointer'}} onClick={() => setEditing(!editing)}>{editing ? <><ICON.done size={13} className="inline-block -mt-0.5 mr-1" />Done editing</> : <><ICON.edit size={13} className="inline-block -mt-0.5 mr-1" />Edit limits</>}</button>}
       />
 
       <HorizonBar />
@@ -236,7 +236,7 @@ export default function BudgetRulesPage() {
               /* Tier split only — see /lookup for the itemised components. */
               sub:outflowTierLine(o), to:'/lookup'},
             {label:'Free / month',   val:(freeCash>=0?'+':'−')+fmtINR(Math.abs(freeCash))+incomePct(freeCash, monthlyIncome), color:freeCash>=0?'var(--success)':'var(--danger)', sub:(freeCash<0?'🚨 deficit':freeCash<monthlyIncome*0.1?'⚠ low buffer':'✓ healthy')+' · before card bills'},
-            {label:'Budget score',   val:`${score}/100`, color:score>=70?'var(--success)':score>=40?'var(--warning)':'var(--danger)', sub:score>=70?'On track ✓':score>=40?'Needs work':'Off track 🚨'},
+            {label:'Budget score',   val:`${score}/100`, color:score>=70?'var(--success)':score>=40?'var(--warning)':'var(--danger)', sub:score>=70?'On track ✓':score>=40?'Needs work':'Off track'},
           ].map(m=>(
             /* `to` makes a tile navigable. The Total Outflow tile needs it now that it shows only
                the tier split — the itemised components live on /lookup. */
@@ -356,9 +356,9 @@ export default function BudgetRulesPage() {
           <div className="rounded-2xl overflow-hidden text-[13px]" style={{background:'var(--bg-card)',border:'1px solid var(--hairline)'}}>
             <div className="px-4 py-2 text-[13px] font-semibold" style={{background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-muted)'}}>By Loan Type vs Budget Limit</div>
             {[
-              { label: '🏠 Home loan', emi: homeEmi,      pct: Math.round(homeEmi/Math.max(1,monthlyIncome)*100),      limit: rules.find((r:any)=>r.id==='housing')?.limit??30, color: '#3b82f6' },
-              { label: '🚗 Car/Bike',  emi: carEmi,       pct: Math.round(carEmi/Math.max(1,monthlyIncome)*100),       limit: rules.find((r:any)=>r.id==='vehicle')?.limit??15, color: '#f59e0b' },
-              { label: '🏦 Other',     emi: otherLoanEmi, pct: Math.round(otherLoanEmi/Math.max(1,monthlyIncome)*100), limit: rules.find((r:any)=>r.id==='debt')?.limit??10,    color: 'var(--danger-strong)' },
+              { label: 'Home loan', emi: homeEmi,      pct: Math.round(homeEmi/Math.max(1,monthlyIncome)*100),      limit: rules.find((r:any)=>r.id==='housing')?.limit??30, color: '#3b82f6' },
+              { label: 'Car / bike', emi: carEmi,       pct: Math.round(carEmi/Math.max(1,monthlyIncome)*100),       limit: rules.find((r:any)=>r.id==='vehicle')?.limit??15, color: '#f59e0b' },
+              { label: 'Other loans', emi: otherLoanEmi, pct: Math.round(otherLoanEmi/Math.max(1,monthlyIncome)*100), limit: rules.find((r:any)=>r.id==='debt')?.limit??10,    color: 'var(--danger-strong)' },
             ].filter(r => r.emi > 0).map(r => (
               <div key={r.label} className="px-4 py-3 border-b" style={{borderColor:'var(--hairline)'}}>
                 <div className="flex justify-between mb-1 text-[13px]">

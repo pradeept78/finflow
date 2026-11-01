@@ -224,7 +224,7 @@ export default function Layout() {
                     {section.pages.map(p => {
                       const labels: Record<string,string> = {
                         '/dashboard':'Dashboard','/budget':'Budget rules',
-                        '/lookup':'Quick lookup','/master':'All commitments','/calendar':'Calendar',
+                        '/lookup':'Due this month','/master':'All commitments','/calendar':'Calendar',
                         '/loans':'Loans','/cards':'Credit cards','/personal':'I Owe','/expenses':'Expenses',
                         '/savings':'Savings / Chit','/investments':'Investments','/income':'Income',
                         '/insurance':'Insurance','/people-owe':'People owe me',
@@ -500,9 +500,11 @@ export default function Layout() {
               if (t.key === 'add') return (
                 <button key="add" onClick={() => { setMobileOpen(false); t.go() }} aria-label="Quick add"
                   className="flex-1 flex flex-col items-center justify-center gap-0.5 h-14 text-[11px] font-medium" style={{ color: '#aab2c2' }}>
-                  <span className="w-10 h-10 -mt-1 rounded-full flex items-center justify-center text-white shadow-lg" style={{ background: '#c2410c' }}>
-                    <Icon size={22} strokeWidth={2.4} />
+                  {/* Same height as the other tabs, with a label: the bigger circle with no label poked above the bar. */}
+                  <span className="w-[30px] h-[24px] rounded-full flex items-center justify-center text-white" style={{ background: '#c2410c' }}>
+                    <Icon size={18} strokeWidth={2.6} />
                   </span>
+                  Add
                 </button>
               )
               return (
