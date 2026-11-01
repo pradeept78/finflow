@@ -13,7 +13,8 @@ const KIND_WORD: Record<string, string> = { loan: 'loan', 'card-emi': 'card EMI'
  * A slim pill with the full list in its tooltip. Reads the shared query cache, so any page can show it.
  * Renders nothing when there's nothing new.
  */
-export default function NextMonthHeadsUp({ className = '' }: { className?: string }) {
+/** `scope="loans"`: only loans starting next month (the Loans page) — card spends and other kinds belong elsewhere. */
+export default function NextMonthHeadsUp({ className = '', scope }: { className?: string; scope?: 'loans' }) {
   const { data: loans = [] } = useQuery({ queryKey: ['loans'], queryFn: loansApi.getAll })
   const { data: cards = [] } = useQuery({ queryKey: ['cards'], queryFn: cardsApi.getAll })
   const { data: personal = [] } = useQuery({ queryKey: ['personal'], queryFn: personalEmiApi.getAll })
@@ -21,8 +22,10 @@ export default function NextMonthHeadsUp({ className = '' }: { className?: strin
   const { data: investments = [] } = useQuery({ queryKey: ['investments'], queryFn: investmentsApi.getAll })
 
   const fresh = newCommitmentsNextMonth({ loans: loans as any[], cards: cards as any[], personal: personal as any[], savings: savings as any[], investments: investments as any[] })
-  const own = fresh.filter(x => !x.owedBy), friends = fresh.filter(x => x.owedBy)
-  const h = nextMonthHeadsUp(cards as any[])
+  const own = fresh.filter(x => !x.owedBy && (scope !== 'loans' || x.kind === 'loan'))
+  const friends = scope === 'loans' ? [] : fresh.filter(x => x.owedBy)
+  const all = nextMonthHeadsUp(cards as any[])
+  const h = scope === 'loans' ? { ...all, spends: [], spendTotal: 0 } : all
   const items = [
     ...own.map(x => `${x.label} ${KIND_WORD[x.kind]} +${fmtINR(x.amount)}/mo from ${fmtDueDate(x.firstDue)}`),
     ...h.spends.map(s => `${s.card} spends ${fmtINR(s.amount)} · due ${fmtDueDate(s.due)}`),

@@ -127,9 +127,6 @@ export default function LoansPage() {
     })
     .filter((l: any) => l.diff >= 0 && l.diff <= 7)
     .sort((a: any, b: any) => a.diff - b.diff)
-  const upcomingDebitsLine = upcomingDebits.length
-    ? 'Next 7 days: ' + upcomingDebits.map((l: any) => `${fmtINR(l.emi)} from ${l.debitAccount || l.lender} (${ordinal(l.resolvedDueDay)})`).join(' · ')
-    : null
 
   const sorted = [...loans]
     .filter((l: any) => filterLoanType === 'All' || (l.loanType || 'Personal Loan') === filterLoanType)
@@ -185,7 +182,7 @@ export default function LoansPage() {
           {[
             { label: 'Monthly EMI',     value: fmtINR(totalEmi),                    sub: `${activeLoans.length - notStarted.length} paying now${startingEmi > 0 ? ` · +${fmtINR(startingEmi)} from ${notStarted.some((l: any) => { const d = new Date(l.startDate); const n = new Date(); return d.getFullYear() * 12 + d.getMonth() === n.getFullYear() * 12 + n.getMonth() + 1 }) ? nextMonthName : 'later'}` : ''}`, accent: '#f97316' },
             { label: 'Total loan',      value: fmtINR(totalLoanAmount),             sub: `${fmtINR(totalWithInterest)} with interest`,  accent: '#2dd4bf' },
-            { label: 'Total to Clear',  value: fmtINR(totalPending + totalIntLeft), sub: `principal ${fmtINR(totalPending)} + interest ${fmtINR(totalIntLeft)}`, accent: 'var(--warning)' },
+            { label: 'Total to clear',  value: fmtINR(totalPending + totalIntLeft), sub: `principal ${fmtINR(totalPending)} + interest ${fmtINR(totalIntLeft)}`, accent: 'var(--warning)' },
             { label: 'Paid so far',     value: fmtINR(totalPaidSoFar),              sub: `${fmtINR(totalIntPaid)} was interest`,        accent: 'var(--cyan)' },
             assetVal > 0
               ? { label: 'Asset equity',  value: fmtINR(Math.abs(netAsset)), sub: netAsset >= 0 ? 'net positive' : 'underwater', accent: netAsset >= 0 ? 'var(--success)' : 'var(--danger)' }
@@ -212,17 +209,28 @@ export default function LoansPage() {
             const ef = emiFacts({ amount: l.amount, emi: l.emi, tenure: t, paid: eff.paid, rate: l.interestRate, principalRemaining: l.principalPaid })
             return { l, rate: ef.rate ?? 0, left: eff.pending }
           }).filter(x => x.rate >= 15 && x.left > 3).sort((a, b) => b.rate - a.rate)
-          if (!upcomingDebitsLine && !highRate.length) return null
-          // One slim line (was two stacked boxes): each half truncates, the full text is in the tooltip.
+          if (!upcomingDebits.length && !highRate.length) return null
+          // Next EMIs as a short list naming each loan (one truncated line cut off on a phone, and said
+          // "₹20,064 from Kotak" — the bank account, not which loan), then the prepay hint.
           return (
-            <div className="rounded-lg px-3 py-1.5 flex items-center gap-x-4 gap-y-1 flex-wrap text-[11px]" style={{background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-faint)'}}>
-              {upcomingDebitsLine && (
-                <span className="flex items-center gap-1.5 min-w-0 flex-1 basis-[260px]" title={upcomingDebitsLine}>
-                  <span className="shrink-0">🏦</span><span className="truncate">{upcomingDebitsLine}</span>
-                </span>
+            <div className="rounded-lg px-3 py-2 space-y-2 text-[12px]" style={{background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-faint)'}}>
+              {upcomingDebits.length > 0 && (
+                <div>
+                  <div className="font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>🏦 Next 7 days</div>
+                  <ul className="space-y-0.5">
+                    {upcomingDebits.map((l: any) => (
+                      <li key={l.id} className="flex items-baseline justify-between gap-3">
+                        <span className="min-w-0 truncate">
+                          <span style={{ color: 'var(--text-muted)' }}>{ordinal(l.resolvedDueDay)}</span> · <span style={{ color: 'var(--text)' }}>{l.lender}</span>{l.debitAccount && <> · from {l.debitAccount}</>}
+                        </span>
+                        <span className="mono font-semibold tabular-nums flex-shrink-0" style={{ color: 'var(--text)' }}>{fmtINR(l.emi)}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
               {highRate.length > 0 && (
-                <span className="flex items-center gap-1.5 flex-wrap min-w-0">
+                <span className="flex items-center gap-1.5 flex-wrap min-w-0" title="Highest interest rates: paying these off early saves the most">
                   <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>💡 Prepay first</span>
                   {(showAllRates ? highRate : highRate.slice(0, 3)).map((x, i) => {
                     const clr = x.rate >= 24 ? 'var(--danger)' : x.rate >= 18 ? 'var(--orange, var(--warning))' : 'var(--warning)'
@@ -247,7 +255,7 @@ export default function LoansPage() {
           )
         })()}
 
-        <div className="flex"><NextMonthHeadsUp /></div>
+        <NextMonthHeadsUp scope="loans" className="w-fit" />
         {/* ── TABLE ── */}
         <WhatIfBar count={pickedLoans.length} need={pickNeed} free={pickFree} billNow={totalEmi} income={monthlyIncomeTotal(incomeRows as any[])} onClear={wi.clear} />
         <div className="rounded-2xl overflow-hidden text-[13px]" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', overflowX: 'auto' }}>
