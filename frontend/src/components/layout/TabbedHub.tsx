@@ -92,7 +92,7 @@ export default function TabbedHub({ config }: { config: HubConfig }) {
             <NavLink key={t.to} to={t.to} end
               className={({ isActive }) => `text-[12px] font-semibold whitespace-nowrap flex-shrink-0 rounded-lg md:rounded-none px-2.5 py-1.5 border-0 md:border-b-2 ${tabs.length > 7 ? 'md:px-2.5' : 'md:px-4'} md:py-2.5 ${isActive ? 'bg-[var(--bg-hover)] md:bg-transparent' : ''}`}
               style={({ isActive }) => ({ color: isActive ? 'var(--text)' : 'var(--text-faint)', borderColor: isActive ? config.accent : 'transparent', marginBottom: -1 })}>
-              {t.icon} <span className="hidden sm:inline">{t.label}</span><span className="sm:hidden">{t.short ?? t.label}</span><TabCount to={t.to} />
+              <t.icon size={14} strokeWidth={2.2} aria-hidden className="inline-block -mt-0.5 mr-1.5" /><span className="hidden sm:inline">{t.label}</span><span className="sm:hidden">{t.short ?? t.label}</span><TabCount to={t.to} />
             </NavLink>
           ))}
         </div>
