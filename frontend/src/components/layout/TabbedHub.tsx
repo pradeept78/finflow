@@ -12,7 +12,7 @@ export function FullScreenButton({ className = '' }: { className?: string }) {
   const toggle = useUiStore(s => s.toggleFullScreen)
   return (
     <button onClick={toggle} title={fullScreen ? 'Exit full screen (Esc)' : 'Fill the whole screen'}
-      className={`text-[11px] font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap flex-shrink-0 ${className}`}
+      className={`hidden md:inline-block text-[11px] font-semibold px-2.5 py-1 rounded-lg whitespace-nowrap flex-shrink-0 ${className}`}
       style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-muted)', cursor: 'pointer' }}>
       <span className="hidden sm:inline">{fullScreen ? '⤡ Exit full screen' : '⛶ Full screen'}</span>
       <span className="sm:hidden">{fullScreen ? '⤡' : '⛶'}</span>

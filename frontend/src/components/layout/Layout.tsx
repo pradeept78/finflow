@@ -439,7 +439,8 @@ export default function Layout() {
         {/* Mobile top bar */}
         {/* Exactly 49px (border included): TabbedHub's tab strip sticks at top-[49px] right under it. At ~45px
             content scrolled through the gap between the two. */}
-        {!fullScreen && <div className="md:hidden flex items-center gap-2.5 px-4 h-[49px] border-b bg-[#0c0e14] sticky top-0 z-30 print:hidden" style={{borderColor:"#252836"}}>
+        {/* Phones keep the top bar and bottom tabs even in full screen (a desktop mode): without them there was no way to move around. */}
+        {<div className="md:hidden flex items-center gap-2.5 px-4 h-[49px] border-b bg-[#0c0e14] sticky top-0 z-30 print:hidden" style={{borderColor:"#252836"}}>
           <div className="w-6 h-6 rounded-md bg-orange-500 flex items-center justify-center">
             <span className="text-white font-black text-xs">F</span>
           </div>
@@ -479,7 +480,7 @@ export default function Layout() {
 
       {/* Phone bottom tab bar — the main sections under your thumb. Sidebar colours are fixed values on purpose
           (the nav is dark in both themes). Debt and Savings reopen the tab you were last on, like the sidebar. */}
-      {!fullScreen && (() => {
+      {(() => {
         const p = location.pathname
         const sec = sectionOf(p)?.hub
         const tabs = [
