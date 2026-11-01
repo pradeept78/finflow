@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { loansApi, cardsApi, personalEmiApi, expensesApi, savingsApi, investmentsApi, incomeApi, insuranceApi, peopleOweApi } from '../../api'
 import { useUiStore } from '../../store/uiStore'
 import type { HubConfig } from './hubTabs'
+import { checkIsAdmin } from '../../api/adminCheck'
 
 export function FullScreenButton({ className = '' }: { className?: string }) {
   const fullScreen = useUiStore(s => s.fullScreen)
@@ -50,6 +51,9 @@ function TabCount({ to }: { to: string }) {
  */
 export default function TabbedHub({ config }: { config: HubConfig }) {
   const tabsRef = useRef<HTMLDivElement>(null)
+  // The Admin tab only for admins (same query as App's admin gate); everyone else got an "Admin access required" page.
+  const { data: isAdmin = false } = useQuery({ queryKey: ['is-admin'], queryFn: checkIsAdmin, retry: false, staleTime: 60_000 })
+  const tabs = config.tabs.filter(t => t.to !== '/admin' || isAdmin)
   const { pathname } = useLocation()
   // Keep the active tab visible when the bar overflows (narrow window / many tabs) — scrolls the strip only, never the page.
   useEffect(() => {
@@ -84,9 +88,9 @@ export default function TabbedHub({ config }: { config: HubConfig }) {
       <div className={`print:hidden z-20 flex items-start md:items-center gap-1 -mx-2 md:-mx-4 px-2 md:px-4 py-2 md:py-0 md:sticky md:top-0`}
         style={{ background: 'var(--bg-base)', borderBottom: '1px solid var(--border)' }}>
         <div ref={tabsRef} onScroll={edges} className="flex flex-wrap md:flex-nowrap items-center gap-1 md:gap-0.5 md:overflow-x-auto min-w-0 flex-1" style={{ scrollbarWidth: 'none', maskImage: mask, WebkitMaskImage: mask }}>
-          {config.tabs.map(t => (
+          {tabs.map(t => (
             <NavLink key={t.to} to={t.to} end
-              className={({ isActive }) => `text-[12px] font-semibold whitespace-nowrap flex-shrink-0 rounded-lg md:rounded-none px-2.5 py-1.5 border-0 md:border-b-2 ${config.tabs.length > 7 ? 'md:px-2.5' : 'md:px-4'} md:py-2.5 ${isActive ? 'bg-[var(--bg-hover)] md:bg-transparent' : ''}`}
+              className={({ isActive }) => `text-[12px] font-semibold whitespace-nowrap flex-shrink-0 rounded-lg md:rounded-none px-2.5 py-1.5 border-0 md:border-b-2 ${tabs.length > 7 ? 'md:px-2.5' : 'md:px-4'} md:py-2.5 ${isActive ? 'bg-[var(--bg-hover)] md:bg-transparent' : ''}`}
               style={({ isActive }) => ({ color: isActive ? 'var(--text)' : 'var(--text-faint)', borderColor: isActive ? config.accent : 'transparent', marginBottom: -1 })}>
               {t.icon} <span className="hidden sm:inline">{t.label}</span><span className="sm:hidden">{t.short ?? t.label}</span><TabCount to={t.to} />
             </NavLink>

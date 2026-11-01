@@ -217,8 +217,8 @@ export default function BreakSavingsPage() {
             <div className="text-[11px]" style={{ color: 'var(--text-faint)' }}>Already withdrawn? Archive it from Savings tab → it won't show here</div>
           </div>
           <div>
-            <div className="grid px-4 py-2 text-[12px] font-medium border-b"
-              style={{gridTemplateColumns:"minmax(190px,2.4fr) minmax(110px,1.02fr) minmax(110px,1.02fr) minmax(120px,1.12fr) minmax(200px,1.2fr)",borderColor:"var(--hairline)",background:"color-mix(in srgb, var(--text) 4%, transparent)",color:"var(--text-faint)"}}>
+            <div className={`hidden md:grid ${"md:grid-cols-[minmax(190px,2.4fr)_minmax(110px,1.02fr)_minmax(110px,1.02fr)_minmax(120px,1.12fr)_minmax(200px,1.2fr)]"} px-4 py-2 text-[12px] font-medium border-b`}
+              style={{borderColor:"var(--hairline)",background:"color-mix(in srgb, var(--text) 4%, transparent)",color:"var(--text-faint)"}}>
               <span>Saving</span><span className="text-right">Paid in</span><span className="text-right">Net benefit</span><span className="text-center">Verdict</span><span className="text-center">Action</span>
             </div>
             <div>
@@ -227,8 +227,10 @@ export default function BreakSavingsPage() {
                   // this map as an unkeyed list item even though the div one level down had one —
                   // that div is not what map returns. React.Fragment can take the key; <> cannot.
                   <Fragment key={s.id}>
-                    <div className="grid items-start px-4 py-3 cursor-pointer transition-colors"
-                      style={{gridTemplateColumns:"minmax(190px,2.4fr) minmax(110px,1.02fr) minmax(110px,1.02fr) minmax(120px,1.12fr) minmax(200px,1.2fr)",borderTop:"1px solid color-mix(in srgb, var(--text) 5%, transparent)",background:idx%2===0?"transparent":"color-mix(in srgb, var(--text) 2%, transparent)"}}
+                    {/* Phones: two columns (name, then paid in | net benefit, then verdict and action) — the five
+                        fixed-width columns were ~730px wide and got cut off inside the card. */}
+                    <div className="grid grid-cols-2 md:grid-cols-[minmax(190px,2.4fr)_minmax(110px,1.02fr)_minmax(110px,1.02fr)_minmax(120px,1.12fr)_minmax(200px,1.2fr)] gap-x-3 gap-y-2 items-start px-4 py-3 cursor-pointer transition-colors"
+                      style={{borderTop:"1px solid color-mix(in srgb, var(--text) 5%, transparent)",background:idx%2===0?"transparent":"color-mix(in srgb, var(--text) 2%, transparent)"}}
                       onMouseEnter={e=>(e.currentTarget as HTMLElement).style.background="var(--bg-hover)"}
                       onMouseLeave={e=>(e.currentTarget as HTMLElement).style.background="transparent"}
                       onClick={() => setSelectedSaving(selectedSaving === s.id ? null : s.id!)}>
@@ -242,13 +244,13 @@ export default function BreakSavingsPage() {
                           below, so nothing is lost. */}
 
                       {/* 1 · Saving */}
-                      <div className="min-w-0">
+                      <div className="min-w-0 col-span-2 md:col-span-1">
                         <div className="font-medium text-[13px] truncate">{s.name}</div>
                         <div className="text-[11px] mt-0.5" style={{color:"var(--text-faint)"}}>{s.paidMonths} paid · {s.pendingMonths} left · {fmtINR(s.monthly)}/mo</div>
                       </div>
 
                       {/* 2 · Paid In */}
-                      <div className="text-right">
+                      <div className="text-left md:text-right">
                         <div className="mono font-semibold text-[13px]" style={{color:"var(--info)"}}>{fmtINR(s.corpusToday)}</div>
                         <div className="text-[11px]" style={{color:"var(--text-faint)"}}>{s.paidMonths}mo × {fmtINR(s.monthly)}</div>
                         {s.cashFreed>0&&<div className="text-[11px]" style={{color:"var(--success)"}}>+{fmtINR(s.cashFreed)} freed</div>}
@@ -261,7 +263,7 @@ export default function BreakSavingsPage() {
                       </div>
 
                       {/* 4 · Verdict */}
-                      <div className="text-center">
+                      <div className="text-left md:text-center">
                         <span className="text-[11px] px-1.5 py-0.5 rounded-full font-bold" style={{background:s.verdict==='BREAK'?"color-mix(in srgb, var(--success) 15%, transparent)":s.verdict==='MARGINAL'?"color-mix(in srgb, var(--warning) 15%, transparent)":"color-mix(in srgb, var(--danger) 15%, transparent)",color:s.verdict==='BREAK'?"var(--success)":s.verdict==='MARGINAL'?"var(--warning)":"var(--danger)"}}>
                           {s.verdict==='BREAK'?'✅ Break':s.verdict==='MARGINAL'?'⚠ Marginal':'❌ Keep'}
                         </span>
@@ -271,7 +273,7 @@ export default function BreakSavingsPage() {
                       </div>
 
                       {/* 5 · Action — the two what-if inputs, plus the expand chevron */}
-                      <div className="flex items-center justify-center gap-2">
+                      <div className="flex items-center justify-center gap-2 col-span-2 md:col-span-1">
                         <div className="flex flex-col gap-1">
                           <div className="flex items-center gap-1">
                             <span className="text-[11px] text-right whitespace-nowrap" style={{ color: 'var(--text-faint)' }}>Leave behind</span>

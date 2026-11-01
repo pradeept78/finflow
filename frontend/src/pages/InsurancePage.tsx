@@ -142,7 +142,7 @@ export default function InsurancePage() {
         <KpiRow className="grid grid-cols-2 lg:grid-cols-4 gap-3" keep={[0, 1]}>
           {[
             {label:'Monthly premiums', value:fmtINR(Math.round(emiMo)),     sub:(()=>{const n=active.filter(isMonthlyPlan).length;return n>0?`${n} billed monthly · not a bank EMI`:'none billed monthly — see Annual Cost'})(), accent:'var(--cyan)'},
-            {label:'Annual cost',   value:fmtINR(Math.round(annualCost)),   sub:`${active.filter(isLumpPlan).length} lump-sum policies`, accent:'var(--warning)'},
+            {label:'Yearly premiums', value:fmtINR(Math.round(annualCost)), sub: active.filter(isLumpPlan).length ? `${active.filter(isLumpPlan).length} yearly / half-yearly policies, per year` : 'none: all monthly, one-time or on card EMI', accent:'var(--warning)'},
             {label:'Total coverage',value:fmtINR(totalCover),               sub:'sum assured across all policies', accent:'var(--success)'},
             {label:'Renewing soon', value:String(upcoming.length),          sub:'policies renewing within 30 days', accent:upcoming.length>0?'var(--danger)':'var(--purple)', noFormat:true},
           ].map(m=>(

@@ -229,7 +229,7 @@ export default function CreditCardsPage() {
             )
           })()}
           <NextMonthHeadsUp className="flex-shrink" />
-          <div className="flex items-center gap-2 flex-wrap ml-auto flex-shrink-0 justify-end">
+          <div className="flex items-center gap-2 flex-wrap ml-auto min-w-0 justify-end">
             {cardsView === 'emis' && (
               <label className="flex items-center gap-1.5 text-[11px] cursor-pointer mr-1" style={{ color: 'var(--text-faint)' }}>
                 <input type="checkbox" checked={showDoneEmis} onChange={e => setShowDoneEmis(e.target.checked)} /> include finished EMIs

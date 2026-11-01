@@ -96,7 +96,7 @@ export default function HistoryPage() {
               <div>
                 <div className="text-[12px] mb-1" style={{color:improving?'color-mix(in srgb, var(--success) 60%, transparent)':'color-mix(in srgb, var(--danger) 60%, transparent)'}}>{improving?'📉 Debt Reducing':'📈 Debt Growing'}</div>
                 <div className="text-4xl font-semibold tracking-tight mono" style={{color:improving?'var(--success)':'var(--danger)',textShadow:improving?'0 0 40px color-mix(in srgb, var(--success) 25%, transparent)':'0 0 40px color-mix(in srgb, var(--danger) 25%, transparent)'}}>{fmtINR(Number(latest?.totalDebt??0))}</div>
-                <div className="text-[11px] mt-1" style={{color:improving?'color-mix(in srgb, var(--success) 53%, transparent)':'color-mix(in srgb, var(--danger) 53%, transparent)'}}>current debt · {snapshots.length} snapshots saved</div>
+                <div className="text-[11px] mt-1" style={{color:improving?'color-mix(in srgb, var(--success) 53%, transparent)':'color-mix(in srgb, var(--danger) 53%, transparent)'}}>debt at the last snapshot ({latest?.monthYear}) · {snapshots.length} saved</div>
               </div>
               {debtChange!==0&&prev&&(
                 <div className="text-right">
@@ -112,7 +112,7 @@ export default function HistoryPage() {
       {/* Live now */}
       <div className="grid grid-cols-4 gap-3">
         {[
-          {label:'Monthly outflow', value:fmtINR(liveOut),    sub:`EMIs ${fmtINR(liveLoanEmi+liveCcEmi+livePersonal)} · Savings ${fmtINR(liveSavEmi)} · Bills ${fmtINR(liveExp+Math.round(liveInsEmi))}`,      accent:'var(--danger)'},
+          {label:'Committed / month', value:fmtINR(liveOut),    sub:`EMIs ${fmtINR(liveLoanEmi+liveCcEmi+livePersonal)} · Savings ${fmtINR(liveSavEmi)} · Bills ${fmtINR(liveExp+Math.round(liveInsEmi))}`,      accent:'var(--danger)'},
           {label:'Free / month',    value:`${liveFree>=0?'+':''}${fmtINR(liveFree)}`, sub:'income − commitments · before card bills', accent:liveFree>=0?'var(--success)':'var(--danger)'},
           {label:'Income',          value:fmtINR(liveIncome), sub:'monthly income',        accent:'var(--success)'},
           {label:'Snapshots',       value:String(snapshots.length), sub:`${sorted[0]?.monthYear||'—'} → ${sorted[sorted.length-1]?.monthYear||'—'}`, accent:'var(--purple)'},

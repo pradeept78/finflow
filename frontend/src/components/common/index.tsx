@@ -110,7 +110,8 @@ export function PageHeader({ title, action, links }: PageHeaderProps) {
             </button>
           )}
           <div className="flex items-center justify-between gap-x-3 gap-y-2 flex-wrap">
-            <h1 className={inTabbedHub ? 'page-title hidden print:block' : 'page-title'}>{title}</h1>
+            {/* Statements pages keep a title on wider screens; on a phone the top bar already names the page. */}
+            <h1 className={inTabbedHub ? 'page-title hidden print:block' : location.pathname.startsWith('/statements/') ? 'page-title hidden sm:block print:block' : 'page-title'}>{title}</h1>
             {((action && !portalled && !phonePortalled) || inRowLinks) && (
               <div className={`flex items-center gap-2 flex-wrap flex-shrink-0 ${inTabbedHub ? 'ml-auto' : ''}`}>{inRowLinks && links}{action && !portalled && !phonePortalled && action}</div>
             )}
