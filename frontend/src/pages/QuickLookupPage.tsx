@@ -10,7 +10,10 @@ import { ioweFacts } from '../utils/iowe'
 import { calcLoanSplit } from '../utils/loanCalc'
 import { LoadingSpinner, PageHeader, ErrorState } from '../components/common'
 import { KindStrip } from '../components/common/KindStrip'
-import { MONEY_GROUPS, type MoneyGroup } from '../utils/kinds'
+import { kindMeta } from '../utils/kinds'
+
+/** calcOutflow row label → kind (utils/kinds), for the bar's colours and the chips' monthly figures. */
+const ROW_KIND: Record<string, string> = { 'Loan EMIs': 'loan', 'CC EMIs': 'card-emi', 'I Owe': 'iowe', 'Bills': 'bill', 'Insurance': 'insurance', 'Savings': 'savings', 'Chit repayment': 'chit-repay', 'SIP': 'sip', 'CC outstanding': 'card-out', 'CC spends': 'card-spend', 'Renewals & one-offs': 'one-time' }
 import { buildDueRows, type DueRow } from '../utils/dueRows'
 import { cardLimitUse } from '../utils/cardLimit'
 import { useState } from 'react'
@@ -93,15 +96,9 @@ export default function QuickLookupPage() {
 
   const ccEmiPendingTotal = cards.reduce((s, c) => s + (c.emis ?? []).filter(e => getEff(e).pending > 0).reduce((a, e) => a + (e.emi ?? 0) * getEff(e).pending, 0), 0)
 
-  // Bar segments coloured and ordered by money group (utils/kinds MONEY_GROUPS), the same as the chips
-  // under it and Overview's "Where your income goes".
-  const GROUP_OF: Record<string, MoneyGroup> = {
-    'Loan EMIs': 'emi', 'CC EMIs': 'emi', 'I Owe': 'emi', 'Chit repayment': 'emi',
-    'Bills': 'bill', 'Insurance': 'insurance', 'Savings': 'saving', 'SIP': 'saving',
-    'CC outstanding': 'card', 'CC spends': 'card', 'Renewals & one-offs': 'oneoff',
-  }
+  // Each segment takes its kind's shade (utils/kinds), so the bar matches the chips exactly.
   const outflowRows = outflowRowsOf(o)
-    .map(r => { const g = MONEY_GROUPS[GROUP_OF[r.label] ?? 'oneoff']; return { ...r, color: g.color, order: g.order } })
+    .map(r => { const m = kindMeta(ROW_KIND[r.label] ?? 'one-time'); return { ...r, color: m.color, order: m.order } })
     .sort((x, y) => x.order - y.order)
 
   // ── Due items ──
@@ -309,9 +306,8 @@ export default function QuickLookupPage() {
                   {o.setAside > 0 && <span className="ml-3" style={{ color: 'var(--purple)' }} title="Monthly share of every quarterly / yearly bill and premium — worth setting aside; only the ones renewing this month are in the total">set aside for renewals <span className="mono">{fmtINR(Math.round(o.setAside))}</span>/mo</span>}
                 </>}
                 chips={(() => {
-                  const LABEL_KIND: Record<string, string> = { 'Loan EMIs': 'loan', 'CC EMIs': 'card-emi', 'I Owe': 'iowe', 'Bills': 'bill', 'Insurance': 'insurance', 'Savings': 'savings', 'Chit repayment': 'chit-repay', 'SIP': 'sip', 'CC outstanding': 'card-out', 'CC spends': 'card-spend' }
                   const monthly = new Map<string, number>()
-                  outflowRows.forEach(r => { const k = LABEL_KIND[r.label]; if (k) monthly.set(k, (monthly.get(k) ?? 0) + r.val) })
+                  outflowRows.forEach(r => { const k = r.label === 'Renewals & one-offs' ? undefined : ROW_KIND[r.label]; if (k) monthly.set(k, (monthly.get(k) ?? 0) + r.val) })
                   const cnt = new Map<string, number>(); const sum = new Map<string, number>()
                   items.forEach(it => { const k = it.kind; cnt.set(k, (cnt.get(k) ?? 0) + 1); sum.set(k, (sum.get(k) ?? 0) + it.amount) })
                   return [...cnt.entries()].map(([k, n]) => {

@@ -5,11 +5,14 @@ import { calcOutflow, outflowTierLine, freeFigures } from '../utils/calcOutflow'
 import { cardCycle } from '../utils/cardCycle'
 import { ioweFacts } from '../utils/iowe'
 import { KindStrip } from '../components/common/KindStrip'
-import { calendarKind, isChitRepaying } from '../utils/kinds'
+import { calendarKind, isChitRepaying, kindMeta } from '../utils/kinds'
 import { buildDueRows } from '../utils/dueRows'
 import { fmtINR, getEff, freqMonths, monthlyIncomeTotal, resolveDueDay, isPaidThisMonth, toMonthly, isOneOff, isDueInMonth } from '../utils/format'
 import toast from 'react-hot-toast'
 import { LoadingSpinner, PageHeader, ErrorState } from '../components/common'
+
+/** Month-card part → kind (utils/kinds): colours and order match Lookup's bar, the chips and Overview. */
+const PART_KIND: Record<string, string> = { 'Loans': 'loan', 'CC EMI': 'card-emi', 'Card bill': 'card-out', 'Bills': 'bill', 'Insurance': 'insurance', 'Savings': 'savings', 'Chit repay': 'chit-repay', 'SIP': 'sip', 'I Owe': 'iowe', 'Renewals & one-offs': 'one-time', 'Lump sum': 'iowe-lump', 'One-time': 'one-time' }
 
 // Request browser notification permission
 async function requestNotificationPermission(): Promise<boolean> {
@@ -339,29 +342,29 @@ export default function CalendarPage() {
     // What the month's total is made of — always sums to totalOut, so the chips explain the number and the
     // month-to-month change. This month comes from the shared calculator; later months from the projection.
     const parts: { label: string; value: number; color: string }[] = (i === 0 ? [
-      { label: 'Loans', value: shared.loanEmi, color: 'var(--info)' },
-      { label: 'CC EMI', value: shared.ccEmi, color: 'var(--purple)' },
-      { label: 'Card bill', value: shared.card, color: 'var(--danger)' },
-      { label: 'Bills', value: shared.expenses, color: 'var(--cyan)' },
-      { label: 'Insurance', value: shared.insuranceEmi, color: 'var(--pink)' },
-      { label: 'Savings', value: shared.savings, color: 'var(--success)' },
-      { label: 'Chit repay', value: shared.chitRepay, color: 'var(--danger)' },
-      { label: 'SIP', value: shared.sipInvest, color: 'var(--cyan)' },
-      { label: 'I Owe', value: shared.iOweEmi, color: 'var(--warning)' },
-      { label: 'Renewals & one-offs', value: shared.dueNow, color: 'var(--orange)' },
+      { label: 'Loans', value: shared.loanEmi, color: kindMeta('loan').color },
+      { label: 'CC EMI', value: shared.ccEmi, color: kindMeta('card-emi').color },
+      { label: 'Card bill', value: shared.card, color: kindMeta('card-out').color },
+      { label: 'Bills', value: shared.expenses, color: kindMeta('bill').color },
+      { label: 'Insurance', value: shared.insuranceEmi, color: kindMeta('insurance').color },
+      { label: 'Savings', value: shared.savings, color: kindMeta('savings').color },
+      { label: 'Chit repay', value: shared.chitRepay, color: kindMeta('chit-repay').color },
+      { label: 'SIP', value: shared.sipInvest, color: kindMeta('sip').color },
+      { label: 'I Owe', value: shared.iOweEmi, color: kindMeta('iowe').color },
+      { label: 'Renewals & one-offs', value: shared.dueNow, color: kindMeta('one-time').color },
     ] : [
-      { label: 'Loans', value: loanEmi, color: 'var(--info)' },
-      { label: 'CC EMI', value: ccEmi, color: 'var(--purple)' },
-      { label: 'Card bill', value: ccOutstanding + cardNextBill, color: 'var(--danger)' },
-      { label: 'Bills', value: baseExpenses + billsDue, color: 'var(--cyan)' },
-      { label: 'Insurance', value: insEmi, color: 'var(--pink)' },
-      { label: 'Savings', value: savEmi, color: 'var(--success)' },
-      { label: 'Chit repay', value: repayEmi, color: 'var(--danger)' },
-      { label: 'SIP', value: sipEmi, color: 'var(--cyan)' },
-      { label: 'I Owe', value: persEmi, color: 'var(--warning)' },
-      { label: 'Lump sum', value: lumpSum, color: 'var(--orange)' },
-      { label: 'One-time', value: oneTime, color: 'var(--orange)' },
-    ])
+      { label: 'Loans', value: loanEmi, color: kindMeta('loan').color },
+      { label: 'CC EMI', value: ccEmi, color: kindMeta('card-emi').color },
+      { label: 'Card bill', value: ccOutstanding + cardNextBill, color: kindMeta('card-out').color },
+      { label: 'Bills', value: baseExpenses + billsDue, color: kindMeta('bill').color },
+      { label: 'Insurance', value: insEmi, color: kindMeta('insurance').color },
+      { label: 'Savings', value: savEmi, color: kindMeta('savings').color },
+      { label: 'Chit repay', value: repayEmi, color: kindMeta('chit-repay').color },
+      { label: 'SIP', value: sipEmi, color: kindMeta('sip').color },
+      { label: 'I Owe', value: persEmi, color: kindMeta('iowe').color },
+      { label: 'Lump sum', value: lumpSum, color: kindMeta('iowe-lump').color },
+      { label: 'One-time', value: oneTime, color: kindMeta('one-time').color },
+    ]).sort((x, y) => kindMeta(PART_KIND[x.label] ?? 'other').order - kindMeta(PART_KIND[y.label] ?? 'other').order)
     const dropAmt = ending.filter(e => !e.type.includes('Due') && !e.type.includes('Matures')).reduce((s, e) => s + e.amount, 0)
 
     // Tight month warning
@@ -470,7 +473,8 @@ export default function CalendarPage() {
               {months[0].oneTime > 0 && <> · one-time {fmtINR(months[0].oneTime)}</>}
             </div>
             </div>
-            <div className="text-right">
+            {/* Right-aligned beside the total on wide screens; on a phone it wraps under it, so left-aligned there. */}
+            <div className="text-left sm:text-right">
               <div className="text-[12px] font-medium mb-1" style={{color:'var(--text-muted)'}}>Left this month · after card bills</div>
               <div className="text-[24px] font-semibold tracking-tight tabular-nums" style={{color:months[0].free>=0?'var(--success)':'var(--danger)'}}>{months[0].free>=0?'+':'−'}{fmtINR(Math.abs(months[0].free))}</div>
               {/* The other shared figure, same name as on Hub / Dashboard / Lookup, so the two can be told apart */}
@@ -496,9 +500,10 @@ export default function CalendarPage() {
       {months[0]?.dueItems?.length > 0 && (() => {
         const biggest = [...months[0].dueItems].sort((a:any,b:any)=>b.amount-a.amount)[0]
         return (
-          <div className="rounded-2xl px-4 py-3 flex items-center gap-3" style={{background:'linear-gradient(180deg, color-mix(in srgb, var(--info) 5%, var(--bg-card)) 0%, var(--bg-card) 75%)',border:'1px solid var(--hairline)'}}>
-            <span className="text-lg">💡</span>
-            <div className="text-[12px]" style={{color:'var(--text-muted)'}}>
+          // One slim line: a full card for a single sentence pushed the months down.
+          <div className="rounded-lg px-3 py-2 flex items-center gap-2" style={{background:'var(--bg-card)',border:'1px solid var(--hairline)'}}>
+            <span>💡</span>
+            <div className="text-[12px] min-w-0" style={{color:'var(--text-muted)'}}>
               Biggest this month: <span style={{color:'var(--info)',fontWeight:600}}>{biggest?.label}</span> at <span style={{color:'var(--info)',fontWeight:600}}>{fmtINR(biggest?.amount)}</span>
             </div>
           </div>
