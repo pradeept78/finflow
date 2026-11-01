@@ -6,6 +6,7 @@ import { loansApi, cardsApi, personalEmiApi, expensesApi, savingsApi, investment
 import { useUiStore } from '../../store/uiStore'
 import type { HubConfig } from './hubTabs'
 import { checkIsAdmin } from '../../api/adminCheck'
+import { PageHelpButton } from '../common/PageHelp'
 
 export function FullScreenButton({ className = '' }: { className?: string }) {
   const fullScreen = useUiStore(s => s.fullScreen)
@@ -98,6 +99,8 @@ export default function TabbedHub({ config }: { config: HubConfig }) {
         </div>
         {/* the active page's primary action (Add Loan, Add Card…) is portalled in here by PageHeader, so it needs no row of its own */}
         <div id="hub-action-slot" className="flex items-center gap-2 flex-shrink-0 ml-2 empty:hidden" />
+        {/* ⓘ About this page — on phones it sits in the top bar instead */}
+        <PageHelpButton className="hidden md:flex ml-1" />
         <FullScreenButton className="ml-2" />
       </div>
       <div className="pt-3"><Suspense fallback={<LoadingSpinner />}><Outlet /></Suspense></div>

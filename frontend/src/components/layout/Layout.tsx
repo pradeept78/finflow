@@ -8,12 +8,14 @@ import {
   PiggyBank, TrendingUp, Wallet, Receipt, Users,
   Calendar, Target, CheckCircle2, LogOut, ChevronRight,
   Archive, History, Menu, X, Shield, BadgeDollarSign, FileSpreadsheet,
-  Plus, Keyboard, ListTree, PanelTop, Home, MoreHorizontal
+  Plus, Keyboard, ListTree, PanelTop, Home, MoreHorizontal, HelpCircle
 } from 'lucide-react'
 import { Suspense, useState, useEffect, useRef } from 'react'
 import { LoadingSpinner } from '../common'
 import { PAGE_LABELS } from '../../utils/pageLabels'
 import QuickAdd from '../global/QuickAdd'
+import IntroTour from '../global/IntroTour'
+import { PageHelpButton, openIntro } from '../common/PageHelp'
 import GlobalSearch from '../global/GlobalSearch'
 import { useDueNotifications } from '../../hooks/useDueNotifications'
 import { useThemeStore } from '../../store/themeStore'
@@ -262,6 +264,7 @@ export default function Layout() {
             {dark ? <Sun size={16} className="text-yellow-400" /> : <Moon size={16} className="text-blue-400" />}
           </FootBtn>
           {!mobileOpen && <FootBtn title="Keyboard shortcuts (press ?)" onClick={() => setShowKeys(true)} hideOnMobile><Keyboard size={16} /></FootBtn>}
+          {!mobileOpen && <FootBtn title="How FinFlow works" onClick={openIntro} hideOnMobile><HelpCircle size={16} /></FootBtn>}
           {!mobileOpen && !col && (
             <FootBtn title={navSubLinks ? 'Pages are listed under each group — click to hide them (the tabs stay)' : "Also list each group's pages under it in this menu"}
               onClick={() => setNavSubLinks(!navSubLinks)} active={navSubLinks} hideOnMobile><ListTree size={16} /></FootBtn>
@@ -333,10 +336,16 @@ export default function Layout() {
         ))}
       </div>
       <div className="px-4 pt-2 pb-3 space-y-2 border-t" style={{ borderColor: '#252836' }}>
-        <button onClick={toggleTheme} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-white/5" style={{ background: 'rgba(255,255,255,0.04)' }}>
-          {dark ? <Sun size={18} className="text-yellow-400" /> : <Moon size={18} className="text-blue-400" />}
-          <span className="text-[13px] font-medium text-[#eef0f6]">{dark ? 'Light mode' : 'Dark mode'}</span>
-        </button>
+        <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2">
+          <button onClick={toggleTheme} className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-left hover:bg-white/5" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            {dark ? <Sun size={18} className="text-yellow-400" /> : <Moon size={18} className="text-blue-400" />}
+            <span className="text-[13px] font-medium text-[#eef0f6]">{dark ? 'Light mode' : 'Dark mode'}</span>
+          </button>
+          <button onClick={() => { setMobileOpen(false); openIntro() }} className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-left hover:bg-white/5" style={{ background: 'rgba(255,255,255,0.04)' }}>
+            <HelpCircle size={18} className="text-sky-400" />
+            <span className="text-[13px] font-medium text-[#eef0f6]">How it works</span>
+          </button>
+        </div>
         <div className="flex items-center gap-2.5 rounded-xl px-2.5 py-2" style={{ background: 'rgba(255,255,255,0.04)' }}>
           <NavLink to="/account" onClick={handleNavClick} aria-label="Your account" className="flex items-center gap-2.5 min-w-0 flex-1">
             <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[13px] font-bold"
@@ -447,6 +456,8 @@ export default function Layout() {
           <span className="font-semibold text-sm text-[#eef0f6] truncate">
             {(PAGE_LABELS as Record<string, string>)[location.pathname] ?? 'FinFlow'}
           </span>
+          {/* ⓘ: what this page shows and what its terms mean (utils/pageHelp). */}
+          <PageHelpButton dark className="-ml-1.5" />
           {/* The page's main action (Add loan, Add card…) lands here on phones — see PageHeader. Compact so it fits the bar. */}
           <div id="phone-action-slot" className="ml-auto flex items-center gap-2 flex-shrink-0 empty:hidden [&_button]:!py-1.5 [&_button]:!px-3 [&_button]:!text-[12px] [&_button]:!min-h-0" />
         </div>}
@@ -525,6 +536,7 @@ export default function Layout() {
           full screen made that button do nothing. Only its floating button is hidden there. */}
       <div className="print:hidden">
         <QuickAdd sidebarTrigger={!topNav} hideTrigger={fullScreen} />
+        <IntroTour />
       </div>
     </div>
   )
