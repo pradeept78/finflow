@@ -9,9 +9,9 @@ export default function SegTabs<T extends string>({ options, value, onChange, ac
   options: SegOption<T>[]; value: T; onChange: (id: T) => void; accent?: string; className?: string
 }) {
   return (
-    // max-w-full + overflow-x-auto: on a phone a long set of options scrolls inside itself instead of
-    // pushing the whole page sideways (Cards' four views were 18px wider than a 390px screen).
-    <div role="tablist" className={`inline-flex rounded-lg overflow-x-auto max-w-full flex-shrink-0 ${className}`} style={{ border: '1px solid var(--hairline)', scrollbarWidth: 'none' }}>
+    // Phones: options that don't fit wrap onto a second line, so none is hidden off the edge (Cards' four
+    // views used to scroll sideways with "Outstanding" cut off). Wider screens: one row, scrolling if needed.
+    <div role="tablist" className={`inline-flex flex-wrap md:flex-nowrap rounded-lg md:overflow-x-auto max-w-full flex-shrink-0 ${className}`} style={{ border: '1px solid var(--hairline)', scrollbarWidth: 'none' }}>
       {options.map(o => {
         const on = o.id === value
         const c = o.color ?? accent
