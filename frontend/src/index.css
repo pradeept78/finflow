@@ -311,6 +311,14 @@
   .recharts-tooltip-cursor { fill: rgba(255,255,255,0.04) !important; }
 }
 
+/* Tablets and narrow desktops (768–1279px): with the sidebar open the content is only ~560–1070px wide, and
+   4–6 tiles a row left each too narrow for a figure like ₹24,10,308 — it was cut off and the last tile ran
+   off screen. Put as many tiles in a row as fit at a readable width instead. */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .grid.md\:grid-cols-4, .grid.md\:grid-cols-5 { grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)) !important; }
+  .grid.lg\:grid-cols-5, .grid.lg\:grid-cols-6 { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)) !important; }
+}
+
 /* Print / "Save as PDF" support (see AllCommitmentsPage's Print button — browsers' native print
    dialog offers "Save as PDF" as a destination, so one print stylesheet covers both use cases
    without pulling in a PDF-generation library).
