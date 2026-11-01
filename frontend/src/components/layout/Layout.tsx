@@ -511,11 +511,10 @@ export default function Layout() {
               if (t.key === 'add') return (
                 <button key="add" onClick={() => { setMobileOpen(false); t.go() }} aria-label="Quick add"
                   className="flex-1 flex flex-col items-center justify-center gap-0.5 h-14 text-[11px] font-medium" style={{ color: '#aab2c2' }}>
-                  {/* Same height as the other tabs, with a label: the bigger circle with no label poked above the bar. */}
-                  <span className="w-[30px] h-[24px] rounded-full flex items-center justify-center text-white" style={{ background: '#c2410c' }}>
-                    <Icon size={18} strokeWidth={2.6} />
+                  {/* The + says it all — no "Add" label under it. Sized to sit within the bar like the other tabs. */}
+                  <span className="w-9 h-9 rounded-full flex items-center justify-center text-white" style={{ background: '#c2410c' }}>
+                    <Icon size={20} strokeWidth={2.6} />
                   </span>
-                  Add
                 </button>
               )
               return (

@@ -376,9 +376,12 @@ export default function QuickLookupPage() {
                   </div>
                   <div className="flex items-center gap-3 flex-wrap">
                     <input aria-label="Search payments" className="input text-[12px] py-1.5 w-44" placeholder="Search payments…" value={search} onChange={e => setSearch(e.target.value)} />
+                    {/* With types picked above, this is what those need (still unpaid), named — not the whole month. */}
                     <div className="text-right">
-                      <div className="mono text-[16px] font-semibold tabular-nums" style={{ color: 'var(--danger)' }}>{fmtINR(totalDue)}</div>
-                      <div className="text-[11px]" style={{ color: 'var(--text-faint)' }}>remaining</div>
+                      <div className="mono text-[16px] font-semibold tabular-nums" style={{ color: 'var(--danger)' }}>{fmtINR(kindFilter.size > 0 ? Math.round(totAmt - paidAmt) : totalDue)}</div>
+                      <div className="text-[11px]" style={{ color: 'var(--text-faint)' }}>
+                        {kindFilter.size > 0 ? <>still to pay · {[...kindFilter].map(k => kindMeta(k).many).join(', ')}</> : 'remaining'}
+                      </div>
                     </div>
                   </div>
                 </div>
