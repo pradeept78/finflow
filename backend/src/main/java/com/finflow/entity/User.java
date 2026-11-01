@@ -46,6 +46,10 @@ public class User {
     @com.fasterxml.jackson.annotation.JsonIgnore
     @Column(name = "ingest_key_hash", columnDefinition = "char(64)")
     private String ingestKeyHash;
+    /** Add sure bank messages without a tap (with Undo). On unless the user turns it off. */
+    @Builder.Default
+    @Column(name = "auto_add_messages", nullable = false)
+    private Boolean autoAddMessages = true;
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)

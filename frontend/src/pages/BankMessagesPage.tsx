@@ -34,7 +34,7 @@ export default function BankMessagesPage() {
   const [editing, setEditing] = useState<number | null>(null)
   const [edits, setEdits] = useState<Record<string, any>>({})
   const [newKey, setNewKey] = useState<string | null>(null)
-  const [showDone, setShowDone] = useState(false)
+  const [showDone, setShowDone] = useState<boolean | null>(null)
 
   // Confirming changes cards, loans and paid ticks, so every page's numbers refresh.
   const refreshAll = () => { qc.invalidateQueries() }
@@ -50,12 +50,16 @@ export default function BankMessagesPage() {
     onSuccess: m => { setPaste(''); qc.invalidateQueries({ queryKey: ['bank-messages'] }); qc.invalidateQueries({ queryKey: ['bank-messages-summary'] }); toast(m.status === 'NEW' ? `Read as: ${KIND[m.kind].label}` : `Not added: ${m.note ?? KIND[m.kind].label}`) },
     onError: (e: any) => toast.error(errText(e)),
   })
+  const undoMut = useMutation({ mutationFn: (id: number) => bankMessagesApi.undo(id), onSuccess: () => { refreshAll(); toast.success('Undone: it is back in To review') }, onError: (e: any) => toast.error(errText(e)) })
+  const autoMut = useMutation({ mutationFn: (on: boolean) => bankMessagesApi.setAutoAdd(on), onSuccess: () => qc.invalidateQueries({ queryKey: ['bank-messages-summary'] }), onError: (e: any) => toast.error(errText(e)) })
   const keyMut = useMutation({ mutationFn: bankMessagesApi.newKey, onSuccess: k => { setNewKey(k); qc.invalidateQueries({ queryKey: ['bank-messages-summary'] }) }, onError: (e: any) => toast.error(errText(e)) })
   const revokeMut = useMutation({ mutationFn: bankMessagesApi.revokeKey, onSuccess: () => { setNewKey(null); qc.invalidateQueries({ queryKey: ['bank-messages-summary'] }); toast.success('Shortcut key turned off') } })
 
   const waiting = messages.filter(m => m.status === 'NEW')
   const done = messages.filter(m => m.status !== 'NEW').slice(0, 40)
   const sureCount = waiting.filter(m => m.sure).length
+  // Open by default when something was added automatically lately, so it's easy to check (and undo).
+  const doneOpen = showDone ?? (summary?.autoAddedRecent ?? 0) > 0
   const cardName = useMemo(() => new Map((cards as any[]).map(c => [c.id, c.banker])), [cards])
   const loanName = useMemo(() => new Map((loans as any[]).map(l => [l.id, l.lender])), [loans])
   const targetName = (m: BankMessage) => m.targetId == null ? null : m.targetType === 'LOAN' ? loanName.get(m.targetId) : cardName.get(m.targetId)
@@ -89,9 +93,21 @@ export default function BankMessagesPage() {
   return (
     <div className="space-y-4 text-[13px] max-w-3xl">
       <p className="text-[12px]" style={{ color: 'var(--text-muted)' }}>
-        Bank SMS and alerts FinFlow has read. Nothing is added to your numbers until you confirm it.
-        Cards and loans are matched by the last 4 digits you set on them.
+        Bank SMS and alerts FinFlow has read. Cards and loans are matched by their last 4 digits: pick the card once
+        for a new one and FinFlow remembers it.
       </p>
+
+      <label className="card p-4 flex items-start justify-between gap-4 cursor-pointer">
+        <span>
+          <span className="block text-[14px] font-semibold">Add sure ones automatically</span>
+          <span className="block text-[12px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+            When the card or loan and the amount are clear, it's added right away. You can undo it under Added below.
+            Anything unclear waits here for you.
+          </span>
+        </span>
+        <input type="checkbox" role="switch" className="mt-1 w-5 h-5 flex-shrink-0 accent-orange-700" aria-label="Add sure ones automatically"
+          checked={summary?.autoAdd ?? true} disabled={autoMut.isPending} onChange={e => autoMut.mutate(e.target.checked)} />
+      </label>
 
       {/* ── Waiting ── */}
       <section className="card overflow-hidden">
@@ -227,21 +243,25 @@ export default function BankMessagesPage() {
       {/* ── Done ── */}
       {done.length > 0 && (
         <section className="card overflow-hidden">
-          <button className="w-full flex items-center justify-between p-4 text-left" onClick={() => setShowDone(v => !v)} aria-expanded={showDone}>
-            <h2 className="text-[15px] font-semibold">Handled <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>{done.length}</span></h2>
-            <span className="text-[12px]" style={{ color: 'var(--text-muted)' }}>{showDone ? 'Hide' : 'Show'}</span>
+          <button className="w-full flex items-center justify-between p-4 text-left" onClick={() => setShowDone(!doneOpen)} aria-expanded={doneOpen}>
+            <h2 className="text-[15px] font-semibold">Added & ignored <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>{done.length}</span></h2>
+            <span className="text-[12px]" style={{ color: 'var(--text-muted)' }}>{doneOpen ? 'Hide' : 'Show'}</span>
           </button>
-          {showDone && (
+          {doneOpen && (
             <ul style={{ borderTop: '1px solid var(--hairline)' }}>
               {done.map(m => (
                 <li key={m.id} className="px-4 py-2.5 flex items-start justify-between gap-3" style={{ borderBottom: '1px solid var(--hairline)' }}>
                   <div className="min-w-0">
                     <div className="text-[12px] font-medium" style={{ color: m.status === 'CONFIRMED' ? 'var(--success)' : 'var(--text-muted)' }}>
                       {m.status === 'CONFIRMED' ? `✓ ${m.resultNote ?? 'Added'}` : `Ignored${m.note ? ` · ${m.note}` : ''}`}
+                      {m.autoAdded && <span className="ml-1.5 font-normal" style={{ color: 'var(--text-muted)' }}>· added automatically</span>}
                     </div>
                     <div className="text-[12px] truncate" style={{ color: 'var(--text-faint)' }}>{m.body}</div>
                   </div>
-                  <span className="text-[11px] flex-shrink-0" style={{ color: 'var(--text-faint)' }}>{fmtDay(m.receivedAt.slice(0, 10))}</span>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-[11px]" style={{ color: 'var(--text-faint)' }}>{fmtDay(m.receivedAt.slice(0, 10))}</span>
+                    {m.status === 'CONFIRMED' && <button className="btn-secondary btn-xs" disabled={undoMut.isPending} onClick={() => undoMut.mutate(m.id)}>Undo</button>}
+                  </div>
                 </li>
               ))}
             </ul>

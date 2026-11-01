@@ -14,4 +14,5 @@ public interface BankMessageRepository extends JpaRepository<BankMessage, Long> 
     Optional<BankMessage> findByUserIdAndBodyHash(Long userId, String bodyHash);
     long countByUserIdAndStatus(Long userId, BankMessage.Status status);
     long countByUserIdAndCreatedAtAfter(Long userId, LocalDateTime after);
+    long countByUserIdAndAutoAddedTrueAndCreatedAtAfter(Long userId, LocalDateTime after);
 }

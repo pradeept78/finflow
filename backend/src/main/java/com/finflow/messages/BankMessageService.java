@@ -75,7 +75,19 @@ public class BankMessageService {
                 .createdAt(LocalDateTime.now())
                 .build();
         match(user, m);
-        return repo.save(m);
+        m = repo.save(m);
+        // Auto-add (on unless turned off): a sure match is applied straight away; Undo reverses it.
+        // Anything that can't be applied cleanly just stays in To review.
+        if (m.isSure() && m.getStatus() == BankMessage.Status.NEW && !Boolean.FALSE.equals(user.getAutoAddMessages())) {
+            try {
+                apply(user, m);
+                m.setAutoAdded(true);
+                m = repo.save(m);
+            } catch (RuntimeException e) {
+                m.setStatus(BankMessage.Status.NEW);
+            }
+        }
+        return m;
     }
 
     /** Card kinds match a card by last 4 digits; EMI debits a loan by last 4, else by an exact, unique EMI amount. */
@@ -104,7 +116,28 @@ public class BankMessageService {
 
     // ── review ──
 
-    public List<BankMessage> list(User user) { return repo.findByUserIdOrderByReceivedAtDesc(user.getId()); }
+    /** Waiting messages with no card/loan yet are matched again, so digits added later (or learned) apply to them. */
+    @Transactional
+    public List<BankMessage> list(User user) {
+        List<BankMessage> all = repo.findByUserIdOrderByReceivedAtDesc(user.getId());
+        for (BankMessage m : all) {
+            if (m.getStatus() == BankMessage.Status.NEW && m.getTargetId() == null) {
+                match(user, m);
+                if (m.getTargetId() != null) repo.save(m);
+            }
+        }
+        return all;
+    }
+
+    public long countAutoAddedSince(User user, LocalDateTime since) {
+        return repo.countByUserIdAndAutoAddedTrueAndCreatedAtAfter(user.getId(), since);
+    }
+
+    @Transactional
+    public void setAutoAdd(User user, boolean on) {
+        user.setAutoAddMessages(on);
+        userRepo.save(user);
+    }
 
     public long countNew(User user) { return repo.countByUserIdAndStatus(user.getId(), BankMessage.Status.NEW); }
 
@@ -122,19 +155,33 @@ public class BankMessageService {
         BankMessage m = own(user, id);
         if (m.getStatus() != BankMessage.Status.NEW) throw new RuntimeException("This message was already handled");
         applyEdits(m, edits == null ? Map.of() : edits);
+        apply(user, m);
+        return repo.save(m);
+    }
+
+    /**
+     * Does what the message says and records it in `resultRef` so Undo can reverse exactly that.
+     * Also learns the card's / loan's last 4 digits from the message when it has none yet, so the
+     * next message from it matches on its own.
+     */
+    private void apply(User user, BankMessage m) {
         BigDecimal amt = m.getAmount();
         if (amt == null || amt.signum() <= 0) throw new RuntimeException("Add the amount first");
         LocalDate day = m.getTxnDate() != null ? m.getTxnDate() : m.getReceivedAt().toLocalDate();
-        String note;
+        String note, ref;
         switch (m.getKind()) {
             case CARD_SPEND -> {
                 CreditCard card = card(user, m);
-                spendRepo.save(CardSpend.builder().card(card).purpose(m.getMerchant() != null ? m.getMerchant() : "Card spend")
+                learnDigits(user, card, m);
+                CardSpend sp = spendRepo.save(CardSpend.builder().card(card).purpose(m.getMerchant() != null ? m.getMerchant() : "Card spend")
                         .amount(amt).spendDate(day).owedSettled(false).createdAt(LocalDateTime.now()).build());
                 note = "Added " + rupees(amt) + " spend to " + card.getBanker();
+                ref = "spend:" + sp.getId();
             }
             case CARD_STATEMENT -> {
                 CreditCard card = card(user, m);
+                learnDigits(user, card, m);
+                ref = "bill:" + card.getId() + ":" + plain(card.getOutstanding()) + ":" + (card.getOutstandingAsOf() == null ? "" : card.getOutstandingAsOf()) + ":" + plain(amt);
                 card.setOutstanding(amt);
                 // Which statement this bill is: worked out from its due date when the message has one, so a
                 // statement SMS pasted days later still lands on the right bill; else the day it arrived.
@@ -144,32 +191,89 @@ public class BankMessageService {
             }
             case CARD_PAYMENT -> {
                 CreditCard card = card(user, m);
+                learnDigits(user, card, m);
                 String month = billDueMonth(card, day).toString();
-                markPaid(user, "card-out-" + card.getId(), month);
-                markPaid(user, "spend-" + card.getId(), month);
+                ref = "paid:" + String.join(",", markPaid(user, "card-out-" + card.getId(), month), markPaid(user, "spend-" + card.getId(), month)).replaceAll("^,|,$", "");
                 note = card.getBanker() + " bill due " + month + " ticked paid";
             }
             case CARD_EMI -> {
                 CreditCard card = card(user, m);
                 if (m.getEmiAmount() == null || m.getTenure() == null) throw new RuntimeException("Add the monthly EMI and the number of months first");
-                emiRepo.save(CardEmi.builder().card(card).label(m.getMerchant() != null ? m.getMerchant() : "EMI conversion")
+                learnDigits(user, card, m);
+                CardEmi emi = emiRepo.save(CardEmi.builder().card(card).label(m.getMerchant() != null ? m.getMerchant() : "EMI conversion")
                         .principal(amt).emi(m.getEmiAmount()).tenure(m.getTenure()).startDate(day)
                         .missedMonths(0).owedSettled(false).createdAt(LocalDateTime.now()).build());
                 note = "Added card EMI " + rupees(m.getEmiAmount()) + " × " + m.getTenure() + " to " + card.getBanker();
+                ref = "emi:" + emi.getId();
             }
             case EMI_DEBIT -> {
                 if (!"LOAN".equals(m.getTargetType()) || m.getTargetId() == null) throw new RuntimeException("Pick which loan this EMI is for");
                 Loan loan = loanRepo.findByIdAndUserId(m.getTargetId(), user.getId()).orElseThrow(() -> new RuntimeException("Loan not found"));
+                if (m.getLast4() != null && loan.getLast4() == null
+                        && loanRepo.findByUserId(user.getId()).stream().noneMatch(l -> m.getLast4().equals(l.getLast4()))) {
+                    loan.setLast4(m.getLast4());
+                    loanRepo.save(loan);
+                }
                 String month = YearMonth.from(day).toString();
-                markPaid(user, "loan-" + loan.getId(), month);
+                ref = "paid:" + markPaid(user, "loan-" + loan.getId(), month);
                 note = loan.getLender() + " EMI for " + month + " ticked paid";
             }
             default -> throw new RuntimeException("FinFlow can't add this kind of message");
         }
         m.setStatus(BankMessage.Status.CONFIRMED);
         m.setResultNote(note);
+        m.setResultRef(ref);
+    }
+
+    /** First time a card is picked for a message with digits it doesn't have yet: remember them (unless another card has them). */
+    private void learnDigits(User user, CreditCard card, BankMessage m) {
+        if (m.getLast4() == null || card.getLast4() != null) return;
+        if (cardRepo.findByUserId(user.getId()).stream().anyMatch(c -> m.getLast4().equals(c.getLast4()))) return;
+        card.setLast4(m.getLast4());
+        cardRepo.save(card);
+    }
+
+    /** Reverses exactly what confirming did, and puts the message back in To review. */
+    @Transactional
+    public BankMessage undo(User user, Long id) {
+        BankMessage m = own(user, id);
+        if (m.getStatus() != BankMessage.Status.CONFIRMED) throw new RuntimeException("Only added messages can be undone");
+        String ref = m.getResultRef() == null ? "" : m.getResultRef();
+        if (ref.startsWith("spend:")) {
+            // Out of the card's (eager, orphan-removing) list too, or the flush would keep it alive.
+            spendRepo.findByIdAndCard_User_Id(Long.valueOf(ref.substring(6)), user.getId()).ifPresent(sp -> {
+                sp.getCard().getSpends().removeIf(x -> x.getId().equals(sp.getId()));
+                spendRepo.delete(sp);
+            });
+        } else if (ref.startsWith("emi:")) {
+            emiRepo.findByIdAndCard_User_Id(Long.valueOf(ref.substring(4)), user.getId()).ifPresent(e -> {
+                e.getCard().getEmis().removeIf(x -> x.getId().equals(e.getId()));
+                emiRepo.delete(e);
+            });
+        } else if (ref.startsWith("paid:")) {
+            for (String km : ref.substring(5).split(",")) {
+                int at = km.lastIndexOf('@');
+                if (at > 0) paidRepo.deleteByUserIdAndItemKeyAndMonthYear(user.getId(), km.substring(0, at), km.substring(at + 1));
+            }
+        } else if (ref.startsWith("bill:")) {
+            String[] f = ref.split(":", -1);   // bill:cardId:prevAmount:prevAsOf:newAmount
+            cardRepo.findByIdAndUserId(Long.valueOf(f[1]), user.getId()).ifPresent(card -> {
+                // Only if the bill is still what this message set: a later edit by hand wins.
+                if (card.getOutstanding() != null && card.getOutstanding().compareTo(new BigDecimal(f[4])) == 0) {
+                    card.setOutstanding(f[2].isEmpty() ? BigDecimal.ZERO : new BigDecimal(f[2]));
+                    card.setOutstandingAsOf(f[3].isEmpty() ? null : LocalDate.parse(f[3]));
+                    cardRepo.save(card);
+                }
+            });
+        }
+        m.setStatus(BankMessage.Status.NEW);
+        m.setAutoAdded(false);
+        m.setResultRef(null);
+        m.setResultNote(null);
         return repo.save(m);
     }
+
+    private static String plain(BigDecimal v) { return v == null ? "" : v.toPlainString(); }
 
     private void applyEdits(BankMessage m, Map<String, Object> e) {
         if (e.get("targetId") != null) {
@@ -192,9 +296,11 @@ public class BankMessageService {
         return repo.findByIdAndUserId(id, user.getId()).orElseThrow(() -> new RuntimeException("Message not found"));
     }
 
-    private void markPaid(User user, String key, String month) {
-        if (!paidRepo.existsByUserIdAndItemKeyAndMonthYear(user.getId(), key, month))
-            paidRepo.save(MonthlyPaidMark.builder().user(user).itemKey(key).monthYear(month).createdAt(LocalDateTime.now()).build());
+    /** Ticks key for month; returns "key@month" when this created the tick (so Undo removes only its own), else "". */
+    private String markPaid(User user, String key, String month) {
+        if (paidRepo.existsByUserIdAndItemKeyAndMonthYear(user.getId(), key, month)) return "";
+        paidRepo.save(MonthlyPaidMark.builder().user(user).itemKey(key).monthYear(month).createdAt(LocalDateTime.now()).build());
+        return key + "@" + month;
     }
 
     /**

@@ -47,5 +47,9 @@ public class BankMessage {
     @Enumerated(EnumType.STRING) @Column(nullable = false, columnDefinition = "varchar(10)") private Status status;
     /** What confirming did, e.g. "Added ₹1,250 spend to HDFC Regalia" */
     @Column(name = "result_note", length = 200) private String resultNote;
+    /** Added without a tap (auto-add), so the page can say so */
+    @Column(name = "auto_added", nullable = false) private boolean autoAdded;
+    /** What confirming created or changed, for Undo — never sent to the page */
+    @JsonIgnore @Column(name = "result_ref", length = 200) private String resultRef;
     @Column(name = "created_at", nullable = false) private LocalDateTime createdAt;
 }
