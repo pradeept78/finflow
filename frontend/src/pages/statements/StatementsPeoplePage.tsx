@@ -107,7 +107,7 @@ export default function StatementsPeoplePage() {
       <FilterBar years={yearsQ.data || []} accounts={accountsQ.data || []} />
       <input className="input" placeholder="Search people, merchants or banks..." value={q} onChange={e => setQ(e.target.value)} style={{ maxWidth: 420 }} />
 
-      <div className="grid md:grid-cols-3 gap-3">
+      <div className="grid md:grid-cols-3 gap-3 [&>*]:min-w-0">
         {cards.map(c => (
           <SectionCard key={c.kind}>
             <CardHead eyebrow={c.eyebrow} title={c.title} action={

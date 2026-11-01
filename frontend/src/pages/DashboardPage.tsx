@@ -17,6 +17,7 @@ import { investTotals } from '../utils/investValue'
 import { debtFreeMonths } from '../utils/debtFree'
 import { fmtINR, getEff, monthlyIncomeTotal } from '../utils/format'
 import { calcLoanSplit } from '../utils/loanCalc'
+import { emiFacts } from '../utils/emiFacts'
 
 function useAnimatedNumber(target: number, duration = 800) {
   const [value, setValue] = useState(0)
@@ -170,7 +171,9 @@ export default function DashboardPage() {
   // ── PAYOFF ──
   const payoff = loans.filter((l:any)=>getEff(l).pending>0&&(l.tenure??0)>0).map((l:any)=>{
     const e=getEff(l),t=l.tenure??0,sp=calcLoanSplit(l.amount??0,l.emi??0,t,e.paid,l.principalPaid??undefined)
-    const rate = (l.amount??0)>0 ? (Math.max(0,(l.emi??0)*t-(l.amount??0))/(l.amount??1)/(t/12)*100) : 0
+    // Same rate the Loans page shows (utils/emiFacts: the stored rate, or the one the EMI implies). The flat
+    // "total interest ÷ principal ÷ years" used here understated it by nearly half (10.8% vs 18.9%).
+    const rate = emiFacts({ amount: l.amount, emi: l.emi, tenure: t, paid: e.paid, rate: l.interestRate, principalRemaining: l.principalPaid }).rate ?? 0
     return {lender:l.lender,emi:l.emi??0,intLeft:sp.intLeft,rate,pending:e.pending,paid:e.paid}
   }).sort((a:any,b:any)=>b.rate-a.rate).slice(0,4)
 
@@ -324,7 +327,7 @@ export default function DashboardPage() {
             /* Used to link to the retired /overview page. That page's job — a fuller breakdown of
                this same free-cash figure — now lives in this page's own Chart Modal, so this tile
                opens that instead of navigating away. */
-            {label:'Free / month', value:`${freeCash>=0?'+':'−'}${fmtINR(Math.abs(freeCash))}${incomePct(freeCash, monthlyIncome)}`, sub:`before card bills · left this month ${freeCashThisMonth>=0?'+':'−'}${fmtINR(freeCashThisMonth)}`, accent:freeCash>=0?'var(--purple)':'var(--danger)', action:()=>setShowChart(true)},
+            {label:'Free / month', value:`${freeCash>=0?'+':'−'}${fmtINR(Math.abs(freeCash))}${incomePct(freeCash, monthlyIncome)}`, sub:`before card bills · left this month ${freeCashThisMonth>=0?'+':'−'}${fmtINR(freeCashThisMonth)}`, accent:freeCash>=0?'var(--success)':'var(--danger)', action:()=>setShowChart(true)},
             /* Tier split and itemisation from the shared calculator, so this reads identically on
                Hub, Budget, Calendar and Lookup. The hand-built version here grouped chit repayment
                into "EMIs" and — because `persEmi` was a zero placeholder (now fixed above) — left

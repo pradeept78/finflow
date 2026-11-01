@@ -234,7 +234,7 @@ export default function BudgetRulesPage() {
             {label:'Total outflow',  val:fmtINR(totalOutflow),  color:'var(--danger)',
               /* Tier split only — see /lookup for the itemised components. */
               sub:outflowTierLine(o), to:'/lookup'},
-            {label:'Free / month',   val:(freeCash>=0?'+':'-')+fmtINR(Math.abs(freeCash))+incomePct(freeCash, monthlyIncome), color:freeCash>=0?'var(--purple)':'var(--warning)', sub:(freeCash<0?'🚨 deficit':freeCash<monthlyIncome*0.1?'⚠ low buffer':'✓ healthy')+' · before card bills'},
+            {label:'Free / month',   val:(freeCash>=0?'+':'−')+fmtINR(Math.abs(freeCash))+incomePct(freeCash, monthlyIncome), color:freeCash>=0?'var(--success)':'var(--danger)', sub:(freeCash<0?'🚨 deficit':freeCash<monthlyIncome*0.1?'⚠ low buffer':'✓ healthy')+' · before card bills'},
             {label:'Budget score',   val:`${score}/100`, color:score>=70?'var(--success)':score>=40?'var(--warning)':'var(--danger)', sub:score>=70?'On track ✓':score>=40?'Needs work':'Off track 🚨'},
           ].map(m=>(
             /* `to` makes a tile navigable. The Total Outflow tile needs it now that it shows only
