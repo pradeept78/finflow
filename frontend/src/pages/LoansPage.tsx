@@ -26,6 +26,7 @@ export default function LoansPage() {
   const refetch = () => { r1(); r2() }
   const [expanded, setExpanded] = useState<number | null>(null)
   const [showAllRates, setShowAllRates] = useState(false)
+  const [showNext, setShowNext] = useState(false)
   const [confirmModal, setConfirmModal] = useState<any>(null)
   const [modal, setModal] = useState<{ open: boolean; loan: any }>({ open: false, loan: {} })
   const [formErrors, setFormErrors] = useState<Record<string,string>>({})
@@ -210,46 +211,51 @@ export default function LoansPage() {
             return { l, rate: ef.rate ?? 0, left: eff.pending }
           }).filter(x => x.rate >= 15 && x.left > 3).sort((a, b) => b.rate - a.rate)
           if (!upcomingDebits.length && !highRate.length) return null
-          // Next EMIs as a short list naming each loan (one truncated line cut off on a phone, and said
-          // "₹20,064 from Kotak" — the bank account, not which loan), then the prepay hint.
+          // Two one-line rows (it had grown to ~180px on a phone): the next EMIs as a count and total that opens
+          // into the list (each loan named; the rows below already show due days), and the prepay hint as text.
+          const nextTotal = upcomingDebits.reduce((sum: number, l: any) => sum + Number(l.emi ?? 0), 0)
+          const rateTxt = (showAllRates ? highRate : highRate.slice(0, 2))
           return (
-            <div className="rounded-lg px-3 py-2 space-y-2 text-[12px]" style={{background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-faint)'}}>
+            <div className="rounded-lg text-[12px] divide-y divide-[color:var(--hairline)]" style={{background:'var(--bg-card)',border:'1px solid var(--border)',color:'var(--text-faint)'}}>
               {upcomingDebits.length > 0 && (
                 <div>
-                  <div className="font-semibold mb-1" style={{ color: 'var(--text-muted)' }}>🏦 Next 7 days</div>
-                  <ul className="space-y-0.5">
-                    {upcomingDebits.map((l: any) => (
-                      <li key={l.id} className="flex items-baseline justify-between gap-3">
-                        <span className="min-w-0 truncate">
-                          <span style={{ color: 'var(--text-muted)' }}>{ordinal(l.resolvedDueDay)}</span> · <span style={{ color: 'var(--text)' }}>{l.lender}</span>{l.debitAccount && <> · from {l.debitAccount}</>}
-                        </span>
-                        <span className="mono font-semibold tabular-nums flex-shrink-0" style={{ color: 'var(--text)' }}>{fmtINR(l.emi)}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  <button type="button" className="w-full flex items-center justify-between gap-3 px-3 py-2 text-left" aria-expanded={showNext} onClick={() => setShowNext(v => !v)}>
+                    <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>🏦 Next 7 days</span>
+                    <span className="tabular-nums" style={{ color: 'var(--text-muted)' }}>
+                      {upcomingDebits.length} EMI{upcomingDebits.length > 1 ? 's' : ''} · <span className="mono font-semibold" style={{ color: 'var(--text)' }}>{fmtINR(nextTotal)}</span> {showNext ? '▴' : '▾'}
+                    </span>
+                  </button>
+                  {showNext && (
+                    <ul className="px-3 pb-2 space-y-0.5">
+                      {upcomingDebits.map((l: any) => (
+                        <li key={l.id} className="flex items-baseline justify-between gap-3">
+                          <span className="min-w-0 truncate">
+                            <span style={{ color: 'var(--text-muted)' }}>{ordinal(l.resolvedDueDay)}</span> · <span style={{ color: 'var(--text)' }}>{l.lender}</span>{l.debitAccount && <> · from {l.debitAccount}</>}
+                          </span>
+                          <span className="mono tabular-nums flex-shrink-0" style={{ color: 'var(--text)' }}>{fmtINR(l.emi)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
               )}
               {highRate.length > 0 && (
-                <span className="flex items-center gap-1.5 flex-wrap min-w-0" title="Highest interest rates: paying these off early saves the most">
-                  <span className="font-semibold" style={{ color: 'var(--text-muted)' }}>💡 Prepay first</span>
-                  {(showAllRates ? highRate : highRate.slice(0, 3)).map((x, i) => {
-                    const clr = x.rate >= 24 ? 'var(--danger)' : x.rate >= 18 ? 'var(--orange, var(--warning))' : 'var(--warning)'
-                    return (
-                      <span key={x.l.id ?? i} className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5" title={`${x.l.lender} — ${x.rate}% a year, ${x.left} instalments left`}
-                        style={{ background: `color-mix(in srgb, ${clr} 10%, transparent)`, border: `1px solid color-mix(in srgb, ${clr} 30%, transparent)` }}>
-                        <span className="font-semibold" style={{ color: 'var(--text)' }}>{x.l.lender}</span>
-                        <span className="mono font-bold" style={{ color: clr }}>{x.rate}%</span>
-                        <span style={{ color: 'var(--text-faint)' }}>{x.left} left</span>
-                      </span>
-                    )
-                  })}
-                  {highRate.length > 3 && (
-                    <button type="button" onClick={() => setShowAllRates(v => !v)} className="rounded-full px-2 py-0.5 hover:bg-white/5"
-                      style={{ border: '1px dashed var(--border)', background: 'none', color: 'var(--text-faint)', cursor: 'pointer', font: 'inherit' }}>
-                      {showAllRates ? 'show less' : `+${highRate.length - 3} more`}
-                    </button>
-                  )}
-                </span>
+                <div className="flex items-baseline gap-2 px-3 py-2 min-w-0" title="Highest interest rates first: paying these off early saves the most">
+                  <span className="font-semibold flex-shrink-0" style={{ color: 'var(--text-muted)' }}>💡 Prepay first</span>
+                  <span className={`min-w-0 ${showAllRates ? '' : 'truncate'}`}>
+                    {rateTxt.map((x, i) => {
+                      const clr = x.rate >= 24 ? 'var(--danger)' : x.rate >= 18 ? 'var(--orange, var(--warning))' : 'var(--warning)'
+                      return (
+                        <span key={x.l.id ?? i}>{i > 0 && ' · '}<span style={{ color: 'var(--text)' }}>{x.l.lender}</span> <span className="mono font-semibold" style={{ color: clr }}>{x.rate}%</span></span>
+                      )
+                    })}
+                    {highRate.length > 2 && (
+                      <button type="button" onClick={() => setShowAllRates(v => !v)} className="ml-1.5 underline" style={{ background: 'none', border: 'none', padding: 0, color: 'var(--text-faint)', cursor: 'pointer', font: 'inherit' }}>
+                        {showAllRates ? 'less' : `+${highRate.length - 2}`}
+                      </button>
+                    )}
+                  </span>
+                </div>
               )}
             </div>
           )
