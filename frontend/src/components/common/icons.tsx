@@ -3,7 +3,7 @@ import {
   Archive, BadgeIndianRupee, CalendarDays, CheckCircle2, CreditCard, Download, Flag, History, Home, Landmark,
   PiggyBank, Receipt, RotateCcw, Scissors, ShieldCheck, ShoppingBag, Target, TrendingUp, UserCog, UserMinus,
   UserPlus, Users, Wallet, Car, Lightbulb, Coins, Utensils, Package, Mail, Gem,
-  Search, FileText, Building2, Inbox, User, ListChecks,
+  Search, FileText, Building2, Inbox, User, ListChecks, PieChart, Pencil, Check,
 } from 'lucide-react'
 
 /**
@@ -49,6 +49,9 @@ export const ICON = {
   empty: Inbox,
   person: User,
   list: ListChecks,
+  summary: PieChart,
+  edit: Pencil,
+  done: Check,
 } satisfies Record<string, LucideIcon>
 
 export type IconName = keyof typeof ICON

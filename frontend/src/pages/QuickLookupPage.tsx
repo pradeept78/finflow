@@ -239,7 +239,7 @@ export default function QuickLookupPage() {
   return (
     <div className="space-y-4 text-[13px]">
 
-      <PageHeader title="Quick lookup"/>
+      <PageHeader title="Due this month"/>
       <BankMessagesBanner />
 
       {totalMonthly > 0 && (
@@ -441,14 +441,14 @@ export default function QuickLookupPage() {
             return (
               <div key={day} className="rounded-2xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--hairline)', borderLeft: `3px solid ${accent}` }}>
                 <div className="flex flex-col sm:flex-row">
-                  <div className="sm:w-28 flex-shrink-0 flex sm:flex-col items-baseline sm:items-start justify-between sm:justify-center gap-1 px-4 py-3 sm:border-r" style={{ borderColor: 'var(--hairline)', background: `color-mix(in srgb, ${accent} 6%, transparent)` }}>
+                  <div className="sm:w-28 flex-shrink-0 flex sm:flex-col items-baseline sm:items-start justify-between sm:justify-center gap-1 px-3.5 py-2 sm:px-4 sm:py-3 sm:border-r" style={{ borderColor: 'var(--hairline)', background: `color-mix(in srgb, ${accent} 6%, transparent)` }}>
                     <div className="flex items-baseline gap-1.5 sm:flex-col sm:gap-0">
-                      <span className="text-[24px] font-semibold tabular-nums leading-none" style={{ color: day === 0 ? 'var(--text-muted)' : accent === 'var(--text-faint)' ? 'var(--text)' : accent }}>{day === 0 ? '—' : day}</span>
+                      <span className="text-[20px] sm:text-[24px] font-semibold tabular-nums leading-none" style={{ color: day === 0 ? 'var(--text-muted)' : accent === 'var(--text-faint)' ? 'var(--text)' : accent }}>{day === 0 ? '—' : day}</span>
                       <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>{day === 0 ? 'Any day this month' : when}</span>
                     </div>
                     {!allPaid ? <span className="mono text-[12px] font-semibold tabular-nums" style={{ color: accent === 'var(--text-faint)' ? 'var(--text)' : accent }}>{fmtINR(dayUnpaid)}</span> : <span className="text-[11px] font-semibold" style={{ color: 'var(--success)' }}>✓ done</span>}
                   </div>
-                  <div className="flex-1 min-w-0 p-2.5 grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-2">
+                  <div className="flex-1 min-w-0 px-2 pb-2 sm:p-2.5 grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-1.5 sm:gap-2">
                     {dayItems.map(item => {
                       const paid = isMarked(item.key, item.dueDay)
                       const ov = isOverdue(item.key, item.dueDay)

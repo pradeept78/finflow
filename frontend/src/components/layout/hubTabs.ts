@@ -20,7 +20,7 @@ export const OVERVIEW_HUB: HubConfig = {
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/master', label: 'All commitments', short: 'Commitments', icon: ListChecks },
     { to: '/calendar', label: 'Calendar', icon: CalendarDays },
-    { to: '/lookup', label: 'Quick lookup', short: 'Lookup', icon: CheckCircle2 },
+    { to: '/lookup', label: 'Due this month', short: 'Due', icon: CheckCircle2 },
     { to: '/budget', label: 'Budget rules', short: 'Budget', icon: Target },
   ],
 }

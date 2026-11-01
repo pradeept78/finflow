@@ -1,4 +1,6 @@
-export interface SegOption<T extends string> { id: T; label: string; badge?: string | number; color?: string }
+import type { LucideIcon } from 'lucide-react'
+
+export interface SegOption<T extends string> { id: T; label: string; badge?: string | number; color?: string; /** line icon before the label (components/common/icons) */ icon?: LucideIcon }
 
 /**
  * The one compact "switch" used for in-page view toggles (Months/Table, Loans/People/Other, the
@@ -19,7 +21,7 @@ export default function SegTabs<T extends string>({ options, value, onChange, ac
           <button key={o.id} role="tab" aria-selected={on} onClick={() => onChange(o.id)}
             className="px-3 py-1.5 text-[11px] font-semibold whitespace-nowrap transition-colors"
             style={{ background: on ? `color-mix(in srgb, ${c} 24%, transparent)` : 'transparent', color: on ? 'var(--text)' : 'var(--text-muted)', border: 'none', cursor: 'pointer' }}>
-            {o.label}{o.badge !== undefined && <> <span className="mono" style={{ color: c }}>{o.badge}</span></>}
+            {o.icon && <o.icon size={13} strokeWidth={2.2} aria-hidden className="inline-block -mt-0.5 mr-1.5" />}{o.label}{o.badge !== undefined && <> <span className="mono" style={{ color: c }}>{o.badge}</span></>}
           </button>
         )
       })}

@@ -1,7 +1,7 @@
 /** Human names for routes, used by PageHeader's "← Back to …" link. */
 export const PAGE_LABELS: Record<string, string> = {
   '/hub/overview': 'Overview', '/hub/debt': 'Debt overview', '/hub/savings': 'Savings overview', '/hub/history': 'History & tools',
-  '/dashboard': 'Dashboard', '/budget': 'Budget rules', '/lookup': 'Quick lookup', '/master': 'All commitments', '/calendar': 'Calendar',
+  '/dashboard': 'Dashboard', '/budget': 'Budget rules', '/lookup': 'Due this month', '/master': 'All commitments', '/calendar': 'Calendar',
   '/loans': 'Loans', '/cards': 'Credit cards', '/personal': 'I Owe', '/expenses': 'Expenses',
   '/savings': 'Savings / chit', '/investments': 'Investments', '/income': 'Income', '/insurance': 'Insurance', '/people-owe': 'People owe me',
   '/payoff': 'Payoff plan', '/history': 'History', '/break-savings': 'Break savings', '/earnings': 'Earnings', '/closed-loans': 'Closed assets', '/export': 'Export', '/admin': 'Admin', '/account': 'Your account', '/messages': 'Bank messages',
