@@ -143,11 +143,12 @@ export function FilterBar({ years, accounts }: { years: YearSummary[]; accounts:
   const sortedYears = [...years].sort((a, b) => Number(b.year) - Number(a.year))
 
   return (
-    // One row: on a phone the three pickers used to stack into three full-width rows. Too narrow → it scrolls sideways.
-    <div className="flex items-center gap-2 overflow-x-auto sm:flex-wrap" style={{ scrollbarWidth: 'none' }}>
-      <label className="flex flex-shrink-0 items-center gap-1.5 text-[11px] rounded-lg px-2.5 py-1.5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+    // Compact pickers that wrap: on a phone they used to stack into three full-width rows, and a
+    // sideways-scrolling row hid the Account picker. Now two short rows at most, all visible.
+    <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
+      <label className="flex min-w-0 items-center gap-1.5 text-[11px] rounded-lg px-2.5 py-1.5 sm:flex-shrink-0" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
         <span style={{ color: 'var(--text-muted)' }}>Profile</span>
-        <select className="select !w-auto text-[12px] py-0" style={{ background: 'transparent', border: 'none' }}
+        <select className="select min-w-0 flex-1 sm:flex-none sm:!w-auto text-[12px] py-0" style={{ background: 'transparent', border: 'none' }}
           value={profile}
           onChange={e => { if (e.target.value === '__new__') { setNewProfileName(''); setNewProfileOpen(true) } else setProfile(e.target.value) }}>
           {profiles.map(p => <option key={p} value={p}>{p}</option>)}
@@ -155,9 +156,9 @@ export function FilterBar({ years, accounts }: { years: YearSummary[]; accounts:
         </select>
       </label>
 
-      <label className="flex flex-shrink-0 items-center gap-1.5 text-[11px] rounded-lg px-2.5 py-1.5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+      <label className="flex min-w-0 items-center gap-1.5 text-[11px] rounded-lg px-2.5 py-1.5 sm:flex-shrink-0" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
         <span style={{ color: 'var(--text-muted)' }}>Period</span>
-        <select className="select !w-auto text-[12px] py-0" style={{ background: 'transparent', border: 'none' }} value={period} onChange={e => setPeriod(e.target.value)}>
+        <select className="select min-w-0 flex-1 sm:flex-none sm:!w-auto text-[12px] py-0" style={{ background: 'transparent', border: 'none' }} value={period} onChange={e => setPeriod(e.target.value)}>
           <option value="all">All time</option>
           <option value="ytd">This year</option>
           <option value="12m">Last 12 months</option>
@@ -166,9 +167,9 @@ export function FilterBar({ years, accounts }: { years: YearSummary[]; accounts:
         </select>
       </label>
 
-      <label className="flex flex-shrink-0 items-center gap-1.5 text-[11px] rounded-lg px-2.5 py-1.5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+      <label className="col-span-2 flex min-w-0 items-center gap-1.5 text-[11px] rounded-lg px-2.5 py-1.5 sm:flex-shrink-0" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
         <span style={{ color: 'var(--text-muted)' }}>Account</span>
-        <select className="select !w-auto text-[12px] py-0" style={{ background: 'transparent', border: 'none' }} value={account} onChange={e => setAccount(e.target.value)}>
+        <select className="select min-w-0 flex-1 sm:flex-none sm:!w-auto text-[12px] py-0" style={{ background: 'transparent', border: 'none' }} value={account} onChange={e => setAccount(e.target.value)}>
           <option value="">All accounts</option>
           {accounts.map(a => <option key={a.accountKey} value={a.accountKey}>{a.displayName}</option>)}
         </select>

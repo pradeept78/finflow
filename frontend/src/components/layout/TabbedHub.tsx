@@ -49,7 +49,6 @@ function TabCount({ to }: { to: string }) {
  * The bar sticks to the top while a long page scrolls, and scrolls sideways on a narrow screen.
  */
 export default function TabbedHub({ config }: { config: HubConfig }) {
-  const fullScreen = useUiStore(s => s.fullScreen)
   const tabsRef = useRef<HTMLDivElement>(null)
   const { pathname } = useLocation()
   // Keep the active tab visible when the bar overflows (narrow window / many tabs) — scrolls the strip only, never the page.
@@ -79,14 +78,16 @@ export default function TabbedHub({ config }: { config: HubConfig }) {
     : undefined
   return (
     <div>
-      {/* top offset clears the mobile app bar (~49px) unless full screen has hidden it */}
-      <div className={`print:hidden sticky z-20 flex items-center gap-1 -mx-2 md:-mx-4 px-2 md:px-4 ${fullScreen ? 'top-0' : 'top-[49px] md:top-0'}`}
+      {/* Phones: every tab visible, wrapping onto a second line, and not sticky (a two-line bar pinned to the
+          top would eat the screen). A sideways-scrolling strip hid up to half the tabs (Budget, Insurance,
+          Payoff…) with nothing to say they were there. Tablet/desktop: one sticky row, scrolls if narrow. */}
+      <div className={`print:hidden z-20 flex items-start md:items-center gap-1 -mx-2 md:-mx-4 px-2 md:px-4 py-2 md:py-0 md:sticky md:top-0`}
         style={{ background: 'var(--bg-base)', borderBottom: '1px solid var(--border)' }}>
-        <div ref={tabsRef} onScroll={edges} className="flex items-center gap-0.5 overflow-x-auto min-w-0 flex-1" style={{ scrollbarWidth: 'none', maskImage: mask, WebkitMaskImage: mask }}>
+        <div ref={tabsRef} onScroll={edges} className="flex flex-wrap md:flex-nowrap items-center gap-1 md:gap-0.5 md:overflow-x-auto min-w-0 flex-1" style={{ scrollbarWidth: 'none', maskImage: mask, WebkitMaskImage: mask }}>
           {config.tabs.map(t => (
             <NavLink key={t.to} to={t.to} end
-              className={`text-[12px] font-semibold ${config.tabs.length > 7 ? "px-2.5 sm:px-2.5" : "px-3 sm:px-4"} py-2.5 whitespace-nowrap flex-shrink-0`}
-              style={({ isActive }) => ({ color: isActive ? 'var(--text)' : 'var(--text-faint)', borderBottom: `2px solid ${isActive ? config.accent : 'transparent'}`, marginBottom: -1 })}>
+              className={({ isActive }) => `text-[12px] font-semibold whitespace-nowrap flex-shrink-0 rounded-lg md:rounded-none px-2.5 py-1.5 border-0 md:border-b-2 ${config.tabs.length > 7 ? 'md:px-2.5' : 'md:px-4'} md:py-2.5 ${isActive ? 'bg-[var(--bg-hover)] md:bg-transparent' : ''}`}
+              style={({ isActive }) => ({ color: isActive ? 'var(--text)' : 'var(--text-faint)', borderColor: isActive ? config.accent : 'transparent', marginBottom: -1 })}>
               {t.icon} <span className="hidden sm:inline">{t.label}</span><span className="sm:hidden">{t.short ?? t.label}</span><TabCount to={t.to} />
             </NavLink>
           ))}

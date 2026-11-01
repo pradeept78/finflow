@@ -203,8 +203,28 @@ export default function StatementsTransactionsPage() {
           </div>
         </div>
 
-        {tx.items.length ? (
-          <div className="overflow-auto">
+        {tx.items.length ? (<>
+          {/* Phones: one block per transaction. The five-column table needed sideways scrolling there, with
+              Category and the amount off-screen. */}
+          <ul className="md:hidden -mx-1">
+            {tx.items.map(t => (
+              <li key={t.id} className="flex items-start gap-2.5 px-1 py-2.5" style={{ borderTop: '1px solid var(--border)' }}>
+                <input type="checkbox" className="mt-1" aria-label={`Select transaction ${t.description ?? t.id}`} checked={picked.has(t.id)} onChange={() => toggle(t.id)} />
+                <button type="button" className="flex-1 min-w-0 text-left" onClick={() => setSelected(t)}>
+                  <span className="flex items-baseline justify-between gap-3">
+                    <strong className="truncate text-[14px]">{t.merchant || 'Unknown'}</strong>
+                    <span className="mono font-semibold tabular-nums flex-shrink-0" style={{ color: t.direction === 'DEBIT' ? 'var(--danger)' : 'var(--success)' }}>
+                      {t.direction === 'DEBIT' ? '−' : '+'}{money(t.amount)}
+                    </span>
+                  </span>
+                  <span className="block text-[12px] truncate" style={{ color: 'var(--text-muted)' }}>
+                    {formatTxDate(t.transactionDate)} · {t.category || 'Other'} · {accountDisplay(t.account, accounts)}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="hidden md:block overflow-auto">
             <table className="w-full text-sm">
               <thead><tr className="text-[12px] " style={{ color: 'var(--text-muted)' }}>
                 <th className="w-7"><input type="checkbox" aria-label="Select all transactions" checked={allPicked} onChange={toggleAll} /></th>
@@ -231,7 +251,7 @@ export default function StatementsTransactionsPage() {
               </tbody>
             </table>
           </div>
-        ) : <EmptyState icon="🔍" title="No transactions match your filters" />}
+        </>) : <EmptyState icon="🔍" title="No transactions match your filters" />}
       </SectionCard>
 
       {selected && <TransactionDetailModal tx={selected} accounts={accounts} onSave={saveTx} onDelete={deleteTx} onClose={() => setSelected(null)} />}
