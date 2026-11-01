@@ -10,6 +10,7 @@ import { ioweFacts } from '../utils/iowe'
 import { calcLoanSplit } from '../utils/loanCalc'
 import { LoadingSpinner, PageHeader, ErrorState } from '../components/common'
 import { KindStrip } from '../components/common/KindStrip'
+import { MONEY_GROUPS, type MoneyGroup } from '../utils/kinds'
 import { buildDueRows, type DueRow } from '../utils/dueRows'
 import { cardLimitUse } from '../utils/cardLimit'
 import { useState } from 'react'
@@ -92,13 +93,16 @@ export default function QuickLookupPage() {
 
   const ccEmiPendingTotal = cards.reduce((s, c) => s + (c.emis ?? []).filter(e => getEff(e).pending > 0).reduce((a, e) => a + (e.emi ?? 0) * getEff(e).pending, 0), 0)
 
-  const COLORS: Record<string,string> = {
-    'Loan EMIs':'bg-red-500', 'CC EMIs':'bg-yellow-500', 'I Owe':'bg-yellow-400',
-    'Bills':'bg-red-500', 'Insurance':'bg-blue-500', 'Savings':'bg-green-500',
-    'Chit repayment':'bg-red-400', 'SIP':'bg-blue-400',
-    'CC outstanding':'bg-orange-500', 'CC spends':'bg-pink-500', 'Renewals & one-offs':'bg-purple-500',
+  // Bar segments coloured and ordered by money group (utils/kinds MONEY_GROUPS), the same as the chips
+  // under it and Overview's "Where your income goes".
+  const GROUP_OF: Record<string, MoneyGroup> = {
+    'Loan EMIs': 'emi', 'CC EMIs': 'emi', 'I Owe': 'emi', 'Chit repayment': 'emi',
+    'Bills': 'bill', 'Insurance': 'insurance', 'Savings': 'saving', 'SIP': 'saving',
+    'CC outstanding': 'card', 'CC spends': 'card', 'Renewals & one-offs': 'oneoff',
   }
-  const outflowRows = outflowRowsOf(o).map(r => ({ ...r, color: COLORS[r.label] ?? 'bg-gray-500' }))
+  const outflowRows = outflowRowsOf(o)
+    .map(r => { const g = MONEY_GROUPS[GROUP_OF[r.label] ?? 'oneoff']; return { ...r, color: g.color, order: g.order } })
+    .sort((x, y) => x.order - y.order)
 
   // ── Due items ──
   // Which payments exist this month (and which are "not counted") is decided once, in utils/dueRows —
@@ -287,9 +291,9 @@ export default function QuickLookupPage() {
             <div className="text-[13px] font-semibold mb-2">Where this month's money goes</div>
             <div className="flex gap-px h-2.5 rounded-full overflow-hidden">
               {outflowRows.map(r => (
-                <div key={r.label} className={r.color}
+                <div key={r.label}
                      title={`${r.label} ${fmtINR(Math.round(r.val))} · ${Math.round(r.val / totalMonthly * 100)}%`}
-                     style={{ width: `${r.val / totalMonthly * 100}%`, minWidth: 2 }} />
+                     style={{ width: `${r.val / totalMonthly * 100}%`, minWidth: 2, background: r.color }} />
               ))}
             </div>
             {/* One row instead of two: the old legend (₹ + % per category) and the count strip listed the same
