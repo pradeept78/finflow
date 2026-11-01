@@ -6,22 +6,41 @@
  */
 export interface KindMeta { one: string; many: string; color: string; order: number }
 
+/**
+ * The money groups, coloured as Overview's "Where your income goes" (IncomeSplitCard) colours them, so a
+ * kind is the same colour on every screen: EMIs red, bills blue, insurance pink, savings & SIPs purple,
+ * card bill amber, one-offs grey. Kinds used to have nine near-identical colours of their own (two reds,
+ * two blues, two purples), and Lookup's bar used yet another set, so bar and chips didn't match.
+ */
+export const MONEY_GROUPS = {
+  emi:       { label: 'EMIs',                color: 'var(--danger)',     order: 1 },
+  bill:      { label: 'Bills',               color: 'var(--info)',       order: 2 },
+  insurance: { label: 'Insurance',           color: 'var(--pink)',       order: 3 },
+  saving:    { label: 'Savings & SIPs',      color: 'var(--purple)',     order: 4 },
+  card:      { label: 'Card bill',           color: 'var(--warning)',    order: 5 },
+  oneoff:    { label: 'Renewals & one-offs', color: 'var(--text-faint)', order: 6 },
+} as const
+export type MoneyGroup = keyof typeof MONEY_GROUPS
+
+const k = (one: string, many: string, group: MoneyGroup, n: number): KindMeta =>
+  ({ one, many, color: MONEY_GROUPS[group].color, order: MONEY_GROUPS[group].order * 10 + n })
+
 export const KINDS: Record<string, KindMeta> = {
-  'loan':        { one: 'loan',               many: 'loans',               color: '#f87171',            order: 1 },
-  'gold-loan':   { one: 'gold loan',          many: 'gold loans',          color: '#d4a017',            order: 2 },
-  'card-emi':    { one: 'card EMI',           many: 'card EMIs',           color: '#fbbf24',            order: 3 },
-  'card-out':    { one: 'card outstanding',   many: 'card outstanding',    color: '#fb7185',            order: 4 },
-  'card-spend':  { one: 'card spend',         many: 'card spends',         color: '#f472b6',            order: 5 },
-  'insurance':   { one: 'insurance',          many: 'insurance',           color: '#38bdf8',            order: 6 },
-  'bill':        { one: 'bill',               many: 'bills',               color: '#c084fc',            order: 7 },
-  'savings':     { one: 'saving',             many: 'savings',             color: '#34d399',            order: 8 },
-  'chit-repay':  { one: 'chit repay',         many: 'chit repay',          color: '#a78bfa',            order: 9 },
-  'iowe':        { one: 'I Owe',              many: 'I Owe',               color: '#fb923c',            order: 10 },
-  'iowe-int':    { one: 'I Owe (interest)',   many: 'I Owe (interest)',    color: '#fb923c',            order: 11 },
-  'iowe-lump':   { one: 'I Owe (lump sum)',   many: 'I Owe (lump sum)',    color: '#fb923c',            order: 12 },
-  'sip':         { one: 'SIP',                many: 'SIPs',                color: '#60a5fa',            order: 13 },
-  'one-time':    { one: 'one-time',           many: 'one-time',            color: '#e879f9',            order: 14 },
-  'other':       { one: 'other',              many: 'other',               color: '#94a3b8',            order: 99 },
+  'loan':        k('loan', 'loans', 'emi', 1),
+  'gold-loan':   k('gold loan', 'gold loans', 'emi', 2),
+  'card-emi':    k('card EMI', 'card EMIs', 'emi', 3),
+  'iowe':        k('I Owe', 'I Owe', 'emi', 4),
+  'iowe-int':    k('I Owe (interest)', 'I Owe (interest)', 'emi', 5),
+  'chit-repay':  k('chit repay', 'chit repay', 'emi', 6),
+  'bill':        k('bill', 'bills', 'bill', 1),
+  'insurance':   k('insurance', 'insurance', 'insurance', 1),
+  'savings':     k('saving', 'savings', 'saving', 1),
+  'sip':         k('SIP', 'SIPs', 'saving', 2),
+  'card-out':    k('card outstanding', 'card outstanding', 'card', 1),
+  'card-spend':  k('card spend', 'card spends', 'card', 2),
+  'one-time':    k('one-time', 'one-time', 'oneoff', 1),
+  'iowe-lump':   k('I Owe (lump sum)', 'I Owe (lump sum)', 'oneoff', 2),
+  'other':       k('other', 'other', 'oneoff', 9),
 }
 export const kindMeta = (id: string): KindMeta => KINDS[id] ?? { ...KINDS.other, one: id, many: id }
 
