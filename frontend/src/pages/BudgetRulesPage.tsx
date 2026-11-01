@@ -1,3 +1,4 @@
+import { ICON, Glyph } from '../components/common/icons'
 import SegTabs from '../components/common/SegTabs'
 import { Fragment, useState } from 'react'
 import { incomePct } from '../utils/incomePct'
@@ -25,16 +26,16 @@ const personalEmiApi2 = { getAll: () => axiosApi.get<{data:any[]}>('/personal-em
 const peopleOweApi2   = { getAll: () => axiosApi.get<{data:any[]}>('/people-owes').then(r=>r.data.data) }
 
 const DEFAULT_RULES = [
-  { id: 'housing',   label: 'Home loan / Rent',      limit: 25, color: 'var(--info)', icon: '🏠' },
-  { id: 'vehicle',   label: 'Car / Bike Loan',        limit: 10, color: 'var(--warning)', icon: '🚗' },
-  { id: 'bills',     label: 'Bills & utilities',      limit: 5,  color: 'var(--cyan)', icon: '💡' },
-  { id: 'family',    label: 'Family support',         limit: 10, color: 'var(--pink)', icon: '👪' },
-  { id: 'debt',      label: 'Other Loans + CC EMIs',  limit: 10, color: 'var(--danger-strong)', icon: '🏦' },
-  { id: 'savings',   label: 'Savings + Investments',  limit: 20, color: 'var(--success-strong)', icon: '💰' },
-  { id: 'food',      label: 'Food / Groceries',       limit: 10, color: 'var(--orange)', icon: '🍱' },
-  { id: 'lifestyle', label: 'Lifestyle + CC Spends',  limit: 5,  color: 'var(--purple)', icon: '🛍️' },
-  { id: 'insurance', label: 'Insurance',              limit: 3,  color: 'var(--cyan)', icon: '🛡️' },
-  { id: 'other',     label: 'Other / Misc',           limit: 2,  color: 'var(--text-muted)', icon: '📦' },
+  { id: 'housing',   label: 'Home loan / Rent',      limit: 25, color: 'var(--info)', icon: ICON.housing },
+  { id: 'vehicle',   label: 'Car / Bike Loan',        limit: 10, color: 'var(--warning)', icon: ICON.vehicle },
+  { id: 'bills',     label: 'Bills & utilities',      limit: 5,  color: 'var(--cyan)', icon: ICON.utilities },
+  { id: 'family',    label: 'Family support',         limit: 10, color: 'var(--pink)', icon: ICON.family },
+  { id: 'debt',      label: 'Other Loans + CC EMIs',  limit: 10, color: 'var(--danger-strong)', icon: ICON.loan },
+  { id: 'savings',   label: 'Savings + Investments',  limit: 20, color: 'var(--success-strong)', icon: ICON.savings },
+  { id: 'food',      label: 'Food / Groceries',       limit: 10, color: 'var(--orange)', icon: ICON.food },
+  { id: 'lifestyle', label: 'Lifestyle + CC Spends',  limit: 5,  color: 'var(--purple)', icon: ICON.lifestyle },
+  { id: 'insurance', label: 'Insurance',              limit: 3,  color: 'var(--cyan)', icon: ICON.insurance },
+  { id: 'other',     label: 'Other / Misc',           limit: 2,  color: 'var(--text-muted)', icon: ICON.other },
 ]
 
 export default function BudgetRulesPage() {
@@ -274,7 +275,7 @@ export default function BudgetRulesPage() {
               <div role="button" tabIndex={0} aria-expanded={openBucket === r.id} title="Show what falls in this block" onClick={() => setOpenBucket(openBucket === r.id ? null : r.id)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setOpenBucket(openBucket === r.id ? null : r.id) } }} className="cursor-pointer grid items-center px-4 py-3 gap-y-2 hover:bg-[var(--bg-hover)] transition-colors grid-cols-2 md:[grid-template-columns:minmax(190px,1.6fr)_minmax(90px,0.8fr)_minmax(100px,0.9fr)_minmax(170px,1.8fr)_minmax(100px,0.9fr)]"
                 style={{columnGap:16,borderTop:idx===0?'none':'1px solid var(--hairline)'}}>
                 <div className="flex items-center gap-2.5 min-w-0 col-span-2 md:col-span-1">
-                  <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:`color-mix(in srgb, ${r.color} 14%, transparent)`}}>{r.icon}</span>
+                  <span className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{background:`color-mix(in srgb, ${r.color} 14%, transparent)`, color: r.color}}><Glyph icon={r.icon} size={16} /></span>
                   <div className="min-w-0">
                     <div className="font-medium text-[13px] truncate">{r.label} <span className="text-[11px]" style={{ color: 'var(--text-faint)' }}>{openBucket === r.id ? '▾' : '▸'} {(ITEMS[r.id] ?? []).length} item{(ITEMS[r.id] ?? []).length === 1 ? '' : 's'}</span></div>
                     {editing ? (

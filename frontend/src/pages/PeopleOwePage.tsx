@@ -1,3 +1,4 @@
+import { ICON } from '../components/common/icons'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { peopleOweApi, closedLoansApi } from '../api'
@@ -90,7 +91,7 @@ export default function PeopleOwePage() {
         )
       })()}
 
-      {items.length === 0 ? <EmptyState icon="💸" title="No entries" sub="Track money people owe you" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}>+ Add entry</button>} /> : (() => {
+      {items.length === 0 ? <EmptyState icon={ICON.oweMe} title="No entries" sub="Track money people owe you" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}>+ Add entry</button>} /> : (() => {
         const displayItems = sortCol ? [...(items as any[])].sort((a: any, b: any) => {
           let av: any, bv: any
           if (sortCol === 'person') { av = a.person ?? ''; bv = b.person ?? '' }

@@ -1,3 +1,4 @@
+import { ICON } from '../components/common/icons'
 import { Fragment, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { incomeApi } from '../api'
@@ -84,7 +85,7 @@ export default function IncomePage() {
         </KpiRow>
       )}
 
-      {items.length === 0 ? <EmptyState icon="💰" title="No income sources" sub="Add your salary and other income sources" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}>+ Add income source</button>} /> : (
+      {items.length === 0 ? <EmptyState icon={ICON.income} title="No income sources" sub="Add your salary and other income sources" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}>+ Add income source</button>} /> : (
         <div className="rounded-2xl overflow-hidden" style={{background:'var(--bg-card)',border:'1px solid var(--border)',overflowX:'auto'}}>
           <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b"
             style={{gridTemplateColumns:'minmax(190px,2.4fr) minmax(120px,1.26fr) minmax(100px,1.05fr) minmax(80px,0.84fr) minmax(80px,0.84fr)',borderColor:'var(--hairline)',background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-faint)'}}>

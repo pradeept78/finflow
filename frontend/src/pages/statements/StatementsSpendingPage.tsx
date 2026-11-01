@@ -1,3 +1,4 @@
+import { ICON } from '../../components/common/icons'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -160,7 +161,7 @@ export default function StatementsSpendingPage() {
         <SectionCard>
           <CardHead eyebrow="Money in" title="Where your money came from" />
           <RankList data={norm(incomeQ.data, 'name')} nameKey="name" subKey="transactions" onClick={name => goTx({ counterparty: name, direction: 'CREDIT' })} />
-          {!(incomeQ.data || []).length && <EmptyState icon="💰" title="No income/credits found for this profile" />}
+          {!(incomeQ.data || []).length && <EmptyState icon={ICON.income} title="No income/credits found for this profile" />}
         </SectionCard>
       </div>
     </div>

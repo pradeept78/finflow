@@ -1,3 +1,4 @@
+import { ICON } from '../components/common/icons'
 import { KpiTile } from '../components/common/KpiTile'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts'
 import { useState } from 'react'
@@ -138,7 +139,7 @@ export default function EarningsPage() {
       </KpiRow>
 
       {sorted.length === 0 ? (
-        <EmptyState icon="💰" title="No earnings recorded" sub="Add your income periods to track lifetime earnings" action={<button className="btn-primary btn-sm" onClick={() => setModal({ open: true, item: empty() })}>+ Add period</button>} />
+        <EmptyState icon={ICON.income} title="No earnings recorded" sub="Add your income periods to track lifetime earnings" action={<button className="btn-primary btn-sm" onClick={() => setModal({ open: true, item: empty() })}>+ Add period</button>} />
       ) : (
         <div className="space-y-4">
           {/* Insight */}

@@ -1,3 +1,4 @@
+import { ICON } from '../components/common/icons'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { personalEmiApi, paidMarksApi, closedLoansApi, incomeApi } from '../api'
@@ -200,7 +201,7 @@ export default function PersonalEmiPage() {
         </div>
       ) })()}
       <WhatIfBar count={pickedItems.length} need={pickNeed} free={pickFree} billNow={totalEmi} income={monthlyIncomeTotal(incomeRows as any[])} onClear={wi.clear} />
-      {items.length === 0 ? <EmptyState icon="🤝" title="Nothing owed" sub="Track money you owe to people" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty,mode:'emi'})}>+ Add entry</button>} /> : (
+      {items.length === 0 ? <EmptyState icon={ICON.iowe} title="Nothing owed" sub="Track money you owe to people" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty,mode:'emi'})}>+ Add entry</button>} /> : (
         <div className="rounded-2xl overflow-hidden text-[13px]" style={{background:'var(--bg-card)',border:'1px solid var(--border)',overflowX:'auto'}}>
           <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b"
             style={{gridTemplateColumns:'minmax(200px,1.7fr) minmax(85px,1fr) minmax(80px,1fr) minmax(50px,1fr) minmax(80px,1fr) minmax(85px,1fr) minmax(85px,1fr)',borderColor:'var(--hairline)',background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-faint)'}}>

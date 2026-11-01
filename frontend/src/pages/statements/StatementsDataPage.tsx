@@ -1,3 +1,4 @@
+import { ICON } from '../../components/common/icons'
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -177,7 +178,7 @@ export default function StatementsDataPage() {
               </div>
             ))}
           </div>
-        ) : <EmptyState icon="📅" title="No imported years yet" />}
+        ) : <EmptyState icon={ICON.calendar} title="No imported years yet" />}
       </SectionCard>
 
       <SectionCard>
@@ -192,7 +193,7 @@ export default function StatementsDataPage() {
               </div>
             ))}
           </div>
-        ) : <EmptyState icon="📄" title="Uploaded statements will appear here" />}
+        ) : <EmptyState icon={ICON.file} title="Uploaded statements will appear here" />}
       </SectionCard>
 
       {queue[0] && (

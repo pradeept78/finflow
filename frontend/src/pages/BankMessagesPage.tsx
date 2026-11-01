@@ -1,3 +1,4 @@
+import { ICON } from '../components/common/icons'
 import { useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
@@ -120,7 +121,7 @@ export default function BankMessagesPage() {
           )}
         </div>
         {waiting.length === 0 ? (
-          <EmptyState icon="📩" title="Nothing to review" sub="New bank SMS from your iPhone Shortcut, or messages you paste below, show up here." />
+          <EmptyState icon={ICON.messages} title="Nothing to review" sub="New bank SMS from your iPhone Shortcut, or messages you paste below, show up here." />
         ) : (
           <ul style={{ borderTop: '1px solid var(--hairline)' }}>
             {waiting.map(m => {

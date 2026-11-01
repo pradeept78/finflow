@@ -1,3 +1,4 @@
+import { ICON, Glyph } from '../components/common/icons'
 import BankMessagesBanner from '../components/common/BankMessagesBanner'
 import { useState, useLayoutEffect, useEffect } from 'react'
 import { incomePct } from '../utils/incomePct'
@@ -335,7 +336,7 @@ export default function HubPage({ section = 'overview' }: Props) {
   }
   const Row = ({ icon, label, value, sub, color, to, delta }: any) => (
     <div onClick={nav(to)} className="group flex items-center gap-3 cursor-pointer rounded-xl px-3 py-2.5 -mx-3 hover:bg-white/[0.04] transition-colors">
-      {icon && <span className="w-7 h-7 rounded-lg inline-flex items-center justify-center text-[14px] flex-shrink-0" style={{background:'color-mix(in srgb, var(--text) 6%, transparent)'}}>{icon}</span>}
+      {icon && <span className="w-7 h-7 rounded-lg inline-flex items-center justify-center flex-shrink-0" style={{background:`color-mix(in srgb, ${color ?? 'var(--text)'} 12%, transparent)`, color: color ?? 'var(--text-muted)'}}><Glyph icon={icon} size={15} /></span>}
       <div className="flex-1 min-w-0">
         <div className="text-[14px] font-medium leading-tight">{label}</div>
         {sub && <div className="text-[11px] leading-snug mt-0.5" style={{color:'var(--text-faint)'}}>{sub}</div>}
@@ -498,24 +499,24 @@ export default function HubPage({ section = 'overview' }: Props) {
             absence here made the page look like it was ignoring ₹{totalExpenses} of outflow.
             The monthly badge now includes them so it reconciles with the rows listed. */}
         <SectionCard title="💳 Debt & monthly commitments" total={fmtINR(totalDebt)} monthly={fmtINR(debtSideMonthly)+"/mo incl. card bill"} color="var(--danger)" delta={change(totalDebt, dToday?.total, false)}>
-          <Row icon="🏦" label="Active loans"    value={fmtINR(d.loanTotal)} delta={change(d.loanTotal, dToday?.loanTotal, false)}
+          <Row icon={ICON.loan} label="Active loans"    value={fmtINR(d.loanTotal)} delta={change(d.loanTotal, dToday?.loanTotal, false)}
                sub={`${fmtINR(totalLoanEmi)}/mo · ${activeLoanList.length} loans · ${fmtINR(d.loanPrincipal)} principal + ${fmtINR(d.interestLeft)} interest`}
                color="var(--danger)" to="/loans"/>
           {/* This row used to read "₹47,378/mo" — the EMI added to the current cycle's spends. That
               mixes a recurring commitment with a one-month balance, and it never showed the
               statement outstanding at all. Now: the total owed on cards is the figure, the EMI is
               the recurring part, and outstanding + spends is called out as this month's balance. */}
-          <Row icon="💳" label="Credit cards"
+          <Row icon={ICON.card} label="Credit cards"
                value={fmtINR(d.ccEmiPrincipal + d.ccOutstanding + d.ccSpends)}
                delta={change(d.ccEmiPrincipal + d.ccOutstanding + d.ccSpends, dToday && dToday.ccEmiPrincipal + dToday.ccOutstanding + dToday.ccSpends, false)}
                sub={`${fmtINR(totalCCEmi)}/mo${activeCCEmiCount>0?` · ${activeCCEmiCount} EMI${activeCCEmiCount===1?'':'s'}`:''} · ${fmtINR(d.ccOutstanding + d.ccSpends)} due this month (${fmtINR(d.ccOutstanding)} outstanding + ${fmtINR(d.ccSpends)} spends)`}
                color="var(--warning)" to="/cards"/>
-          <Row icon="🤝" label="I Owe"           value={fmtINR(d.iOwePrincipal)} delta={change(d.iOwePrincipal, dToday?.iOwePrincipal, false)}
+          <Row icon={ICON.iowe} label="I Owe"           value={fmtINR(d.iOwePrincipal)} delta={change(d.iOwePrincipal, dToday?.iOwePrincipal, false)}
                sub={`${fmtINR(iOweEmi)}/mo${(personal as any[]).some((x:any)=>ioweFacts(x).mode==='interest-only') ? ' · interest only — principal not reducing' : ' principal'}`}
                color="var(--orange)" to="/personal"/>
-          <Row icon="🔄" label="Chit repayment"  value={fmtINR(d.chitRepayLeft)} delta={change(d.chitRepayLeft, dToday?.chitRepayLeft, false)}
+          <Row icon={ICON.chitRepay} label="Chit repayment"  value={fmtINR(d.chitRepayLeft)} delta={change(d.chitRepayLeft, dToday?.chitRepayLeft, false)}
                sub={`${fmtINR(chitRepayEmi)}/mo${chitRepayCount>0?` · ${chitRepayCount} chit${chitRepayCount===1?'':'s'}`:''} · payout already taken`} color="var(--purple)" to="/savings"/>
-          <Row icon="📊" label="Bills / expenses" value={fmtINR(totalExpenses)+'/mo'} delta={change(totalExpenses, oToday?.expenses, false)} sub="recurring, not debt" color="var(--info)" to="/expenses"/>
+          <Row icon={ICON.bill} label="Bills / expenses" value={fmtINR(totalExpenses)+'/mo'} delta={change(totalExpenses, oToday?.expenses, false)} sub="recurring, not debt" color="var(--info)" to="/expenses"/>
           <div className="pt-3 flex flex-wrap items-center gap-x-2 gap-y-2 text-[11px]" style={{color:'var(--text-faint)'}}>
             <span>DTI {dti}%</span>
             <HeadsUp issues={health} owed={owedToYou} asOfThen={horizon > 0} onGo={navigate} />
@@ -523,11 +524,11 @@ export default function HubPage({ section = 'overview' }: Props) {
           </div>
         </SectionCard>
         <SectionCard title="💰 Assets & income" total={fmtINR(savingsCorpus+currentVal)} monthly={fmtINR(assetSideMonthly)+"/mo committed"} color="var(--success)" delta={change(savingsCorpus+currentVal, corpusToday != null && investToday ? corpusToday + investToday.value : null, true)} note="Total = savings + investments. Owned assets and People Owe Me are shown for reference only.">
-          <Row icon="🏦" label="Savings / Chit"  value={fmtINR(savingsCorpus)} delta={change(savingsCorpus, corpusToday, true)} sub={fmtINR(savingsEmi)+'/mo'+(chitNote ? ' · '+chitNote : '')} color="var(--success)" to="/savings"/>
-          <Row icon="📈" label="Investments"     value={fmtINR(currentVal)} delta={change(currentVal, investToday?.value, true)} sub={`${fmtINR(investedAmt)} invested · P&L ${fmtINR(currentVal-investedAmt)}`} color="var(--info)" to="/investments"/>
-          <Row icon="💰" label="Monthly income"  value={fmtINR(monthlyIncome)} sub="active sources" color="var(--purple)" to="/income"/>
-          <Row icon="🛡️" label="Insurance"       value={fmtINR(insMo)+'/mo'} delta={change(insMo, oToday?.insuranceEmi, false)} sub={`${fmtINR(insAnnual)} annual lump-sum`} color="var(--pink)" to="/insurance"/>
-          <Row icon="🤲" label="People owe me"   value={fmtINR(peopleOweMeTotal)} sub={`${peopleOweMeCount} pending · what people owe you${horizon ? ' — assumed unchanged' : ''}`} color="var(--success)" to="/people-owe"/>
+          <Row icon={ICON.savings} label="Savings / Chit"  value={fmtINR(savingsCorpus)} delta={change(savingsCorpus, corpusToday, true)} sub={fmtINR(savingsEmi)+'/mo'+(chitNote ? ' · '+chitNote : '')} color="var(--success)" to="/savings"/>
+          <Row icon={ICON.investment} label="Investments"     value={fmtINR(currentVal)} delta={change(currentVal, investToday?.value, true)} sub={`${fmtINR(investedAmt)} invested · P&L ${fmtINR(currentVal-investedAmt)}`} color="var(--info)" to="/investments"/>
+          <Row icon={ICON.income} label="Monthly income"  value={fmtINR(monthlyIncome)} sub="active sources" color="var(--purple)" to="/income"/>
+          <Row icon={ICON.insurance} label="Insurance"       value={fmtINR(insMo)+'/mo'} delta={change(insMo, oToday?.insuranceEmi, false)} sub={`${fmtINR(insAnnual)} annual lump-sum`} color="var(--pink)" to="/insurance"/>
+          <Row icon={ICON.oweMe} label="People owe me"   value={fmtINR(peopleOweMeTotal)} sub={`${peopleOweMeCount} pending · what people owe you${horizon ? ' — assumed unchanged' : ''}`} color="var(--success)" to="/people-owe"/>
         </SectionCard>
       </div>
       {/* Quick links: icon beside the label with a one-line description, matching the
@@ -537,14 +538,14 @@ export default function HubPage({ section = 'overview' }: Props) {
         <div className="text-[12px] font-medium mb-2.5" style={{color:'var(--text-muted)'}}>More tools</div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 [&>*]:min-w-0">
           {[
-            {icon:'🎯',label:'Payoff plan',    sub:'Snowball simulator',       to:'/payoff',        color:'var(--purple)'},
-            {icon:'📈',label:'History',        sub:'Track debt over time',     to:'/history',       color:'var(--purple)'},
-            {icon:'💡',label:'Break Savings?', sub:'Worth cashing out?',       to:'/break-savings', color:'var(--purple)'},
+            {icon:ICON.payoff,label:'Payoff plan',    sub:'Snowball simulator',       to:'/payoff',        color:'var(--purple)'},
+            {icon:ICON.history,label:'History',        sub:'Track debt over time',     to:'/history',       color:'var(--purple)'},
+            {icon:ICON.breakSavings,label:'Break savings?', sub:'Worth cashing out?',       to:'/break-savings', color:'var(--purple)'},
           ].map(q=>(
             <div key={q.label} onClick={nav(q.to)}
               className="group card-link rounded-2xl px-4 py-3 flex items-center gap-3"
               style={{background:'var(--bg-card)',border:'1px solid var(--hairline)'}}>
-              <span className="w-9 h-9 rounded-xl inline-flex items-center justify-center text-lg flex-shrink-0" style={{background:`color-mix(in srgb, ${q.color} 12%, transparent)`}}>{q.icon}</span>
+              <span className="w-9 h-9 rounded-xl inline-flex items-center justify-center text-lg flex-shrink-0" style={{background:`color-mix(in srgb, ${q.color} 12%, transparent)`, color: q.color}}><Glyph icon={q.icon} size={18} /></span>
               <div className="min-w-0 flex-1">
                 <div className="text-[14px] font-semibold leading-tight truncate" style={{color:'var(--text)'}}>{q.label}</div>
                 <div className="text-[11px] leading-snug truncate" style={{color:'var(--text-faint)'}}>{q.sub}</div>
@@ -728,19 +729,19 @@ export default function HubPage({ section = 'overview' }: Props) {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {[
-          {icon:'📅',label:'Monthly history',    sub:'Track debt month-by-month',      color:'var(--cyan)',  to:'/history'},
-          {icon:'🎯',label:'Payoff simulator',   sub:maxPending>0?`${maxPending}mo to debt freedom`:'No active debt', color:'var(--purple)',  to:'/payoff'},
-          {icon:'💰',label:'Earnings history',   sub:`${fmtINR(lifetimeEarnings)} lifetime`, color:'var(--success)',  to:'/earnings'},
-          {icon:'📦',label:'Closed assets',      sub:`${closedCount} entries · full P&L`, color:'var(--warning)',  to:'/closed-assets'},
-          {icon:'💡',label:'Break Savings?',     sub:breakWorthy>0?`${breakWorthy} saving${breakWorthy>1?'s':''} worth breaking`:'None worth breaking', color:'var(--pink)',  to:'/break-savings'},
-          {icon:'📊',label:'Export data',        sub:'Download CSV',                   color:'var(--info)',  to:'/export'},
-          {icon:'🛡️',label:'Admin panel',        sub:'User comparison',                color:'var(--danger)',  to:'/admin'},
-          {icon:'📋',label:'Quick lookup',       sub:'All payments this month',        color:'var(--warning)',  to:'/lookup'},
-          {icon:'📅',label:'Payment calendar',   sub:'Month-by-month forecast',        color:'var(--cyan)',  to:'/calendar'},
+          {icon:ICON.history,label:'Monthly history',    sub:'Track debt month-by-month',      color:'var(--cyan)',  to:'/history'},
+          {icon:ICON.payoff,label:'Payoff simulator',   sub:maxPending>0?`${maxPending}mo to debt freedom`:'No active debt', color:'var(--purple)',  to:'/payoff'},
+          {icon:ICON.earnings,label:'Earnings history',   sub:`${fmtINR(lifetimeEarnings)} lifetime`, color:'var(--success)',  to:'/earnings'},
+          {icon:ICON.closed,label:'Closed assets',      sub:`${closedCount} entries · full P&L`, color:'var(--warning)',  to:'/closed-assets'},
+          {icon:ICON.breakSavings,label:'Break savings?',     sub:breakWorthy>0?`${breakWorthy} saving${breakWorthy>1?'s':''} worth breaking`:'None worth breaking', color:'var(--pink)',  to:'/break-savings'},
+          {icon:ICON.export,label:'Export data',        sub:'Download CSV',                   color:'var(--info)',  to:'/export'},
+          {icon:ICON.admin,label:'Admin panel',        sub:'User comparison',                color:'var(--danger)',  to:'/admin'},
+          {icon:ICON.lookup,label:'Quick lookup',       sub:'All payments this month',        color:'var(--warning)',  to:'/lookup'},
+          {icon:ICON.calendar,label:'Payment calendar',   sub:'Month-by-month forecast',        color:'var(--cyan)',  to:'/calendar'},
         ].map(q=>(
           <div key={q.label} onClick={nav(q.to)} className="rounded-xl p-3.5 cursor-pointer hover:opacity-90 transition-all flex items-center gap-3"
             style={{background:`color-mix(in srgb, ${q.color} 6%, transparent)`,border:`1px solid color-mix(in srgb, ${q.color} 13%, transparent)`}}>
-            <span className="text-2xl">{q.icon}</span>
+            <span className="w-10 h-10 rounded-xl inline-flex items-center justify-center flex-shrink-0" style={{ background: `color-mix(in srgb, ${q.color} 12%, transparent)`, color: q.color }}><Glyph icon={q.icon} size={20} /></span>
             <div>
               <div className="text-[13px] font-semibold" style={{color:q.color}}>{q.label}</div>
               <div className="text-[10px]" style={{color:'var(--text-faint)'}}>{q.sub}</div>

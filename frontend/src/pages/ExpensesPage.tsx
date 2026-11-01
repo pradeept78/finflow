@@ -1,3 +1,4 @@
+import { ICON } from '../components/common/icons'
 import { Fragment, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { expensesApi } from '../api'
@@ -127,7 +128,7 @@ export default function ExpensesPage() {
         </KpiRow>
       )}
 
-      {items.length === 0 ? <EmptyState icon="🧾" title="No expenses" sub="Track your recurring monthly expenses" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}>+ Add expense</button>} /> : (
+      {items.length === 0 ? <EmptyState icon={ICON.bill} title="No expenses" sub="Track your recurring monthly expenses" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}>+ Add expense</button>} /> : (
         <div className="rounded-2xl overflow-hidden text-[13px]" style={{background:'var(--bg-card)',border:'1px solid var(--border)',overflowX:'auto'}}>
 
           {/* Category bar + filter */}

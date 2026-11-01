@@ -1,3 +1,4 @@
+import { ICON } from '../common/icons'
 import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { profilesApi } from '../../api/statements'
@@ -72,7 +73,7 @@ export function SectionCard({ children, className = '' }: { children: React.Reac
 
 // ── RankList ──────────────────────────────────────────────────────────────────
 export function RankList({ data, nameKey, subKey, onClick }: { data: any[]; nameKey: string; subKey?: string; onClick?: (name: string) => void }) {
-  if (!data.length) return <EmptyState icon="📭" title="Nothing here yet" />
+  if (!data.length) return <EmptyState icon={ICON.empty} title="Nothing here yet" />
   return (
     <div className="space-y-0.5">
       {data.map((x, i) => (
@@ -93,7 +94,7 @@ export function RankList({ data, nameKey, subKey, onClick }: { data: any[]; name
 // ── CategoryList ──────────────────────────────────────────────────────────────
 export function CategoryList({ data, onClick }: { data: { category?: string; name?: string; amount: number }[]; onClick?: (cat: string) => void }) {
   const total = data.reduce((s, x) => s + Number(x.amount || 0), 0) || 1
-  if (!data.length) return <EmptyState icon="📭" title="Nothing here yet" />
+  if (!data.length) return <EmptyState icon={ICON.empty} title="Nothing here yet" />
   return (
     <div className="space-y-0.5">
       {data.map((x, i) => {
