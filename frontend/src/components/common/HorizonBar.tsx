@@ -1,3 +1,4 @@
+import { FastForward } from 'lucide-react'
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { HORIZONS, horizonLabel } from '../../utils/projection'
@@ -17,7 +18,7 @@ const useWide = (q = '(min-width: 1024px)') => {
 /**
  * "Look ahead" — ONE control for the Hub, Dashboard, Budget and Master (the choice is shared between them).
  *
- * It costs almost no screen: a small "📅 Today ▾" pill that sits in the tab bar beside Full screen (inline on a phone).
+ * It costs almost no screen: a small "⏩ Look ahead ▾" pill that sits in the tab bar beside Full screen (inline on a phone).
  * Everything else lives in the popover it opens — Today · +3 · +6 · +12 · Custom, the two what-if switches, and (on the
  * Hub) how the projection is worked out. While a future month is selected, one slim banner says so, with a way back.
  */
@@ -64,7 +65,8 @@ export default function HorizonBar({ status, details }: { status?: ReactNode; de
       title="Look ahead — see your numbers 3, 6, 12 or any number of months from now"
       className="print:hidden inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-medium whitespace-nowrap transition-colors"
       style={{ background: future ? '#c2410c' : 'color-mix(in srgb, var(--text) 8%, transparent)', color: future ? 'white' : 'var(--text-muted)', border: 'none', cursor: 'pointer', boxShadow: future ? '0 1px 3px rgba(0,0,0,.35)' : 'none' }}>
-      <span>📅</span><span>{future ? `${horizonLabel(horizon)} · +${horizon} mo` : 'Look ahead'}</span><span className="opacity-70">▾</span>
+      {/* Not a calendar icon: it sat next to the Calendar tab's and read as a second calendar. */}
+      <FastForward size={13} strokeWidth={2.2} aria-hidden className="flex-shrink-0" /><span>{future ? `${horizonLabel(horizon)} · +${horizon} mo` : 'Look ahead'}</span><span className="opacity-70">▾</span>
     </button>
   )
 
@@ -108,7 +110,7 @@ export default function HorizonBar({ status, details }: { status?: ReactNode; de
 
   const banner = future && (
     <div className="print:hidden flex items-center gap-x-2 gap-y-1 flex-wrap rounded-xl px-3 py-1.5 text-[12px]" style={{ background: 'color-mix(in srgb, #f97316 10%, transparent)', border: '1px solid color-mix(in srgb, #f97316 25%, transparent)', color: 'var(--text-muted)' }}>
-      <span className="min-w-0">📅 <b style={{ color: 'var(--text)' }}>{horizonLabel(horizon)}</b> · projection, not today's numbers{status}{typicalSpend ? ' · card spend kept' : ''}{noDeposits ? ' · no new deposits' : ''}</span>
+      <span className="min-w-0"><FastForward size={12} aria-hidden className="inline-block -mt-0.5 mr-1" /><b style={{ color: 'var(--text)' }}>{horizonLabel(horizon)}</b> · projection, not today's numbers{status}{typicalSpend ? ' · card spend kept' : ''}{noDeposits ? ' · no new deposits' : ''}</span>
       <button type="button" onClick={() => setOpen(true)} className="font-medium" style={{ color: 'var(--orange)', background: 'none', border: 'none', cursor: 'pointer' }}>How this is worked out</button>
       <button type="button" onClick={() => pick(0)} className="ml-auto font-medium" style={{ color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }}>Back to today ✕</button>
     </div>
