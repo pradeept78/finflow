@@ -18,7 +18,8 @@ import GlobalSearch from '../global/GlobalSearch'
 import { useDueNotifications } from '../../hooks/useDueNotifications'
 import { useThemeStore } from '../../store/themeStore'
 import { useUiStore } from '../../store/uiStore'
-import { FULLSCREEN_ROUTES } from './hubTabs'
+import { FULLSCREEN_ROUTES, OVERVIEW_HUB, HISTORY_HUB, STATEMENTS_HUB, type HubTab } from './hubTabs'
+import { checkIsAdmin } from '../../api/adminCheck'
 import { useShortcuts, GO_SHORTCUTS } from '../../hooks/useShortcuts'
 
 
@@ -293,6 +294,66 @@ export default function Layout() {
   )
   }
 
+  // ── Phone "More" sheet ──
+  // Its own layout, not the desktop sidebar squeezed in: the sidebar listed Overview / Debt / Savings again
+  // (already the bottom tabs) and hid the pages people open More for (Payoff, Bank messages, Export, the
+  // Statements pages) one level down. Here every page is a tile, grouped, plus search, theme and account.
+  const { data: isAdminUser = false } = useQuery({ queryKey: ['is-admin'], queryFn: checkIsAdmin, retry: false, staleTime: 60_000 })
+  const moreGroups: { label: string; accent: string; tabs: HubTab[] }[] = [
+    { label: 'Overview', accent: '#38bdf8', tabs: OVERVIEW_HUB.tabs.filter(t => ['/dashboard', '/master', '/calendar', '/budget'].includes(t.to)) },
+    { label: 'History & tools', accent: '#a78bfa', tabs: HISTORY_HUB.tabs.filter(t => t.to !== '/hub/history' && (t.to !== '/admin' || isAdminUser)) },
+    { label: 'Statements', accent: '#fb923c', tabs: STATEMENTS_HUB.tabs },
+  ]
+  const MoreSheet = () => (
+    <div className="flex flex-col min-h-0">
+      <div className="flex items-center justify-between px-4 pt-3 pb-2">
+        <span className="text-[15px] font-semibold text-[#eef0f6]">More</span>
+        <button onClick={() => setMobileOpen(false)} aria-label="Close menu" className="w-8 h-8 flex items-center justify-center rounded-lg text-[#aab2c2] hover:bg-white/5"><X size={18} /></button>
+      </div>
+      <div className="px-4 pb-2"><GlobalSearch /></div>
+      <div className="flex-1 overflow-y-auto px-4 pb-3 space-y-4 overscroll-contain">
+        {moreGroups.map(g => (
+          <section key={g.label}>
+            <div className="text-[11px] font-semibold uppercase tracking-wider mb-2" style={{ color: '#8c96a9' }}>{g.label}</div>
+            {/* explicit 4 columns: index.css turns .grid-cols-4 into 2 on phones (for KPI rows) */}
+            <div className="grid grid-cols-[repeat(4,minmax(0,1fr))] gap-2">
+              {g.tabs.map(t => {
+                const on = location.pathname === t.to
+                return (
+                  <NavLink key={t.to} to={t.to} onClick={handleNavClick}
+                    className="flex flex-col items-center gap-1.5 rounded-xl px-1 py-2.5 text-center transition-colors"
+                    style={{ background: on ? `${g.accent}22` : 'rgba(255,255,255,0.04)', border: `1px solid ${on ? `${g.accent}55` : 'transparent'}` }}>
+                    <t.icon size={20} strokeWidth={2} style={{ color: g.accent }} aria-hidden />
+                    <span className="text-[11px] font-medium leading-tight" style={{ color: on ? '#eef0f6' : '#c3cad6' }}>{t.short ?? t.label}</span>
+                  </NavLink>
+                )
+              })}
+            </div>
+          </section>
+        ))}
+      </div>
+      <div className="px-4 pt-2 pb-3 space-y-2 border-t" style={{ borderColor: '#252836' }}>
+        <button onClick={toggleTheme} className="w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-white/5" style={{ background: 'rgba(255,255,255,0.04)' }}>
+          {dark ? <Sun size={18} className="text-yellow-400" /> : <Moon size={18} className="text-blue-400" />}
+          <span className="text-[13px] font-medium text-[#eef0f6]">{dark ? 'Light mode' : 'Dark mode'}</span>
+        </button>
+        <div className="flex items-center gap-2.5 rounded-xl px-2.5 py-2" style={{ background: 'rgba(255,255,255,0.04)' }}>
+          <NavLink to="/account" onClick={handleNavClick} aria-label="Your account" className="flex items-center gap-2.5 min-w-0 flex-1">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[13px] font-bold"
+              style={{ background: 'rgba(249,115,22,.18)', color: '#fb923c', border: '1px solid rgba(249,115,22,.3)' }}>
+              {(user?.name || user?.email || '?').trim().charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0">
+              <div className="text-[13px] font-semibold text-[#eef0f6] truncate leading-tight">{user?.name}</div>
+              <div className="text-[11px] text-[#8c96a9] truncate">Your account · {user?.email}</div>
+            </div>
+          </NavLink>
+          <button onClick={handleLogout} aria-label="Log out" title="Log out" className="w-9 h-9 flex items-center justify-center rounded-lg text-[#aab2c2] hover:text-red-400 hover:bg-red-500/10 flex-shrink-0"><LogOut size={16} /></button>
+        </div>
+      </div>
+    </div>
+  )
+
   // Desktop top-bar navigation (alternative to the sidebar). Hubs with their own tab bar need no second
   // row; History & Tools and Statements show their pages as a sub-row, as the sidebar does for them.
   const activeSection = fullNav.find(sec => location.pathname === sec.hub || sec.pages.some(p => location.pathname.startsWith(p)))
@@ -367,7 +428,7 @@ export default function Layout() {
               which used to hide the user card at the bottom: account link and Log out. */}
           <aside aria-label="Menu" className="sheet-up absolute inset-x-0 rounded-t-2xl border-t flex flex-col"
             style={{background:'#0c0e14',borderColor:'#252836',bottom:'calc(3.5rem + env(safe-area-inset-bottom))',maxHeight:'calc(85vh - 3.5rem)'}}>
-            <SidebarContent />
+            <MoreSheet />
           </aside>
         </div>
       )}
