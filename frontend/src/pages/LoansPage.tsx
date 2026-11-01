@@ -1,3 +1,4 @@
+import { ICON } from '../components/common/icons'
 import { usePicks, PickBox, WhatIfBar, SelectAllLink } from '../components/common/WhatIf'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -176,7 +177,7 @@ export default function LoansPage() {
         </button>
       } />
 
-      {loans.length === 0 ? <EmptyState icon="🏦" title="No loans" sub="Add your first loan to track EMIs and payoff date" action={<button className="btn-primary btn-sm" onClick={() => setModal({ open: true, loan: { loanType: 'Personal Loan' } })}>+ Add loan</button>} /> : (<>
+      {loans.length === 0 ? <EmptyState icon={ICON.loan} title="No loans" sub="Add your first loan to track EMIs and payoff date" action={<button className="btn-primary btn-sm" onClick={() => setModal({ open: true, loan: { loanType: 'Personal Loan' } })}>+ Add loan</button>} /> : (<>
 
         {/* ── SUMMARY ROW ── */}
         <KpiRow className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 [&>*]:min-w-0" keep={[0, 2]}>

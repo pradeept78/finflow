@@ -1,3 +1,4 @@
+import { ICON } from '../../components/common/icons'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { analyticsApi, statementAccountsApi, dataManagementApi } from '../../api/statements'
@@ -39,9 +40,9 @@ export default function StatementsAccountsPage() {
       <FilterBar years={yearsQ.data || []} accounts={allAccounts} />
 
       {!allAccounts.length ? (
-        <EmptyState icon="🏦" title="No accounts yet" sub="Import your first statement to create an account" action={<button className="btn-primary" onClick={() => navigate('/statements/data')}>Go to Data &amp; Imports</button>} />
+        <EmptyState icon={ICON.bank} title="No accounts yet" sub="Import your first statement to create an account" action={<button className="btn-primary" onClick={() => navigate('/statements/data')}>Go to Data &amp; Imports</button>} />
       ) : !accounts.length ? (
-        <EmptyState icon="🏦" title="No account matches the selected filter" />
+        <EmptyState icon={ICON.bank} title="No account matches the selected filter" />
       ) : (
         <div className="grid md:grid-cols-3 gap-3">
           {accounts.map(a => {

@@ -1,3 +1,5 @@
+import type { LucideIcon } from 'lucide-react'
+import { ICON, Glyph } from '../components/common/icons'
 import BankMessagesBanner from '../components/common/BankMessagesBanner'
 import { useNavigateFrom } from '../hooks/useNavigateFrom'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
@@ -105,7 +107,7 @@ export default function QuickLookupPage() {
   // Which payments exist this month (and which are "not counted") is decided once, in utils/dueRows —
   // the same list Calendar's current month uses. This page only decides how each row is drawn.
   const { rows: dueRows, notCounted, upcoming } = buildDueRows({ loans, cards, personal, expenses, savings, investments, insurance })
-  const ICONS: Record<string, string> = { loan: '🏦', 'card-emi': '💳', 'card-out': '💳', 'card-spend': '💳', iowe: '🤝', 'iowe-lump': '🤝', bill: '🔄', 'one-time': '🔄', savings: '🪙', 'chit-repay': '⚠️', insurance: '🛡️', sip: '📈' }
+  const ICONS: Record<string, LucideIcon> = { loan: ICON.loan, 'card-emi': ICON.card, 'card-out': ICON.card, 'card-spend': ICON.cardSpend, iowe: ICON.iowe, 'iowe-lump': ICON.iowe, bill: ICON.bill, 'one-time': ICON.oneOff, savings: ICON.savings, 'chit-repay': ICON.chitRepay, insurance: ICON.insurance, sip: ICON.investment }
   const detailOf = (r: DueRow): React.ReactNode => {
     const x = r.ref
     switch (r.kind) {
@@ -181,8 +183,8 @@ export default function QuickLookupPage() {
       default: return null
     }
   }
-  const items: Array<{ key: string; kind: string; label: string; sub: string; amount: number; dueDay?: number; icon: string; detail: React.ReactNode }> = dueRows
-    .map(r => ({ key: r.key, kind: r.kind, label: r.label, sub: r.sub, amount: r.amount, dueDay: r.dueDay, icon: ICONS[r.kind] ?? '•', detail: detailOf(r) }))
+  const items: Array<{ key: string; kind: string; label: string; sub: string; amount: number; dueDay?: number; icon: LucideIcon | string; detail: React.ReactNode }> = dueRows
+    .map(r => ({ key: r.key, kind: r.kind, label: r.label, sub: r.sub, amount: r.amount, dueDay: r.dueDay, icon: (ICONS[r.kind] ?? '•') as LucideIcon | string, detail: detailOf(r) }))
     .sort((a, b) => (a.dueDay ?? 99) - (b.dueDay ?? 99))
 
   // Only the DISPLAYED list is filtered by kind; counts, totals, paid and overdue stay on every item.
@@ -458,7 +460,7 @@ export default function QuickLookupPage() {
                             className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold transition-colors"
                             style={{ border: `1.5px solid ${tone}`, background: paid ? 'var(--success)' : 'transparent', color: '#fff', cursor: 'pointer' }}>{paid ? '✓' : ''}</button>
                           <button type="button" className="flex-1 min-w-0 text-left" onClick={() => setExpanded(expanded === item.key ? null : item.key)} aria-expanded={expanded === item.key} aria-label={`Details for ${item.label}`}>
-                            <div className="text-[13px] font-medium truncate" style={{ color: paid ? 'var(--text-muted)' : 'var(--text)', textDecoration: paid ? 'line-through' : 'none' }}><span className="mr-1">{item.icon}</span>{item.label}</div>
+                            <div className="text-[13px] font-medium truncate" style={{ color: paid ? 'var(--text-muted)' : 'var(--text)', textDecoration: paid ? 'line-through' : 'none' }}><Glyph icon={item.icon} size={14} className="inline-block -mt-0.5 mr-1.5" />{item.label}</div>
                             <div className="text-[11px] truncate" style={{ color: ov && !paid ? 'var(--danger)' : 'var(--text-faint)' }}>{ov && !paid ? 'Overdue · ' : ''}{item.sub}</div>
                           </button>
                           <span className="mono text-[13px] font-semibold tabular-nums flex-shrink-0" style={{ color: paid ? 'var(--success)' : ov ? 'var(--danger)' : 'var(--text)' }}>{paid ? 'paid' : fmtINR(item.amount)}</span>
@@ -472,7 +474,7 @@ export default function QuickLookupPage() {
                 </div>
                 {dayItems.filter(x => expanded === x.key).map(item => (
                   <div key={item.key} className="px-4 py-3 border-t" style={{ background: 'var(--bg-base)', borderColor: 'var(--hairline)' }}>
-                    <div className="text-[13px] font-semibold">{item.icon} {item.label} <span className="font-normal text-[11px]" style={{ color: 'var(--text-faint)' }}>{item.sub}</span></div>
+                    <div className="text-[13px] font-semibold"><Glyph icon={item.icon} size={14} className="inline-block -mt-0.5 mr-1.5" />{item.label} <span className="font-normal text-[11px]" style={{ color: 'var(--text-faint)' }}>{item.sub}</span></div>
                     {item.detail}
                   </div>
                 ))}
@@ -504,7 +506,7 @@ export default function QuickLookupPage() {
                           className="w-5 h-5 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold"
                           style={{ border: `1.5px solid ${paid ? 'var(--success)' : 'var(--warning)'}`, background: paid ? 'var(--success)' : 'transparent', color: '#fff', cursor: 'pointer' }}>{paid ? '✓' : ''}</button>
                         <div className="flex-1 min-w-0">
-                          <div className="text-[13px] font-medium truncate" style={{ color: paid ? 'var(--text-muted)' : 'var(--text)', textDecoration: paid ? 'line-through' : 'none' }}><span className="mr-1">{ICONS[u.kind] ?? '💳'}</span>{u.label}</div>
+                          <div className="text-[13px] font-medium truncate" style={{ color: paid ? 'var(--text-muted)' : 'var(--text)', textDecoration: paid ? 'line-through' : 'none' }}><Glyph icon={ICONS[u.kind] ?? ICON.card} size={14} className="inline-block -mt-0.5 mr-1.5" />{u.label}</div>
                           <div className="text-[11px] truncate" style={{ color: inDays <= 3 && !paid ? 'var(--warning)' : 'var(--text-faint)' }}>due {fmtDueDate(u.dueDate)} · {inDays <= 0 ? 'today' : inDays === 1 ? 'tomorrow' : `in ${inDays} days`}</div>
                         </div>
                         <span className="mono text-[13px] font-semibold tabular-nums flex-shrink-0" style={{ color: paid ? 'var(--success)' : 'var(--text)' }}>{paid ? 'paid' : fmtINR(u.amount)}</span>

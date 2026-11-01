@@ -1,3 +1,4 @@
+import { ICON } from '../components/common/icons'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { savingsApi, closedLoansApi, paidMarksApi } from '../api'
@@ -163,7 +164,7 @@ export default function SavingsPage() {
         )
       })()}
 
-      {items.length === 0 ? <EmptyState icon="🪙" title="No savings" sub="Track chit funds and savings schemes" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}>+ Add saving</button>} /> : (
+      {items.length === 0 ? <EmptyState icon={ICON.savings} title="No savings" sub="Track chit funds and savings schemes" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}>+ Add saving</button>} /> : (
         <div className="rounded-2xl overflow-hidden text-[13px]" style={{background:'var(--bg-card)',border:'1px solid var(--border)',overflowX:'auto'}}>
           <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b"
             style={{gridTemplateColumns:'minmax(180px,2.4fr) minmax(75px,0.95fr) minmax(85px,1.05fr) minmax(100px,1.2fr) minmax(80px,1fr) minmax(45px,0.6fr) minmax(75px,0.95fr) minmax(70px,0.9fr) minmax(80px,1fr)',borderColor:'var(--hairline)',background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-faint)'}}>

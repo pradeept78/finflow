@@ -1,3 +1,4 @@
+import { ICON } from '../../components/common/icons'
 import { useState, useEffect, useMemo } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -251,7 +252,7 @@ export default function StatementsTransactionsPage() {
               </tbody>
             </table>
           </div>
-        </>) : <EmptyState icon="🔍" title="No transactions match your filters" />}
+        </>) : <EmptyState icon={ICON.search} title="No transactions match your filters" />}
       </SectionCard>
 
       {selected && <TransactionDetailModal tx={selected} accounts={accounts} onSave={saveTx} onDelete={deleteTx} onClose={() => setSelected(null)} />}

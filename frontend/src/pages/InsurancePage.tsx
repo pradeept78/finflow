@@ -1,3 +1,4 @@
+import { ICON } from '../components/common/icons'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { insuranceApi, cardsApi } from '../api'
@@ -174,7 +175,7 @@ export default function InsurancePage() {
         </div>
       )}
 
-      {items.length === 0 ? <EmptyState icon="🛡️" title="No policies" sub="Track your insurance policies" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}>+ Add policy</button>} /> : (
+      {items.length === 0 ? <EmptyState icon={ICON.insurance} title="No policies" sub="Track your insurance policies" action={<button className="btn-primary btn-sm" onClick={()=>setModal({open:true,item:empty})}>+ Add policy</button>} /> : (
         <div className="rounded-2xl overflow-hidden" style={{background:'var(--bg-card)',border:'1px solid var(--hairline)'}}>
           <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b"
             style={{gridTemplateColumns:'minmax(190px,2.4fr) minmax(80px,0.8fr) minmax(130px,1.3fr) minmax(110px,1.1fr) minmax(100px,1.0fr) minmax(80px,0.8fr)',borderColor:'var(--hairline)',background:'color-mix(in srgb, var(--text) 5%, transparent)',color:'var(--text-faint)'}}>

@@ -1,3 +1,5 @@
+import type { LucideIcon } from 'lucide-react'
+import { ICON, Glyph } from '../common/icons'
 import { useState, useEffect, useRef } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
@@ -11,7 +13,7 @@ interface SearchResult {
   sub: string
   amount?: number
   route: string
-  icon: string
+  icon: LucideIcon | string
 }
 
 export default function GlobalSearch() {
@@ -52,31 +54,31 @@ export default function GlobalSearch() {
 
   const results: SearchResult[] = q.length < 1 ? [] : [
     ...loans.filter(l => l.lender?.toLowerCase().includes(q)).map(l => ({
-      label: l.lender, sub: (() => { const e=getEff(l); const t=l.tenure??0; const sp=calcLoanSplit(l.amount??0,l.emi??0,t,e.paid,l.principalPaid??undefined); return `${l.loanType} · ${fmtINR(sp.princLeft)} remaining` })(), amount: l.emi, route: '/loans', icon: '🏦'
+      label: l.lender, sub: (() => { const e=getEff(l); const t=l.tenure??0; const sp=calcLoanSplit(l.amount??0,l.emi??0,t,e.paid,l.principalPaid??undefined); return `${l.loanType} · ${fmtINR(sp.princLeft)} remaining` })(), amount: l.emi, route: '/loans', icon: ICON.loan
     })),
     ...cards.filter(c => c.banker?.toLowerCase().includes(q)).map(c => ({
-      label: c.banker, sub: `Credit Card · ${fmtINR(c.outstanding)} outstanding`, route: '/cards', icon: '💳'
+      label: c.banker, sub: `Credit Card · ${fmtINR(c.outstanding)} outstanding`, route: '/cards', icon: ICON.card
     })),
     ...personal.filter(p => p.person?.toLowerCase().includes(q)).map(p => ({
-      label: p.person, sub: `I Owe · ${fmtINR(p.amount)}`, route: '/personal', icon: '🤝'
+      label: p.person, sub: `I Owe · ${fmtINR(p.amount)}`, route: '/personal', icon: ICON.iowe
     })),
     ...savings.filter(v => v.name?.toLowerCase().includes(q)).map(v => ({
-      label: v.name, sub: `Savings · ${fmtINR(v.monthly)}/mo`, route: '/savings', icon: '🪙'
+      label: v.name, sub: `Savings · ${fmtINR(v.monthly)}/mo`, route: '/savings', icon: ICON.savings
     })),
     ...investments.filter(v => v.name?.toLowerCase().includes(q)).map(v => ({
-      label: v.name, sub: `Investment · ${fmtINR(v.currentValue)} value`, route: '/investments', icon: '📈'
+      label: v.name, sub: `Investment · ${fmtINR(v.currentValue)} value`, route: '/investments', icon: ICON.investment
     })),
     ...insurance.filter(v => v.name?.toLowerCase().includes(q)).map(v => ({
-      label: v.name, sub: `Insurance · ${fmtINR(v.premium)} premium`, route: '/insurance', icon: '🛡️'
+      label: v.name, sub: `Insurance · ${fmtINR(v.premium)} premium`, route: '/insurance', icon: ICON.insurance
     })),
     ...expenses.filter(e => e.label?.toLowerCase().includes(q) || e.category?.toLowerCase().includes(q)).map(e => ({
-      label: e.label, sub: `Expense · ${e.category} · ${fmtINR(e.amount)}/mo`, route: '/expenses', icon: '🔄'
+      label: e.label, sub: `Expense · ${e.category} · ${fmtINR(e.amount)}/mo`, route: '/expenses', icon: ICON.bill
     })),
     ...income.filter(i => i.label?.toLowerCase().includes(q)).map(i => ({
-      label: i.label, sub: `Income · ${fmtINR(i.amount)}/mo`, route: '/income', icon: '💰'
+      label: i.label, sub: `Income · ${fmtINR(i.amount)}/mo`, route: '/income', icon: ICON.income
     })),
     ...peopleOwe.filter((p: any) => p.person?.toLowerCase().includes(q)).map((p: any) => ({
-      label: p.person, sub: `Owes me · ${fmtINR(p.amount)} · ${p.status}`, route: '/people-owe', icon: '🤑'
+      label: p.person, sub: `Owes me · ${fmtINR(p.amount)} · ${p.status}`, route: '/people-owe', icon: ICON.oweMe
     })),
   ].slice(0, 8)
 
@@ -110,7 +112,7 @@ export default function GlobalSearch() {
                 ) : results.map((r, i) => (
                   <button key={i} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--bg-hover)] border-b border-[var(--border)] last:border-0 transition-colors text-left"
                     onClick={() => go(r.route)}>
-                    <span className="text-lg">{r.icon}</span>
+                    <span className="w-8 h-8 rounded-lg inline-flex items-center justify-center flex-shrink-0" style={{ background: 'color-mix(in srgb, var(--text) 7%, transparent)', color: 'var(--text-muted)' }}><Glyph icon={r.icon} size={16} /></span>
                     <div className="flex-1 min-w-0">
                       <div className="font-semibold text-sm truncate">{r.label}</div>
                       <div className="text-xs text-[#aab2c2] truncate">{r.sub}</div>

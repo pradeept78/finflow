@@ -1,3 +1,5 @@
+import type { LucideIcon } from 'lucide-react'
+import { ICON, Glyph } from '../common/icons'
 import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { cardsApi, loansApi, personalEmiApi, expensesApi, savingsApi, investmentsApi, insuranceApi, incomeApi } from '../../api'
@@ -15,7 +17,7 @@ import toast from 'react-hot-toast'
 type FieldKind = 'text' | 'money' | 'int' | 'date' | 'select' | 'card'
 interface Field { key: string; label: string; kind: FieldKind; required?: boolean; options?: string[]; placeholder?: string; wide?: boolean; def?: any }
 interface QType {
-  id: string; icon: string; label: string; fields: Field[]
+  id: string; icon: LucideIcon | string; label: string; fields: Field[]
   save: (v: Record<string, any>, ctx: { cards: any[] }) => Promise<any>
   keys: string[]
   done: (v: Record<string, any>, ctx: { cards: any[] }) => string
@@ -27,7 +29,7 @@ const FREQ = ['Monthly', 'Quarterly', 'Half-Yearly', 'Yearly', 'One-time']
 const startDate: Field = { key: 'startDate', label: 'Start date', kind: 'date', required: true, def: today() }
 
 const TYPES: QType[] = [
-  { id: 'spend', icon: '🛍️', label: 'Card spend', keys: ['cards'],
+  { id: 'spend', icon: ICON.cardSpend, label: 'Card spend', keys: ['cards'],
     fields: [
       { key: 'card', label: 'Card', kind: 'card', required: true, wide: true },
       { key: 'purpose', label: 'Purpose', kind: 'text', required: true, placeholder: 'Amazon, Fuel, Food...', wide: true },
@@ -36,7 +38,7 @@ const TYPES: QType[] = [
     ],
     save: v => api.post(`/credit-cards/${v.card}/spends`, { purpose: v.purpose, amount: Number(v.amount), spendDate: v.date || today() }),
     done: (v, c) => `${fmtINR(Number(v.amount))} spend added to ${c.cards.find(x => String(x.id) === String(v.card))?.banker ?? 'card'}` },
-  { id: 'cardemi', icon: '💳', label: 'Card EMI', keys: ['cards'],
+  { id: 'cardemi', icon: ICON.card, label: 'Card EMI', keys: ['cards'],
     fields: [
       { key: 'card', label: 'Card', kind: 'card', required: true, wide: true },
       { key: 'label', label: 'What is it for', kind: 'text', required: true, placeholder: 'iPhone, Sofa...', wide: true },
@@ -47,7 +49,7 @@ const TYPES: QType[] = [
     ],
     save: v => api.post(`/credit-cards/${v.card}/emis`, { label: v.label, principal: v.principal || undefined, emi: Number(v.emi), tenure: Number(v.tenure), startDate: v.startDate }),
     done: (v, c) => `${v.label} EMI ${fmtINR(Number(v.emi))}/mo added to ${c.cards.find(x => String(x.id) === String(v.card))?.banker ?? 'card'}` },
-  { id: 'expense', icon: '🧾', label: 'Expense / bill', keys: ['expenses'],
+  { id: 'expense', icon: ICON.bill, label: 'Expense / bill', keys: ['expenses'],
     fields: [
       { key: 'label', label: 'Name', kind: 'text', required: true, placeholder: 'Rent, Electricity...', wide: true },
       { key: 'amount', label: 'Amount (₹)', kind: 'money', required: true },
@@ -57,7 +59,7 @@ const TYPES: QType[] = [
     ],
     save: v => expensesApi.create({ label: v.label, amount: Number(v.amount), frequency: v.frequency, category: v.category, startDate: v.startDate, dueDay: dayOf(v.startDate), active: true }),
     done: v => `${v.label} ${fmtINR(Number(v.amount))} added (${String(v.frequency).toLowerCase()})` },
-  { id: 'loan', icon: '🏦', label: 'Loan', keys: ['loans'],
+  { id: 'loan', icon: ICON.loan, label: 'Loan', keys: ['loans'],
     fields: [
       { key: 'lender', label: 'Lender', kind: 'text', required: true, wide: true },
       { key: 'loanType', label: 'Type', kind: 'select', options: ['Personal Loan', 'Home Loan', 'Car Loan', 'Bike Loan', 'Gold Loan', 'Education Loan', 'Business Loan'], def: 'Personal Loan', wide: true },
@@ -68,7 +70,7 @@ const TYPES: QType[] = [
     ],
     save: v => loansApi.create({ lender: v.lender, loanType: v.loanType, amount: Number(v.amount), emi: Number(v.emi), tenure: Number(v.tenure), startDate: v.startDate, dueDay: dayOf(v.startDate) }),
     done: v => `${v.lender} loan added — EMI ${fmtINR(Number(v.emi))}/mo` },
-  { id: 'iowe', icon: '🤝', label: 'I owe', keys: ['personal'],
+  { id: 'iowe', icon: ICON.iowe, label: 'I owe', keys: ['personal'],
     fields: [
       { key: 'person', label: 'Who', kind: 'text', required: true, wide: true },
       { key: 'amount', label: 'Amount owed (₹)', kind: 'money', required: true },
@@ -78,7 +80,7 @@ const TYPES: QType[] = [
     ],
     save: v => personalEmiApi.create({ person: v.person, amount: Number(v.amount), emi: v.emi || undefined, tenure: v.tenure ? Number(v.tenure) : undefined, startDate: v.startDate || undefined, dueDay: v.startDate ? dayOf(v.startDate) : undefined }),
     done: v => `Owing ${v.person} ${fmtINR(Number(v.amount))} added` },
-  { id: 'savings', icon: '🐖', label: 'Savings / chit', keys: ['savings'],
+  { id: 'savings', icon: ICON.savings, label: 'Savings / chit', keys: ['savings'],
     fields: [
       { key: 'name', label: 'Name', kind: 'text', required: true, wide: true },
       { key: 'monthly', label: 'Monthly (₹)', kind: 'money', required: true },
@@ -87,7 +89,7 @@ const TYPES: QType[] = [
     ],
     save: v => savingsApi.create({ name: v.name, monthly: Number(v.monthly), tenure: Number(v.tenure), mode: 'saving', startDate: v.startDate }),
     done: v => `${v.name} ${fmtINR(Number(v.monthly))}/mo added` },
-  { id: 'sip', icon: '📈', label: 'SIP / investment', keys: ['investments'],
+  { id: 'sip', icon: ICON.investment, label: 'SIP / investment', keys: ['investments'],
     fields: [
       { key: 'name', label: 'Name', kind: 'text', required: true, wide: true },
       { key: 'investType', label: 'Type', kind: 'select', options: ['FD', 'RD', 'Mutual Fund', 'Stocks', 'PPF', 'NPS', 'Bonds', 'Gold', 'Other'], def: 'Mutual Fund' },
@@ -96,7 +98,7 @@ const TYPES: QType[] = [
     ],
     save: v => investmentsApi.create({ name: v.name, investType: v.investType, monthly: Number(v.monthly), startDate: v.startDate || undefined }),
     done: v => `${v.name} ${fmtINR(Number(v.monthly))}/mo added` },
-  { id: 'insurance', icon: '🛡️', label: 'Insurance', keys: ['insurance'],
+  { id: 'insurance', icon: ICON.insurance, label: 'Insurance', keys: ['insurance'],
     fields: [
       { key: 'name', label: 'Policy name', kind: 'text', required: true, wide: true },
       { key: 'policyType', label: 'Type', kind: 'select', options: ['Life', 'Health', 'Term', 'Vehicle', 'Emergency Fund', 'Death Fund', 'Other'], def: 'Life' },
@@ -106,7 +108,7 @@ const TYPES: QType[] = [
     ],
     save: v => insuranceApi.create({ name: v.name, policyType: v.policyType, premium: Number(v.premium), frequency: v.frequency, startDate: v.startDate, active: true }),
     done: v => `${v.name} premium ${fmtINR(Number(v.premium))} added` },
-  { id: 'income', icon: '💰', label: 'Income', keys: ['income'],
+  { id: 'income', icon: ICON.income, label: 'Income', keys: ['income'],
     fields: [
       { key: 'label', label: 'Source', kind: 'text', required: true, placeholder: 'Salary, Rent received...', wide: true },
       { key: 'amount', label: 'Amount (₹)', kind: 'money', required: true },
@@ -193,7 +195,7 @@ export default function QuickAdd({ sidebarTrigger = false, hideTrigger = false }
                     <button key={t.id} type="button" role="tab" aria-selected={on} onClick={() => pick(t.id)}
                       className="text-[12px] px-2.5 py-1 rounded-full border transition-colors"
                       style={{ background: on ? 'color-mix(in srgb, #f97316 15%, transparent)' : 'transparent', borderColor: on ? 'color-mix(in srgb, #f97316 50%, transparent)' : 'var(--border)', color: on ? 'var(--text)' : 'var(--text-muted)', fontWeight: on ? 600 : 400, cursor: 'pointer' }}>
-                      {t.icon} {t.label}
+                      <Glyph icon={t.icon} size={13} className="inline-block -mt-0.5 mr-1" />{t.label}
                     </button>
                   )
                 })}

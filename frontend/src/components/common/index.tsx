@@ -1,5 +1,7 @@
 import { useState, useLayoutEffect, useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import type { LucideIcon } from 'lucide-react'
+import { ICON, Glyph } from './icons'
 import { X } from 'lucide-react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { PAGE_LABELS } from '../../utils/pageLabels'
@@ -125,12 +127,12 @@ export function PageHeader({ title, action, links }: PageHeaderProps) {
 }
 
 // EmptyState
-interface EmptyStateProps { icon?: string; title: string; sub?: string; action?: React.ReactNode }
-export function EmptyState({ icon = '📭', title, sub, action }: EmptyStateProps) {
+interface EmptyStateProps { icon?: LucideIcon | string; title: string; sub?: string; action?: React.ReactNode }
+export function EmptyState({ icon = ICON.empty, title, sub, action }: EmptyStateProps) {
   return (
     <div className="text-center py-12 flex flex-col items-center">
       <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl mb-3"
-        style={{ background: 'color-mix(in srgb, var(--text) 5%, var(--bg-card))', border: '1px solid var(--hairline)' }}>{icon}</div>
+        style={{ background: 'color-mix(in srgb, var(--text) 5%, var(--bg-card))', border: '1px solid var(--hairline)', color: 'var(--text-muted)' }}><Glyph icon={icon} size={24} /></div>
       <div className="text-[15px] font-semibold mb-1" style={{ color: 'var(--text)' }}>{title}</div>
       {sub && <div className="text-[13px] mb-4 max-w-xs" style={{ color: 'var(--text-muted)' }}>{sub}</div>}
       {action}

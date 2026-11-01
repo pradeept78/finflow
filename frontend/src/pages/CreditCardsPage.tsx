@@ -1,3 +1,4 @@
+import { ICON } from '../components/common/icons'
 import { useState, Fragment } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { cardsApi, paidMarksApi, closedLoansApi, insuranceApi, incomeApi } from '../api'
@@ -183,7 +184,7 @@ export default function CreditCardsPage() {
         </button>
       } />
 
-      {cards.length === 0 ? <EmptyState icon="💳" title="No cards" sub="Add your first credit card" action={<button className="btn-primary btn-sm" onClick={() => { setCardForm({ banker: '', cardLimit: 0, outstanding: 0 }); setFormErrors({}); setModalType('card') }}>+ Add card</button>} /> : (<>
+      {cards.length === 0 ? <EmptyState icon={ICON.card} title="No cards" sub="Add your first credit card" action={<button className="btn-primary btn-sm" onClick={() => { setCardForm({ banker: '', cardLimit: 0, outstanding: 0 }); setFormErrors({}); setModalType('card') }}>+ Add card</button>} /> : (<>
 
         {/* ── SUMMARY ROW ── */}
         <KpiRow className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 [&>*]:min-w-0" keep={[2, 4]}>
@@ -718,7 +719,7 @@ export default function CreditCardsPage() {
           const groups = Array.from(byKey.values()).sort((a, b) =>
             groupEmisBy === 'card' || groupEmisBy === 'category' ? ownPend(b.items) - ownPend(a.items) : a.order - b.order)
           const COLS = 'minmax(200px,2.2fr) minmax(95px,1fr) minmax(70px,0.7fr) minmax(105px,1.1fr) minmax(85px,1fr) minmax(115px,1.2fr) minmax(95px,1fr) minmax(80px,0.8fr) 112px'
-          if (!list.length) return <EmptyState icon="📋" title="No active EMIs" sub="EMIs you add to a card show up here, across all cards" />
+          if (!list.length) return <EmptyState icon={ICON.list} title="No active EMIs" sub="EMIs you add to a card show up here, across all cards" />
           return (<>
             {groupEmisBy !== 'none' && groups.length > 1 && (() => {
               const keys = groups.map(g => `${groupEmisBy}:${g.key}`)
@@ -857,7 +858,7 @@ export default function CreditCardsPage() {
         {/* ── ALL SPENDS, EVERY CARD, ONE TABLE ── */}
         {cardsView === 'spends' && (() => {
           const rows = (cards as any[]).flatMap((c: any) => (c.spends ?? []).map((sp: any) => ({ c, sp, own: !(sp.owedBy && !sp.owedSettled) })))
-          if (!rows.length) return <EmptyState icon="🛍️" title="No spends this cycle" sub="Spends you add to a card show up here, across all cards" />
+          if (!rows.length) return <EmptyState icon={ICON.cardSpend} title="No spends this cycle" sub="Spends you add to a card show up here, across all cards" />
           const val = (r: any): number | string => {
             switch (spendSortCol) {
               case 'purpose': return String(r.sp.purpose ?? '').toLowerCase()

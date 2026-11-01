@@ -1,3 +1,4 @@
+import { ICON } from '../components/common/icons'
 import SegTabs from '../components/common/SegTabs'
 import { debtFreeMonths as calcDebtFreeMonths } from '../utils/debtFree'
 import { useState } from 'react'
@@ -739,7 +740,7 @@ export default function ClosedAssetsPage() {
       )}
 
       {filtered.length === 0 ? (
-        <EmptyState icon="📦" title="No closed assets" sub="Archive loans, savings, investments when they close" />
+        <EmptyState icon={ICON.closed} title="No closed assets" sub="Archive loans, savings, investments when they close" />
       ) : (
         <div className="space-y-2 mb-6">
           {paginated.map((item: any) => {

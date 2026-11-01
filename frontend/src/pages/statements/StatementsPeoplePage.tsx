@@ -1,3 +1,4 @@
+import { ICON } from '../../components/common/icons'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -57,7 +58,7 @@ function CounterpartyExplorer({ kind, back, goTx }: { kind: ExploreKind; back: (
                 })}
               </tbody>
             </table>
-            {!filtered.length && <EmptyState icon="🔍" title="No counterparties match your search" />}
+            {!filtered.length && <EmptyState icon={ICON.search} title="No counterparties match your search" />}
           </div>
         )}
       </SectionCard>
@@ -119,7 +120,7 @@ export default function StatementsPeoplePage() {
               </div>
             } />
             <RankList data={c.data.slice(0, 20)} nameKey={c.nameKey} subKey="transactions" onClick={goTx} />
-            {!c.data.length && <EmptyState icon="🔍" title={q ? 'No matches for your search' : c.empty} />}
+            {!c.data.length && <EmptyState icon={ICON.search} title={q ? 'No matches for your search' : c.empty} />}
           </SectionCard>
         ))}
       </div>

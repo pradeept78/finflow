@@ -1,3 +1,4 @@
+import { ICON, Glyph } from '../components/common/icons'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { loansApi, cardsApi, personalEmiApi, savingsApi, investmentsApi, insuranceApi, expensesApi, incomeApi, peopleOweApi, closedLoansApi, snapshotApi, paidMarksApi } from '../api'
 import api from '../api/axios'
@@ -88,17 +89,17 @@ export default function ExportPage() {
   const exportDisabled = anyLoading || anyError
 
   const sections = [
-    { key: 'loans',      label: 'Loans',           icon: '🏦', data: loans,      count: loans.length },
-    { key: 'cards',      label: 'Credit cards',     icon: '💳', data: cards.map(c => ({ ...c, emis: undefined, spends: undefined })), count: cards.length },
-    { key: 'personal',   label: 'I Owe',            icon: '🤝', data: personal,   count: personal.length },
-    { key: 'savings',    label: 'Savings / Chit',   icon: '🪙', data: savings,    count: savings.length },
-    { key: 'investments',label: 'Investments',      icon: '📈', data: investments,count: investments.length },
-    { key: 'insurance',  label: 'Insurance',        icon: '🛡️', data: insurance,  count: insurance.length },
-    { key: 'expenses',   label: 'Expenses',         icon: '🔄', data: expenses,   count: expenses.length },
-    { key: 'income',     label: 'Income',           icon: '💰', data: income,     count: income.length },
-    { key: 'peopleOwe',  label: 'People owe me',    icon: '🤑', data: peopleOwe, count: peopleOwe.length },
-    { key: 'closedLoans',label: 'Closed loans',     icon: '✅', data: closedLoans,count: closedLoans.length },
-    { key: 'earnings',   label: 'Earnings history',  icon: '💰', data: earnings,    count: earnings.length },
+    { key: 'loans',      label: 'Loans',           icon: ICON.loan, data: loans,      count: loans.length },
+    { key: 'cards',      label: 'Credit cards',     icon: ICON.card, data: cards.map(c => ({ ...c, emis: undefined, spends: undefined })), count: cards.length },
+    { key: 'personal',   label: 'I Owe',            icon: ICON.iowe, data: personal,   count: personal.length },
+    { key: 'savings',    label: 'Savings / Chit',   icon: ICON.savings, data: savings,    count: savings.length },
+    { key: 'investments',label: 'Investments',      icon: ICON.investment, data: investments,count: investments.length },
+    { key: 'insurance',  label: 'Insurance',        icon: ICON.insurance, data: insurance,  count: insurance.length },
+    { key: 'expenses',   label: 'Expenses',         icon: ICON.bill, data: expenses,   count: expenses.length },
+    { key: 'income',     label: 'Income',           icon: ICON.income, data: income,     count: income.length },
+    { key: 'peopleOwe',  label: 'People owe me',    icon: ICON.oweMe, data: peopleOwe, count: peopleOwe.length },
+    { key: 'closedLoans',label: 'Closed loans',     icon: ICON.closed, data: closedLoans,count: closedLoans.length },
+    { key: 'earnings',   label: 'Earnings history',  icon: ICON.earnings, data: earnings,    count: earnings.length },
   ]
 
   // Minimal shape/type check run before each item is sent to the API. A hand-edited or malformed
@@ -362,7 +363,7 @@ export default function ExportPage() {
         <div className="text-[12px] font-semibold" style={{color:'var(--text)'}}>Your data <span className="font-normal" style={{color:'var(--text-faint)'}}>· {sections.reduce((s,x)=>s+x.count,0)} records</span></div>
         {sections.filter(s => s.count > 0).map(s => (
           <div key={s.key} className="flex items-center gap-1.5 text-[11px]">
-            <span>{s.icon}</span>
+            <Glyph icon={s.icon} size={13} className="inline-block" />
             <span style={{color:'var(--text-muted)'}}>{s.label}</span>
             <span className="mono font-bold text-green-400">{s.count}</span>
           </div>
@@ -380,7 +381,7 @@ export default function ExportPage() {
             {sections.map(s => (
               <div key={s.key} className="flex items-center justify-between px-4 py-3">
                 <div className="flex items-center gap-3">
-                  <span className="text-lg">{s.icon}</span>
+                  <span className="w-8 h-8 rounded-lg inline-flex items-center justify-center flex-shrink-0" style={{ background: 'color-mix(in srgb, var(--text) 7%, transparent)', color: 'var(--text-muted)' }}><Glyph icon={s.icon} size={16} /></span>
                   <div>
                     <div className="font-semibold text-[13px]">{s.label}</div>
                     <div className="text-[11px]" style={{ color: 'var(--text-muted)' }}>{s.count} {s.count === 1 ? 'record' : 'records'}</div>

@@ -1,3 +1,4 @@
+import { ICON } from '../components/common/icons'
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { adminApi } from '../api'
@@ -180,7 +181,7 @@ export default function AdminPage() {
           <input aria-label="Search accounts" className="input text-[12px] py-1.5 w-full sm:w-56" placeholder="Search name or email…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         {shown.length === 0 ? (
-          <EmptyState icon="👤" title={q ? 'No accounts match' : 'No accounts yet'} sub={q ? `Nothing matches “${search}”.` : undefined} />
+          <EmptyState icon={ICON.person} title={q ? 'No accounts match' : 'No accounts yet'} sub={q ? `Nothing matches “${search}”.` : undefined} />
         ) : (
           <>
             {/* Desktop / tablet: table */}

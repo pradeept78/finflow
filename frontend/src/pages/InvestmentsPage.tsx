@@ -1,3 +1,4 @@
+import { ICON } from '../components/common/icons'
 import { useState } from 'react'
 import { investTotals, investInvested, investValue, sipInvestedSoFar } from '../utils/investValue'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -151,7 +152,7 @@ export default function InvestmentsPage() {
         )
       })()}
 
-      {items.length === 0 ? <EmptyState icon="📈" title="No investments" sub="Track FDs, mutual funds, stocks and more" action={<button className="btn-primary btn-sm" onClick={()=>openModal({})}>+ Add investment</button>} /> : (
+      {items.length === 0 ? <EmptyState icon={ICON.investment} title="No investments" sub="Track FDs, mutual funds, stocks and more" action={<button className="btn-primary btn-sm" onClick={()=>openModal({})}>+ Add investment</button>} /> : (
         <div className="rounded-2xl overflow-hidden text-[13px]" style={{background:'var(--bg-card)',border:'1px solid var(--border)',overflowX:'auto'}}>
           <div className="hidden md:grid px-4 py-2 text-[12px] font-medium border-b"
             style={{gridTemplateColumns:'minmax(190px,2.4fr) minmax(90px,0.93fr) minmax(120px,1.24fr) minmax(130px,1.34fr) minmax(90px,0.93fr) minmax(80px,0.83fr) minmax(70px,0.72fr)',borderColor:'var(--hairline)',background:'color-mix(in srgb, var(--text) 8%, transparent)',color:'var(--text-faint)'}}>

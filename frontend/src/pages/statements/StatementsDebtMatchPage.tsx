@@ -1,3 +1,4 @@
+import { ICON } from '../../components/common/icons'
 import { useState } from 'react'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { loansApi, cardsApi, closedLoansApi } from '../../api'
@@ -394,7 +395,7 @@ export default function StatementsDebtMatchPage() {
           return <MatchRow key={l.id} title={l.lender} sub={`EMI ${money(l.emi)} · ${l.loanType || 'Loan'}`} quality={quality} matches={matches} manualIds={manualIds}
             onLinkManually={autoQuality !== 'strong' ? () => setLinkTarget({ type: 'LOAN', id: l.id!, name: l.lender, expectedAmount: l.emi }) : undefined}
             onUnlink={id => unlinkMut.mutate(id)} />
-        }) : <EmptyState icon="🏦" title="No loans on record yet" />}
+        }) : <EmptyState icon={ICON.loan} title="No loans on record yet" />}
       </SectionCard>
 
       <SectionCard>
@@ -412,7 +413,7 @@ export default function StatementsDebtMatchPage() {
           return <MatchRow key={c.id} title={c.banker} sub={`Outstanding ${money(c.outstanding)} · Limit ${money(c.cardLimit)}`} quality={quality} matches={matches} manualIds={manualIds}
             onLinkManually={autoQuality !== 'strong' ? () => setLinkTarget({ type: 'CARD', id: c.id!, name: c.banker, expectedAmount: c.outstanding || undefined }) : undefined}
             onUnlink={id => unlinkMut.mutate(id)} />
-        }) : <EmptyState icon="💳" title="No credit cards on record yet" />}
+        }) : <EmptyState icon={ICON.card} title="No credit cards on record yet" />}
       </SectionCard>
 
       <SectionCard>
