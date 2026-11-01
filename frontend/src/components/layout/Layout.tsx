@@ -385,6 +385,8 @@ export default function Layout() {
           <span className="font-semibold text-sm text-[#eef0f6] truncate">
             {(PAGE_LABELS as Record<string, string>)[location.pathname] ?? 'FinFlow'}
           </span>
+          {/* The page's main action (Add loan, Add card…) lands here on phones — see PageHeader. Compact so it fits the bar. */}
+          <div id="phone-action-slot" className="ml-auto flex items-center gap-2 flex-shrink-0 empty:hidden [&_button]:!py-1.5 [&_button]:!px-3 [&_button]:!text-[12px] [&_button]:!min-h-0" />
         </div>}
 
         {/* Phones: room at the bottom for the tab bar (and the iPhone home indicator) */}

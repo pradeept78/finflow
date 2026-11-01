@@ -480,7 +480,7 @@ export default function QuickLookupPage() {
             )
           })}
           </>}
-          <div className="flex"><NextMonthHeadsUp /></div>
+          <NextMonthHeadsUp className="w-fit" />
           {upcoming.length > 0 && (() => {
             const startOfToday = new Date(new Date().toDateString()).getTime()
             const left = upcoming.filter(u => !(nextMarks as string[]).includes(u.key)).reduce((a, u) => a + u.amount, 0)

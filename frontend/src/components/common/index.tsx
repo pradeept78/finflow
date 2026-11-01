@@ -70,6 +70,10 @@ export function PageHeader({ title, action, links }: PageHeaderProps) {
   // the first table about 40% down the screen. Falls back to the old in-page spot if the slot isn't there.
   const [slot, setSlot] = useState<HTMLElement | null>(null)
   useLayoutEffect(() => { setSlot(inTabbedHub ? document.getElementById('hub-action-slot') : null) }, [inTabbedHub, location.pathname])
+  // Phones: the action (Add loan, Add card…) goes into the app's top bar, beside the page name, instead
+  // of taking a row of its own above the content.
+  const [phoneSlot, setPhoneSlot] = useState<HTMLElement | null>(null)
+  useLayoutEffect(() => { setPhoneSlot(document.getElementById('phone-action-slot')) }, [location.pathname])
   // Phones keep the button in the page: squeezing it into the tab bar would push the active tab off screen.
   const [wide, setWide] = useState(() => typeof window === 'undefined' || !window.matchMedia ? true : window.matchMedia('(min-width: 640px)').matches)
   useEffect(() => {
@@ -78,6 +82,7 @@ export function PageHeader({ title, action, links }: PageHeaderProps) {
     mq.addEventListener('change', on); return () => mq.removeEventListener('change', on)
   }, [])
   const portalled = inTabbedHub && wide && !!slot && !!action
+  const phonePortalled = !wide && !!phoneSlot && !!action
   // Shortcut pills only go into the tab bar when there is room for them beside the tabs.
   // The sidebar takes ~210px, so with it open the tab bar needs a much wider window before pills fit beside the tabs.
   const fullScreenMode = useUiStore(st => st.fullScreen)
@@ -90,10 +95,13 @@ export function PageHeader({ title, action, links }: PageHeaderProps) {
   }, [minW])
   const linksPortalled = inTabbedHub && wide && roomy && !!slot && !!links
   const inRowLinks = !!links && !linksPortalled
-  const showRow = !inTabbedHub || (!!action && !portalled) || inRowLinks || !!backLabel
+  const showRow = !inTabbedHub || (!!action && !portalled && !phonePortalled) || inRowLinks || !!backLabel
+  // With no row, the title is printed only. It uses the `hidden` attribute, not the class: the pages' space-y
+  // spacing skips [hidden] elements but not .hidden ones, which left an empty gap above the content.
   return (
     <>
       {(portalled || linksPortalled) && createPortal(<>{linksPortalled && <div className="flex items-center gap-1.5">{links}</div>}{portalled && action}</>, slot!)}
+      {phonePortalled && createPortal(action, phoneSlot!)}
       {showRow ? (
         <div className={inTabbedHub ? 'mb-1' : 'mb-4'}>
           {backLabel && (
@@ -103,13 +111,13 @@ export function PageHeader({ title, action, links }: PageHeaderProps) {
           )}
           <div className="flex items-center justify-between gap-x-3 gap-y-2 flex-wrap">
             <h1 className={inTabbedHub ? 'page-title hidden print:block' : 'page-title'}>{title}</h1>
-            {((action && !portalled) || inRowLinks) && (
-              <div className={`flex items-center gap-2 flex-wrap flex-shrink-0 ${inTabbedHub ? 'ml-auto' : ''}`}>{inRowLinks && links}{action && !portalled && action}</div>
+            {((action && !portalled && !phonePortalled) || inRowLinks) && (
+              <div className={`flex items-center gap-2 flex-wrap flex-shrink-0 ${inTabbedHub ? 'ml-auto' : ''}`}>{inRowLinks && links}{action && !portalled && !phonePortalled && action}</div>
             )}
           </div>
         </div>
       ) : (
-        <h1 className="page-title hidden print:block">{title}</h1>
+        <h1 hidden className="page-title print:block">{title}</h1>
       )}
     </>
   )
