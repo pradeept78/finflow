@@ -1,6 +1,6 @@
 import api from './axios'
 import { withCycleDates } from '../utils/cardCycle'
-import type { LoginRequest, RegisterRequest, SignupMode, AdminUser, InviteCode } from '../types'
+import type { LoginRequest, RegisterRequest, SignupMode, AdminUser, InviteCode, BankMessage } from '../types'
 import type { Loan, CreditCard, PersonalEmi, Saving, Investment, InsurancePolicy, IncomeEntry, Expense, PeopleOwe, ClosedLoan } from '../types'
 
 // Auth
@@ -48,6 +48,18 @@ export const accountApi = {
   changePassword: (currentPassword: string, newPassword: string) =>
     api.put<{ data: { token: string } }>('/account/password', { currentPassword, newPassword }).then(r => r.data.data),
   deleteAccount: (password: string) => api.delete('/account', { data: { password } }),
+}
+
+// Bank messages: what FinFlow read from bank SMS (iPhone Shortcut) or pasted text, waiting for a confirm.
+export const bankMessagesApi = {
+  list: () => api.get<{ data: BankMessage[] }>('/bank-messages').then(r => r.data.data),
+  summary: () => api.get<{ data: { newCount: number; hasKey: boolean } }>('/bank-messages/summary').then(r => r.data.data),
+  paste: (text: string) => api.post<{ data: BankMessage }>('/bank-messages/paste', { text }).then(r => r.data.data),
+  confirm: (id: number, edits?: Record<string, unknown>) => api.post<{ data: BankMessage }>(`/bank-messages/${id}/confirm`, edits ?? {}).then(r => r.data.data),
+  ignore: (id: number) => api.post(`/bank-messages/${id}/ignore`),
+  confirmSure: () => api.post<{ data: { confirmed: number; failed: number } }>('/bank-messages/confirm-sure').then(r => r.data.data),
+  newKey: () => api.post<{ data: string }>('/bank-messages/key').then(r => r.data.data),
+  revokeKey: () => api.delete('/bank-messages/key'),
 }
 
 // Account administration only: admins see who has an account, never anyone's finances.

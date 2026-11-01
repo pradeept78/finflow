@@ -20,6 +20,8 @@ export interface ApiResponse<T> {
 export interface Loan {
   id?: number
   lender: string
+  /** loan account's last 4 digits: matches EMI messages to it */
+  last4?: string | null
   loanType?: string
   amount?: number
   emi?: number
@@ -69,6 +71,8 @@ export interface CardSpend {
 export interface CreditCard {
   id?: number
   banker: string
+  /** card number's last 4 digits: matches bank messages to it */
+  last4?: string | null
   cardLimit: number
   outstanding: number
   dueDay?: number
@@ -218,3 +222,13 @@ export type SignupMode = 'invite' | 'open' | 'closed'
 export interface AdminUser { id: number; name: string; email: string; role: string; isCurrentUser: boolean; createdAt?: string; lastLogin?: string }
 /** A single-use sign-up code; `code` is 12 characters with no dashes (shown as XXXX-XXXX-XXXX). */
 export interface InviteCode { id: number; code: string; note?: string; createdBy?: string; createdAt: string; usedAt?: string; usedByEmail?: string }
+
+/** A bank SMS / alert FinFlow read (backend messages/BankMessage). Money only changes when it's confirmed. */
+export type BankMessageKind = 'CARD_SPEND' | 'CARD_STATEMENT' | 'CARD_PAYMENT' | 'CARD_EMI' | 'EMI_DEBIT' | 'IGNORED' | 'UNKNOWN'
+export interface BankMessage {
+  id: number; source: 'sms' | 'paste'; sender?: string; body: string; receivedAt: string
+  kind: BankMessageKind; amount?: number; last4?: string; merchant?: string; txnDate?: string; dueDate?: string
+  minDue?: number; tenure?: number; emiAmount?: number; note?: string
+  targetType?: 'CARD' | 'LOAN'; targetId?: number; sure: boolean
+  status: 'NEW' | 'CONFIRMED' | 'IGNORED'; resultNote?: string
+}

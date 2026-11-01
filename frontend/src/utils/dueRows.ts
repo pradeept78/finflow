@@ -1,4 +1,4 @@
-import { getEff, resolveDueDay, isDueThisMonth, isOneOff, toMonthly } from './format'
+import { getEff, resolveDueDay, isDueInMonth, isOneOff, toMonthly } from './format'
 import { cardCycle, fmtDueDate, emiStartsLater } from './cardCycle'
 import { startsAfterThisMonth } from './nextMonth'
 import { isLive } from './ended'
@@ -136,7 +136,8 @@ export function buildDueRows(data: DueData, now: Date = new Date()): { rows: Due
       if (sameMonth(e.startDate, now) && Number(e.amount ?? 0) > 0) rows.push({ key: `exp-${e.id}`, kind: 'one-time', label: e.label, sub: 'One-time expense', amount: Number(e.amount), dueDay: resolveDueDay(e), ref: e, category: e.category })
       return
     }
-    if (!isDueThisMonth(e.startDate, e.frequency)) return
+    // In the month being listed (`now`), not today's: Calendar and Look ahead list future months.
+    if (!isDueInMonth(e.startDate, e.frequency, now.getFullYear(), now.getMonth())) return
     rows.push({ key: `exp-${e.id}`, kind: 'bill', label: e.label, sub: e.category ?? 'Expense', amount: Number(e.amount ?? 0), dueDay: resolveDueDay(e), ref: e, category: e.category })
   })
 
@@ -166,7 +167,7 @@ export function buildDueRows(data: DueData, now: Date = new Date()): { rows: Due
       if (sameMonth(v.startDate, now)) rows.push({ key: `ins-${v.id}`, kind: 'one-time', label: v.name, sub: 'One-time premium', amount: amt, dueDay: resolveDueDay(v), ref: v })
       return
     }
-    if (!isDueThisMonth(v.startDate, v.frequency)) return
+    if (!isDueInMonth(v.startDate, v.frequency, now.getFullYear(), now.getMonth())) return
     rows.push({ key: `ins-${v.id}`, kind: 'insurance', label: v.name, sub: `Insurance · ${v.frequency}`, amount: amt, dueDay: resolveDueDay(v), ref: v })
   })
 

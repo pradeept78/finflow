@@ -69,6 +69,10 @@ public class Loan extends BaseEntity {
     @Column(name = "debit_account", length = 150)
     private String debitAccount;
 
+    /** Last 4 digits of the loan account: how EMI messages ("Loan A/c XX1234") are matched to this loan. */
+    @Column(length = 4)
+    private String last4;
+
     @Column(name = "processing_fee", precision = 15, scale = 2)
     private BigDecimal processingFee;
 }

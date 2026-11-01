@@ -1,3 +1,4 @@
+import BankMessagesBanner from '../components/common/BankMessagesBanner'
 import { useState, useLayoutEffect, useEffect } from 'react'
 import { incomePct } from '../utils/incomePct'
 import { createPortal } from 'react-dom'
@@ -447,6 +448,7 @@ export default function HubPage({ section = 'overview' }: Props) {
 
   if (section === 'overview') return (
     <div className="space-y-4 text-[13px]">
+      <BankMessagesBanner />
       {horizonBar}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 [&>*]:min-w-0">
         <Card color="var(--danger)" label="Total debt"      value={fmtINR(totalDebt)}              sub={horizon && dToday ? `${deltaTxt(dToday.total, totalDebt)} · ${debtSub}` : debtSub} to="/loans"/>

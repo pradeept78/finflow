@@ -58,6 +58,7 @@ public class LoanService {
         existing.setNotes(updated.getNotes());
         existing.setDebitAccount(updated.getDebitAccount());
         existing.setProcessingFee(updated.getProcessingFee());
+        existing.setLast4(updated.getLast4());
         // NOTE: paid/pending are calculated from startDate+tenure on frontend
         // We do NOT update them here to prevent stale DB values causing wrong calculations
         return loanRepository.save(existing);
