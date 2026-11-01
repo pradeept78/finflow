@@ -47,6 +47,10 @@ public class CreditCard extends BaseEntity {
     @Column(name = "billing_day")
     private Integer billingDay;
 
+    /** Last 4 digits of the card number: how bank messages ("Card XX4521") are matched to this card. */
+    @Column(length = 4)
+    private String last4;
+
     @Column(columnDefinition = "TEXT")
     private String notes;
 

@@ -49,7 +49,7 @@ const hubNav = [
     label: 'History & tools',
     icon: History,
     accent: '#a78bfa',
-    pages: ['/closed-loans','/payoff','/history','/break-savings','/export','/admin'],
+    pages: ['/messages','/closed-loans','/payoff','/history','/break-savings','/export','/admin'],
   },
   {
     hub: '/statements/overview',
@@ -61,7 +61,7 @@ const hubNav = [
 ]
 
 const PAGE_LINK_LABELS: Record<string,string> = {
-  '/closed-loans':'Closed assets','/earnings':'Earnings','/payoff':'Payoff','/history':'History','/break-savings':'Break savings','/export':'Export','/admin':'Admin','/account':'Your account',
+  '/closed-loans':'Closed assets','/earnings':'Earnings','/payoff':'Payoff','/history':'History','/break-savings':'Break savings','/export':'Export','/admin':'Admin','/account':'Your account','/messages':'Bank messages',
   '/statements/overview':'Overview','/statements/spending':'Spending','/statements/people':'People & Merchants',
   '/statements/accounts':'Accounts & Cards','/statements/transactions':'Transactions','/statements/ledger':'Lending & Loans',
   '/statements/data':'Data & Imports','/statements/debt-match':'Debt matching',
@@ -228,7 +228,7 @@ export default function Layout() {
                         '/savings':'Savings / Chit','/investments':'Investments','/income':'Income',
                         '/insurance':'Insurance','/people-owe':'People owe me',
                         '/closed-loans':'Closed assets','/closed-assets':'Closed assets','/earnings':'Earnings','/payoff':'Payoff',
-                        '/history':'History','/break-savings':'Break savings','/export':'Export','/admin':'Admin','/account':'Your account',
+                        '/history':'History','/break-savings':'Break savings','/export':'Export','/admin':'Admin','/account':'Your account','/messages':'Bank messages',
                         '/statements/overview':'Overview','/statements/spending':'Spending','/statements/people':'People & Merchants',
                         '/statements/accounts':'Accounts & Cards','/statements/transactions':'Transactions',
                         '/statements/ledger':'Lending & Loans','/statements/data':'Data & Imports',

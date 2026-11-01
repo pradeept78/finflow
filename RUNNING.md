@@ -142,6 +142,22 @@ roles, delete accounts and manage invites. They cannot see anyone's loans, cards
 
 ---
 
+## Bank messages (SMS reader)
+
+`/messages` reads Indian bank SMS and alert text into suggestions (card spend, card bill, card payment,
+new card EMI, loan EMI) that change nothing until confirmed. Cards and loans are matched by the
+**last 4 digits** set on them (card and loan forms). Two ways in:
+
+- **Paste** a message on the page.
+- **iPhone Shortcut** (Personal Automation → Message contains "card" / "EMI" → Get contents of URL):
+  `POST https://<tailnet address>/api/ingest/sms`, header `X-FinFlow-Key`, JSON `{"text", "sender"}`.
+  The key is made on `/messages` (shown once, stored as a SHA-256) and can be turned off there.
+  `/ingest/**` is public in SecurityConfig: the key is the authentication. The phone must be on Tailscale.
+
+The reader is `messages/BankMessageParser.java`; add new bank wordings with a case in its test.
+
+---
+
 ## Secrets
 
 `JWT_SECRET` and `SPRING_DATASOURCE_PASSWORD` have **no fallback value** in `application.yml`

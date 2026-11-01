@@ -79,6 +79,8 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**", "/api/auth/**", "/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                // The iPhone Shortcut has no session: IngestController checks its personal key itself.
+                .requestMatchers("/ingest/**").permitAll()
                 // Defense-in-depth: AdminController.requireAdmin() already re-checks the live DB
                 // role on every admin method and that stays in place, but until userDetailsService
                 // above carried the real role, this matcher would have been a no-op — hasRole("USER")

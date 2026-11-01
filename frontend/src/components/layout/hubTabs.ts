@@ -50,6 +50,7 @@ export const HISTORY_HUB: HubConfig = {
   accent: '#a78bfa',
   tabs: [
     { to: '/hub/history', label: 'Home', icon: '🏠' },
+    { to: '/messages', label: 'Bank messages', short: 'Messages', icon: '📩' },
     { to: '/history', label: 'History', icon: '📈' },
     { to: '/closed-loans', label: 'Closed assets', short: 'Closed', icon: '📦' },
     { to: '/payoff', label: 'Payoff', icon: '🎯' },

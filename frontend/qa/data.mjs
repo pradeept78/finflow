@@ -20,6 +20,14 @@ export const routes={
  '/people-owes':[],'/closed-loans':[],'/paid-marks':[],'/snapshots':[],
  // Admin page (account details and invites only) and the sign-up mode
  '/admin/me/is-admin':true,'/auth/signup-mode':'invite',
+ // Bank messages page: three waiting (two sure, one with no matching card), two handled
+ '/bank-messages/summary':{newCount:3,hasKey:false},
+ '/bank-messages':[
+  {id:5,source:'sms',sender:'AX-HDFCBK',body:'Rs.1250.00 spent on HDFC Bank Card x4521 at SWIGGY on 2026-10-30:20:15:11.',receivedAt:'2026-10-30T20:15:30',kind:'CARD_SPEND',amount:1250,last4:'4521',merchant:'SWIGGY',txnDate:'2026-10-30',targetType:'CARD',targetId:1,sure:true,status:'NEW'},
+  {id:4,source:'sms',sender:'AD-HDFCBK',body:'Your A/c XX7890 is debited for Rs.48,500.00 on 05-11-26 towards EMI for Loan A/c XX1234.',receivedAt:'2026-10-29T09:00:00',kind:'EMI_DEBIT',amount:48500,last4:'1234',txnDate:'2026-10-29',targetType:'LOAN',targetId:1,sure:true,status:'NEW'},
+  {id:3,source:'paste',body:'Rs.300.00 spent on ICICI Bank Card XX9999 at CAFE COFFEE DAY on 28-10-26.',receivedAt:'2026-10-28T12:00:00',kind:'CARD_SPEND',amount:300,last4:'9999',merchant:'CAFE COFFEE DAY',txnDate:'2026-10-28',sure:false,status:'NEW'},
+  {id:2,source:'sms',body:'Your HDFC Bank Credit Card XX4521 statement is generated. Total Amt Due: Rs.84,200.00',receivedAt:'2026-10-03T08:00:00',kind:'CARD_STATEMENT',amount:84200,last4:'4521',targetType:'CARD',targetId:1,sure:true,status:'CONFIRMED',resultNote:'HDFC Regalia bill set to ₹84,200, due 2026-10-20'},
+  {id:1,source:'sms',body:'123456 is the OTP for transaction of INR 1,250.00',receivedAt:'2026-10-02T08:00:00',kind:'IGNORED',note:'One-time password',sure:false,status:'IGNORED'}],
  '/admin/users':[
   {id:1,name:'Pradeep',email:'pradeep@example.test',role:'ADMIN',isCurrentUser:true,createdAt:'2026-03-02T10:00:00',lastLogin:'2026-10-31T09:00:00'},
   {id:2,name:'Ravi Kumar',email:'ravi.kumar.with.a.long.address@example.test',role:'USER',isCurrentUser:false,createdAt:'2026-10-20T10:00:00',lastLogin:'2026-10-29T18:00:00'},

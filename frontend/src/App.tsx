@@ -30,6 +30,7 @@ const HistoryPage = lazy(() => import('./pages/HistoryPage'))
 const ExportPage = lazy(() => import('./pages/ExportPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const AccountPage = lazy(() => import('./pages/AccountPage'))
+const BankMessagesPage = lazy(() => import('./pages/BankMessagesPage'))
 const EarningsPage = lazy(() => import('./pages/EarningsPage'))
 const HubPage = lazy(() => import('./pages/HubPage'))
 const StatementsOverviewPage = lazy(() => import('./pages/statements/StatementsOverviewPage'))
@@ -129,6 +130,7 @@ export default function App() {
             <Route path="hub/history" element={<ErrorBoundary label="/hub/history"><HubPage section="history" /></ErrorBoundary>} />
             <Route path="admin" element={<ErrorBoundary label="/admin"><AdminRoute /></ErrorBoundary>} />
             <Route path="account" element={<ErrorBoundary label="/account"><AccountPage /></ErrorBoundary>} />
+            <Route path="messages" element={<ErrorBoundary label="/messages"><BankMessagesPage /></ErrorBoundary>} />
           </Route>
           <Route path="overview" element={<Navigate to="/dashboard" replace />} />
           <Route element={<TabbedHub config={STATEMENTS_HUB} />}>

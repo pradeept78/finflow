@@ -42,6 +42,10 @@ public class User {
     /** Set on every password change; tokens issued before it are no longer accepted (JwtAuthFilter). */
     @Column(name = "password_changed_at")
     private LocalDateTime passwordChangedAt;
+    /** SHA-256 of the personal key the iPhone Shortcut sends with bank SMS (IngestController). */
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    @Column(name = "ingest_key_hash", columnDefinition = "char(64)")
+    private String ingestKeyHash;
 
     @CreatedDate
     @Column(name = "created_at", updatable = false)

@@ -5,13 +5,15 @@ const iso = (m: number) => { const d = new Date(); d.setDate(15); d.setMonth(d.g
 describe('dataHealth', () => {
   it('flags records that cannot auto-calculate', () => {
     const h = dataHealth({
-      loans: [{ id: 1, lender: 'A', amount: 100000, emi: 5000, tenure: 24 }, { id: 2, lender: 'B', amount: 120000, emi: 10000, tenure: 12, startDate: iso(8), principalPaid: 40000 }],
+      loans: [{ id: 1, lender: 'A', amount: 100000, emi: 5000, tenure: 24 }, { id: 2, lender: 'B', amount: 120000, emi: 10000, tenure: 12, startDate: iso(9), principalPaid: 50000 }],
       savings: [{ id: 3, name: 'Chit', monthly: 1000 }],
       investments: [{ id: 4, name: 'SIP', monthly: 5000 }, { id: 5, name: 'FD', totalInvested: 1000 }],
       expenses: [{ id: 6, label: 'Gym', amount: 500, frequency: 'Monthly', endDate: iso(2) }],
     })
     const keys = h.map(x => x.key)
     expect(keys).toContain('loan-1')        // no start date
+    // 2–3 EMIs left (depending on whether today is past the 15th) can repay at most ₹30,000 < ₹50,000.
+    // It used to be ₹40,000 against 3–4 left, which stopped being flagged on the 1st–14th of a month.
     expect(keys).toContain('loanstmt-2')    // statement principal > EMIs left
     expect(keys).toContain('sav-3')
     expect(keys).toContain('sip-4')

@@ -1,3 +1,4 @@
+import BankMessagesBanner from '../components/common/BankMessagesBanner'
 import { useNavigateFrom } from '../hooks/useNavigateFrom'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -236,6 +237,7 @@ export default function QuickLookupPage() {
     <div className="space-y-4 text-[13px]">
 
       <PageHeader title="Quick lookup"/>
+      <BankMessagesBanner />
 
       {totalMonthly > 0 && (
         /* Compact header: the old one was 5rem of padding and a 4xl figure that pushed the due list

@@ -604,6 +604,7 @@ export default function LoansPage() {
             <MoreFields>
             <FormField label="Asset Current Value (₹)"><input className="input" type="number" placeholder="e.g. car current value" value={modal.loan.currentValue || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, currentValue: +e.target.value || undefined } }))} /></FormField>
             <FormField label="EMI debited from (bank/account)"><input className="input" placeholder="e.g. HDFC ••1234" value={modal.loan.debitAccount || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, debitAccount: e.target.value } }))} /></FormField>
+            <FormField label="Loan account last 4 digits"><input className="input mono" inputMode="numeric" maxLength={4} placeholder="e.g. 1234" value={modal.loan.last4 || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, last4: e.target.value.replace(/\D/g, '').slice(0, 4) || null } }))} /></FormField>
             <FormField label="Processing fee (₹)"><input className="input" type="number" value={modal.loan.processingFee || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, processingFee: +e.target.value || undefined } }))} /></FormField>
             <FormField label="Notes" className="form-full"><textarea className="input" rows={2} value={modal.loan.notes || ''} onChange={e => setModal(m => ({ ...m, loan: { ...m.loan, notes: e.target.value } }))} /></FormField>
             </MoreFields>
